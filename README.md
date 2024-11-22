@@ -34,6 +34,10 @@ https://github.com/BenSerg/Music-Ritmo.git
     ```bash
     pytest tests/
     ```
+    Чтобы выводился print() в тестах, добавляем опцию -s
+
+## Работа с БД через SQLModel
+Есть туториал (https://sqlmodel.tiangolo.com/tutorial/), где всё описано, даже есть раздел с FastAPI.
 
 ## Проверка типов с mypy
 ```bash
