@@ -39,6 +39,9 @@ https://github.com/BenSerg/Music-Ritmo.git
 ## Работа с БД через SQLModel
 Есть туториал (https://sqlmodel.tiangolo.com/tutorial/), где всё описано, даже есть раздел с FastAPI.
 
+## Просмотр БД
+DB Browser for SQLite https://sqlitebrowser.org/
+
 ## Проверка типов с mypy
 ```bash
 mypy . --explicit-package-bases
