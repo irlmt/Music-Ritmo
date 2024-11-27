@@ -2,6 +2,7 @@ import Image from "next/image";
 import Logo from "../../public/images/logo.svg";
 
 import { Button } from "@/shared/button";
+import { Input } from "@/shared/input";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
       <Button type="transparent" color="green-text">
         вход
       </Button>
+      <Input type="text" placeholder="введите пароль" />
     </div>
   );
 }

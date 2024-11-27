@@ -1,0 +1,33 @@
+.input {
+  display: flex;
+  height: 40px;
+  padding: 0 30px;
+  border-radius: 20px;
+  color: #3c3c3c;
+  border: 1px solid #758934;
+  font-family: "SteticaLight";
+  font-size: 18px;
+  text-align: left;
+  color: #405a01;
+}
+
+.input:focus,
+.input:active {
+  border: 1px solid #758934;
+  outline: 0px;
+}
+
+.input::placeholder {
+  font-family: "SteticaLight";
+  font-size: 18px;
+  text-align: left;
+  color: #a9a9a9;
+}
+
+.input:disabled {
+  color: #ebebeb;
+}
+
+.input_error {
+  border: 1px solid #c11030;
+}
