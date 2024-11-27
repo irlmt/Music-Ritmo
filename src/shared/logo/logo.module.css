@@ -1,0 +1,30 @@
+.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: max-content;
+}
+
+.big {
+  flex-direction: column;
+}
+.big > img {
+  height: 250px;
+  width: auto;
+}
+.big > h1 {
+  font-size: 80px;
+}
+
+.normal {
+  flex-direction: row;
+}
+.normal > img {
+  height: 60px;
+  width: auto;
+}
+.normal > h1 {
+  font-size: 40px;
+  margin: 0;
+  margin-left: 20px;
+}
