@@ -3,10 +3,11 @@ import Logo from "../../public/images/logo.svg";
 
 import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
+import { Container } from "@/shared/container";
 
 export default function Home() {
   return (
-    <div>
+    <Container style={{ margin: "50px" }} direction="column">
       <h1>Добро пожаловать в musicRitmo!</h1>
       <h2>Добро пожаловать в musicRitmo!</h2>
       <p>Добро пожаловать в musicRitmo!</p>
@@ -22,6 +23,6 @@ export default function Home() {
         вход
       </Button>
       <Input type="text" placeholder="введите пароль" />
-    </div>
+    </Container>
   );
 }
