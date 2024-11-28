@@ -1,0 +1,33 @@
+.login {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+.login__logo {
+  display: flex;
+  width: 40%;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.login__content {
+  display: flex;
+  flex-direction: column;
+  width: 60%;
+  align-items: center;
+  justify-content: center;
+}
+
+.login__content__title {
+  text-align: center;
+}
+
+.login__content_button {
+  display: flex;
+  justify-content: center;
+}
+
+.login__content_button > * {
+  width: 50%;
+}

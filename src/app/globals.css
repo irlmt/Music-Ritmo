@@ -4,22 +4,26 @@
 body {
   background-color: #f5f5f5;
   margin: 0;
+  height: 100vh;
 }
 
 h1 {
   font-family: "Lincoln";
   font-weight: 400;
   font-size: 50px;
+  color: #405a01;
 }
 
 h2 {
   font-family: "SteticaMedium";
   font-weight: 400;
   font-size: 30px;
+  color: #758934;
 }
 
 p {
   font-family: "SteticaLight";
   font-weight: 400;
   font-size: 20px;
+  color: #405a01;
 }
