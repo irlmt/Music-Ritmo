@@ -8,7 +8,7 @@ import { Logo } from "@/shared/logo";
 export default function Home() {
   return (
     <>
-      <Logo type="normal" />
+      <Logo type="big" />
       <Container style={{ margin: "50px" }} direction="column">
         <h1>Добро пожаловать в musicRitmo!</h1>
         <h2>Добро пожаловать в musicRitmo!</h2>
