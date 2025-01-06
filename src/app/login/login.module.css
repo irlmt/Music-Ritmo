@@ -14,9 +14,9 @@
 .login__content {
   display: flex;
   flex-direction: column;
-  padding-top: 180px;
   width: 60%;
   align-items: center;
+  justify-content: center;
 }
 
 .login__content__title {
