@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MusicRitmo App
 
-## Getting Started
+## Настройка окружения
 
-First, run the development server:
-
+1. Клонируйте репозиторий с помощью 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+https://github.com/BenSerg/Music-Ritmo.git
 ```
+2. Чтобы создать виртуальное окружение, перейдите в директорию проекта, а затем выполните команду
+    
+    Для Windows: 
+    ```bash
+    py -m venv venv
+    venv\Scripts\activate
+    ```
+    Для Linux/macOS:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Установите зависимости
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Запуск приложения
+1. Запуск приложения
+    ```bash
+    uvicorn src.app.main:app
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Запуск тестов
+    ```bash
+    pytest tests/
+    ```
+    Чтобы выводился print() в тестах, добавляем опцию -s
 
-## Learn More
+## Работа с БД через SQLModel
+Есть туториал (https://sqlmodel.tiangolo.com/tutorial/), где всё описано, даже есть раздел с FastAPI.
 
-To learn more about Next.js, take a look at the following resources:
+## Просмотр БД
+DB Browser for SQLite https://sqlitebrowser.org/
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Проверка типов с mypy
+```bash
+mypy . --explicit-package-bases
+```
