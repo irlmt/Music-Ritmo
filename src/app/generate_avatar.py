@@ -1,23 +1,17 @@
 from fastapi import APIRouter
+from fastapi import HTTPException
 import python_avatars as pa
 import base64
-import os
-import tempfile
 
-router = APIRouter()
+generate_avatar_router = APIRouter()
 
-@router.get("/generate_avatar/")
+@generate_avatar_router.get("/generate_avatar/")
 def generate_random_avatar():
     try:
         avatar = pa.Avatar.random()
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
-            avatar.render(tmp_file.name)
-            with open(tmp_file.name, "rb") as file:
-                base64_avatar = base64.b64encode(file.read()).decode("utf-8")
-
-        os.remove(tmp_file.name)
+        svg_data = avatar.render()
+        base64_avatar = base64.b64encode(svg_data.encode("utf-8")).decode("utf-8")
 
         return {"avatar_base64": base64_avatar}
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=f"Error generating avatar: {str(e)}")
