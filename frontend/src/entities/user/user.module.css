@@ -1,0 +1,62 @@
+.user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: #fbfbfb;
+  border: 3px solid #758934;
+  border-radius: 40px;
+  width: max-content;
+  padding-right: 5px;
+}
+
+.user__avatar {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.user__avatar__image {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin-right: 3px;
+}
+
+.user__avatar__name {
+  font-size: 14px;
+  color: #405a01;
+  font-family: "SteticaMedium";
+  font-size: 18px;
+  text-align: center;
+}
+
+.user__menu {
+  position: absolute;
+  top: 44px;
+  right: 15px;
+  background-color: white;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 135px;
+  padding: 10px 0;
+  display: block;
+}
+
+.user__menu_list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.user__menu_item {
+  padding: 10px 20px;
+  cursor: pointer;
+  color: #758934;
+  font-family: "SteticaMedium";
+  font-size: 16px;
+  text-decoration: none;
+}
+
+.user__menu_item:hover {
+  color: #405a01;
+}
