@@ -1,0 +1,17 @@
+.home_playlists {
+  display: grid;
+  grid-template-columns: repeat(5, 170px);
+  gap: 20px;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.home_button {
+  position: fixed;
+  bottom: 20px;
+  right: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
