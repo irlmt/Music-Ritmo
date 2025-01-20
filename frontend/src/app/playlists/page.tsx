@@ -6,7 +6,7 @@ import { Playlist } from "@/entities/playlist";
 import { Button } from "@/shared/button";
 import styles from "./playlists.module.css";
 
-export default function Home() {
+export default function Playlists() {
   const router = useRouter();
 
   return (
