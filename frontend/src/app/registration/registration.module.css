@@ -1,0 +1,33 @@
+.registration {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+.registration__logo {
+  display: flex;
+  width: 40%;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.registration__content {
+  display: flex;
+  padding-top: 180px;
+  flex-direction: column;
+  width: 60%;
+  align-items: center;
+}
+
+.registration__content__title {
+  text-align: center;
+}
+
+.registration__content_button {
+  display: flex;
+  justify-content: center;
+}
+
+.registration__content_button > * {
+  width: 60%;
+}
