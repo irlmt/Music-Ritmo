@@ -17,7 +17,7 @@ def test_ping():
 
 
 def test_get_tracks_by_genre():
-    response = client.get("/rest/genres/Soundtrack/tracks")
+    response = client.get("/rest/getTracksByGenre?genre=Soundtrack")
 
     assert response.status_code == 200
     data = response.json()["subsonic-response"]

@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -58,10 +58,10 @@ async def ping():
     return rsp.to_json_rsp()
 
 
-@open_subsonic_router.get("/genres/{genre_name}/tracks")
-def get_tracks_by_genre(genre_name: str, session: Session = Depends(db.get_session)):
+@open_subsonic_router.get("/getTracksByGenre")
+def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
-    genre = session.exec(select(db.Genre).where(db.Genre.name == genre_name)).one_or_none()
+    genre = session.exec(select(db.Genre).where(db.Genre.name == genre)).one_or_none()
     tracks_data = []
     for track in genre.tracks:
         track_info = SubsonicTrack(
