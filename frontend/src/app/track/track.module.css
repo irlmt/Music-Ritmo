@@ -1,0 +1,84 @@
+.track__avatar {
+  display: flex;
+  width: 80%;
+  height: 60%;
+  background-color: #ddd;
+  border-radius: 40px;
+  margin: 0 auto 40px auto;
+  position: relative;
+}
+
+.track__info {
+  position: absolute;
+  width: 60%;
+  align-items: center;
+  margin: 0 auto;
+  transform: translateY(260px) translateX(55px);
+  flex-direction: column;
+  justify-content: flex-end;
+  text-align: center;
+  padding: 10px 0;
+  border-radius: 40px;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.track__name {
+  color: #405a01;
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.track__author {
+  margin: 0;
+  color: #405a01;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.track__infoIcon {
+  position: absolute;
+  transform: translateX(110px) translateY(-300px);
+  font-size: 20px;
+  cursor: pointer;
+  color: #405a01;
+  padding: 8px 14px;
+  border-radius: 50px;
+  background-color: #f8f9f4;
+}
+
+.track__progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+
+.track__currentTime,
+.track__duration {
+  font-size: 14px;
+  color: #405a01;
+}
+
+.track__range {
+  width: 80%;
+  background-color: #758934;
+}
+
+.track__controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.track__controlIcon {
+  font-size: 30px;
+  margin: 0 15px;
+  cursor: pointer;
+  color: #405a01;
+}
+
+.track__playPause {
+  cursor: pointer;
+}
