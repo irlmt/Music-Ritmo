@@ -1,0 +1,14 @@
+@font-face {
+  font-family: "Lincoln";
+  src: url("/fonts/Lincoln.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "SteticaLight";
+  src: url("/fonts/SteticaLight.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "SteticaMedium";
+  src: url("/fonts/SteticaMedium.otf") format("opentype");
+}

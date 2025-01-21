@@ -1,0 +1,35 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 80px;
+  background-color: #eaeaea;
+}
+
+.header__logo {
+  display: flex;
+  align-items: center;
+}
+
+.header__buttons {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.header__buttons a {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.header__buttons__icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #758934;
+}
+
+.header__buttons__icons:hover {
+  color: #65762c;
+}
