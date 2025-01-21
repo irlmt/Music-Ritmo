@@ -11,16 +11,27 @@ import styles from "./page.module.css";
 export default function Home() {
   const router = useRouter();
 
+  const Playlists = [
+    { name: "Ммтао1", link: "/здфндшые1", showDelete: false },
+    { name: "Ммтао2", link: "/здфндшые2", showDelete: false },
+    { name: "Ммтао3", link: "/здфндшые3", showDelete: false },
+    { name: "Ммтао4", link: "/здфндшые4", showDelete: false },
+    { name: "Ммтао5", link: "/здфндшые5", showDelete: false },
+  ];
+
   return (
     <>
       <Header />
       <SearchPanel />
       <div className={styles.home_playlists}>
-        <Playlist name="Ммтао1" link="/здфндшые1" />
-        <Playlist name="Ммтао2" link="/здфндшые2" />
-        <Playlist name="Ммтао3" link="/здфндшые3" />
-        <Playlist name="Ммтао4" link="/здфндшые4" />
-        <Playlist name="Ммтао5" link="/здфндшые5" />
+        {Playlists.map((playlist, index) => (
+          <Playlist
+            key={index}
+            name={playlist.name}
+            link={playlist.link}
+            showDelete={false}
+          />
+        ))}
       </div>
 
       <div className={styles.home_button}>
