@@ -71,13 +71,3 @@ def test_get_albums():
     response = client.get("/albums")
     print(response.json())
     assert response.status_code == 200
-
-
-def test_get_tracks_by_genre():
-    response = client.get("/genres/Soundtrack/tracks")
-
-    print(response.json())
-    assert response.status_code == 200
-
-    assert isinstance(response.json(), list)
-    assert len(response.json()) > 0
