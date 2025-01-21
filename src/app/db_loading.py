@@ -107,7 +107,6 @@ def load_audio_data(audio: AudioInfo):
                 name=audio.album,
                 total_tracks=1,
                 year=audio.year,
-                cover_path="",
                 artists=artists
             )
             session.add(album)

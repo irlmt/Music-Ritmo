@@ -5,6 +5,7 @@ DATABASE_URL = "sqlite:///database.db"
 engine = create_engine(DATABASE_URL, echo=False)
 
 def init_db():
+    SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
 
 def get_session():
@@ -127,7 +128,7 @@ class Album(SQLModel, table=True):
     total_tracks: int
     year: str | None
     # cover_preview: bytes
-    cover_path: str
+    # cover_path: str
 
     tracks: list["Track"] = Relationship(back_populates="album")
     artists: list["Artist"] = Relationship(back_populates="albums", link_model=ArtistAlbum)
