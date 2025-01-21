@@ -9,7 +9,9 @@ interface TracklistProps {
   author_link: string;
   favourite: boolean;
   time: number;
-  onRemove: () => void;
+  showRemoveButton: boolean;
+  onFavouriteToggle: () => void;
+  onRemove?: () => void;
 }
 
 export const Tracklist = ({
@@ -19,11 +21,14 @@ export const Tracklist = ({
   author_link,
   favourite,
   time,
+  showRemoveButton,
+  onFavouriteToggle,
   onRemove,
 }: TracklistProps) => {
   const colorOptions = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
-  const [randomColor, setRandomColor] = useState<string>("");
-  const [isFavourite, setIsFavourite] = useState(favourite);
+  const [randomColor, setRandomColor] = useState<string>(
+    favourite ? colorOptions[0] : "#000"
+  );
 
   useEffect(() => {
     const getRandomColor = (colors: string[]): string => {
@@ -33,10 +38,6 @@ export const Tracklist = ({
 
     setRandomColor(getRandomColor(colorOptions));
   }, []);
-
-  const handleToggleFavourite = () => {
-    setIsFavourite(!isFavourite);
-  };
 
   const formatTime = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -65,11 +66,8 @@ export const Tracklist = ({
           </Link>
         </div>
 
-        <div
-          className={styles.playlist__favourite}
-          onClick={handleToggleFavourite}
-        >
-          {isFavourite ? (
+        <div className={styles.playlist__favourite} onClick={onFavouriteToggle}>
+          {favourite ? (
             <i className="fa-solid fa-star"></i>
           ) : (
             <i className="fa-regular fa-star"></i>
@@ -78,9 +76,11 @@ export const Tracklist = ({
 
         <div className={styles.playlist__time}>{formatTime(time)}</div>
 
-        <div className={styles.playlist__remove} onClick={onRemove}>
-          <i className="fa-solid fa-xmark"></i>
-        </div>
+        {showRemoveButton && onRemove && (
+          <div className={styles.playlist__remove} onClick={onRemove}>
+            <i className="fa-solid fa-xmark"></i>
+          </div>
+        )}
       </div>
     </div>
   );
