@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from . import database as db
 
@@ -11,42 +12,56 @@ def add_user(user: db.User, session: Session = Depends(db.get_session)):
     session.refresh(user)
     return user
 
-@router.post("/tracks/")
-def add_track(track: db.Track, session: Session = Depends(db.get_session)):
-    session.add(track)
-    session.commit()
-    session.refresh(track)
-    return track
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, session: Session = Depends(db.get_session)):
+    user = session.exec(select(db.User).where(db.User.id == user_id)).first()
+    if user == None:
+        raise HTTPException(status_code=400, detail="Invalid user id")
 
-@router.post("/albums/")
-def add_album(album: db.Album, session: Session = Depends(db.get_session)):
-    session.add(album)
+    session.delete(user)
     session.commit()
-    session.refresh(album)
-    return album
 
-@router.post("/genres/")
-def add_genre(genre: db.Genre, session: Session = Depends(db.get_session)):
-    session.add(genre)
+@router.post("/playlists/")
+def add_playlist(playlist: db.Playlist, session: Session = Depends(db.get_session)):
+    session.add(playlist)
     session.commit()
-    session.refresh(genre)
-    return genre
+    session.refresh(playlist)
+    return playlist
 
-@router.post("/tracks/{track_id}/genres/{genre_id}")
-def add_track_genre(track_id: int, genre_id: int, session: Session = Depends(db.get_session)):
-    track_genre = db.GenreTrack(genre_id=genre_id, track_id=track_id)
-    session.add(track_genre)
+@router.post("/tags/")
+def add_tag(tag: db.Tag, session: Session = Depends(db.get_session)):
+    session.add(tag)
     session.commit()
-    session.refresh(track_genre)
-    return track_genre
+    session.refresh(tag)
+    return tag
 
 @router.post("/users/{user_id}/favourite/tracks/{track_id}")
 def add_favourite_track(user_id: int, track_id: int, session: Session = Depends(db.get_session)):
-    favourite_track = db.FavouriteTrack(user_id=user_id, track_id=track_id, added_at="23:59")
+    user = session.exec(select(db.User).where(db.User.id == user_id)).first()
+    if user == None:
+        raise HTTPException(status_code=400, detail="Invalid user id")
+    
+    track = session.exec(select(db.Track).where(db.Track.id == track_id)).first()
+    if track == None:
+        raise HTTPException(status_code=400, detail="Invalid track id")
+    
+    favourite_track = db.FavouriteTrack(user_id=user_id, track_id=track_id, added_at=datetime.now())
+
     session.add(favourite_track)
     session.commit()
     session.refresh(favourite_track)
     return favourite_track
+
+@router.delete("/users/{user_id}/favourite/tracks/{track_id}")
+def delete_favourite_track(user_id: int, track_id: int, session: Session = Depends(db.get_session)):
+    favourite_track = session.exec(select(db.FavouriteTrack).where(
+        db.FavouriteTrack.user_id == user_id and db.FavouriteTrack.track_id == track_id
+    )).first()
+    if favourite_track == None:
+        raise HTTPException(status_code=400)
+    
+    session.delete(favourite_track)
+    session.commit()
 
 
 @router.get("/tracks/{id}/album")
@@ -77,18 +92,22 @@ def get_users(session: Session = Depends(db.get_session)):
 def get_tracks(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Track)).all()
 
+@router.get("/artists/")
+def get_artists(session: Session = Depends(db.get_session)):
+    return session.exec(select(db.Artist)).all()
+
 @router.get("/albums/")
-def get_tracks(session: Session = Depends(db.get_session)):
+def get_albums(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Album)).all()
 
 @router.get("/playlists/")
-def get_tracks(session: Session = Depends(db.get_session)):
+def get_playlists(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Playlist)).all()
 
 @router.get("/genres/")
-def get_tracks(session: Session = Depends(db.get_session)):
+def get_genres(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Genre)).all()
 
 @router.get("/tags/")
-def get_tracks(session: Session = Depends(db.get_session)):
+def get_tags(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Tag)).all()
