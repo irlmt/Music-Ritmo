@@ -1,14 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Playlist } from "@/entities/playlist";
-import { Button } from "@/shared/button";
-import styles from "./playlists.module.css";
+import styles from "./select-playlist.module.css";
 
 export default function Playlists() {
-  const router = useRouter();
-
   return (
     <>
       <Container
@@ -20,9 +16,9 @@ export default function Playlists() {
         }}
         direction="column"
         arrow={true}
-        link_arrow="/"
+        link_arrow="/track"
       >
-        <h1 className={styles.playlists__title}>Ваши плейлисты</h1>
+        <h1 className={styles.playlists__title}>Выберите плейлист</h1>
         <div className={styles.playlists}>
           <Playlist name="Ммтао1" link="/здфндшые1" />
           <Playlist name="Ммтао2" link="/здфндшые2" />
@@ -45,19 +41,6 @@ export default function Playlists() {
           <Playlist name="Ммтао2" link="/здфндшые2" />
         </div>
       </Container>
-
-      <div className={styles.playlists_button}>
-        <Button
-          type="normal"
-          color="green"
-          disabled={false}
-          onClick={() => {
-            router.push("/create-playlist");
-          }}
-        >
-          создать плейлист
-        </Button>
-      </div>
     </>
   );
 }

@@ -1,30 +1,40 @@
-import Image from "next/image";
+"use client";
 
+import { useRouter } from "next/navigation";
+
+import { Header } from "@/widgets/header";
+import { SearchPanel } from "@/features/search-panel";
+import { Playlist } from "@/entities/playlist";
 import { Button } from "@/shared/button";
-import { Input } from "@/shared/input";
-import { Container } from "@/shared/container";
-import { Logo } from "@/shared/logo";
+import styles from "./page.module.css";
 
 export default function Home() {
+  const router = useRouter();
+
   return (
     <>
-      <Logo type="big" />
-      <Container style={{ margin: "50px" }} direction="column">
-        <h1>Добро пожаловать в musicRitmo!</h1>
-        <h2>Добро пожаловать в musicRitmo!</h2>
-        <p>Добро пожаловать в musicRitmo!</p>
-        <i className="fa-regular fa-heart"></i>
-        <Button type="normal" color="green" disabled={true}>
-          вход
+      <Header />
+      <SearchPanel />
+      <div className={styles.home_playlists}>
+        <Playlist name="Ммтао1" link="/здфндшые1" />
+        <Playlist name="Ммтао2" link="/здфндшые2" />
+        <Playlist name="Ммтао3" link="/здфндшые3" />
+        <Playlist name="Ммтао4" link="/здфндшые4" />
+        <Playlist name="Ммтао5" link="/здфндшые5" />
+      </div>
+
+      <div className={styles.home_button}>
+        <Button
+          type="normal"
+          color="green"
+          disabled={false}
+          onClick={() => {
+            router.push("/media");
+          }}
+        >
+          медиатека
         </Button>
-        <Button type="normal" color="white" disabled={true}>
-          вход
-        </Button>
-        <Button type="transparent" color="green-text">
-          вход
-        </Button>
-        <Input type="text" placeholder="введите пароль" />
-      </Container>
+      </div>
     </>
   );
 }
