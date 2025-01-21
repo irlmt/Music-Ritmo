@@ -42,10 +42,10 @@ def extract_metadata_mp3(file_path):
         file_path=file_path,
         title=       str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else UnknownTag.Title,
         artists=     str(audio_file["TPE1"]).split(", ") if "TPE1" in audio_file.tags else [UnknownTag.Artist],
-        album=       str((audio_file["TALB"]) if "TALB" in audio_file.tags else UnknownTag.Album),
+        album=       str(audio_file["TALB"]) if "TALB" in audio_file.tags else UnknownTag.Album,
         genres=      str(audio_file["TCON"]).split(", ") if "TCON" in audio_file.tags else [UnknownTag.Genre],
-        track_number=int(audio_file["TRCK"]) if "TRCK" in audio_file.tags else None,
-        year=        int(audio_file["TYER"]) if "TYER" in audio_file.tags else None,
+        track_number=int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None,
+        year=        int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
         duration=audio_file.info.length
     )
 
@@ -57,8 +57,8 @@ def extract_metadata_flac(file_path):
         artists=        (audio_file["ARTIST"]) if "ARTIST" in audio_file.tags else [UnknownTag.Artist],
         album=       str(audio_file["ALBUM"][0]) if "ALBUM" in audio_file.tags else UnknownTag.Album,
         genres=         (audio_file["GENRE"]) if "GENRE" in audio_file.tags else [UnknownTag.Genre],
-        track_number=int(audio_file["TRACKNUMBER"][0]) if "TRACKNUMBER" in audio_file.tags else None,
-        year=        int(audio_file["YEAR"][0]) if "YEAR" in audio_file.tags else None,
+        track_number=int(str(audio_file["TRACKNUMBER"][0])) if "TRACKNUMBER" in audio_file.tags else None,
+        year=        int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
         duration=audio_file.info.length
     )
 
@@ -128,6 +128,7 @@ def load_audio_data(audio: AudioInfo):
                 file_path=audio.file_path,
                 title=audio.title,
                 album_id=album.id,
+                album_position=audio.track_number,
                 duration=audio.duration,
                 year=audio.year,
                 plays_count=0,
