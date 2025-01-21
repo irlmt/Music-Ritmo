@@ -1,11 +1,10 @@
-from fastapi import APIRouter
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 import python_avatars as pa
 import base64
 
-generate_avatar_router = APIRouter()
+frontend_router = APIRouter()
 
-@generate_avatar_router.get("/generate_avatar/")
+@frontend_router.get("/generate_avatar/")
 def generate_random_avatar():
     try:
         avatar = pa.Avatar.random()
