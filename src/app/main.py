@@ -3,7 +3,7 @@ from .database import init_db
 from .db_endpoints import router
 from .open_subsonic_api import open_subsonic_router
 from .db_loading import scan_directory_for_audio_files, load_audio_data
-from .generate_avatar import generate_avatar_router
+from .frontend_endpoints import frontend_router
 
 app = FastAPI()
 
@@ -17,4 +17,4 @@ app.include_router(router)
 
 app.include_router(open_subsonic_router)
 
-app.include_router(generate_avatar_router)
+app.include_router(frontend_router)
