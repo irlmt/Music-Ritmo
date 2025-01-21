@@ -1,36 +1,56 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
 import { Header } from "@/widgets/header";
 import { SearchPanel } from "@/features/search-panel";
-import { Playlist } from "@/entities/playlist";
 import { Button } from "@/shared/button";
 import styles from "./page.module.css";
 
+interface Genre {
+  value: string;
+}
+
 export default function Home() {
   const router = useRouter();
+  const [genres, setGenres] = useState<Genre[]>([]);
 
-  const Playlists = [
-    { name: "Ммтао1", link: "/здфндшые1", showDelete: false },
-    { name: "Ммтао2", link: "/здфндшые2", showDelete: false },
-    { name: "Ммтао3", link: "/здфндшые3", showDelete: false },
-    { name: "Ммтао4", link: "/здфндшые4", showDelete: false },
-    { name: "Ммтао5", link: "/здфндшые5", showDelete: false },
-  ];
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const response = await fetch("/api/genres");
+        const data = await response.json();
+
+        const genresData = data["subsonic-response"].genres.genre;
+
+        if (genresData) {
+          setGenres(genresData);
+        }
+      } catch (error) {
+        console.error("Ошибка при загрузке жанров:", error);
+      }
+    };
+
+    fetchGenres();
+  }, []);
+
+  const handleGenreClick = (genreName: string) => {
+    router.push(`/genre/${genreName}`);
+  };
 
   return (
     <>
       <Header />
       <SearchPanel />
       <div className={styles.home_playlists}>
-        {Playlists.map((playlist, index) => (
-          <Playlist
+        {genres.map((genre, index) => (
+          <div
             key={index}
-            name={playlist.name}
-            link={playlist.link}
-            showDelete={false}
-          />
+            className={styles.genre_item}
+            onClick={() => handleGenreClick(genre.value)}
+          >
+            <h3>{genre.value}</h3>
+          </div>
         ))}
       </div>
 
