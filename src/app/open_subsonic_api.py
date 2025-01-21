@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from . import database as db
@@ -26,15 +26,10 @@ async def ping():
 
 
 @open_subsonic_router.get("/search")
-async def search(query: dict=Body(), session: Session = Depends(db.get_session)):
-    name = query["query"]
-    artistCount = query.get("artistCount", 20)
-    artistOffset = query.get("artistOffset", 0)
-    albumCount = query.get("albumCount", 20)
-    albumOffset = query.get("albumOffset", 0)
-    songCount = query.get("songCount", 20)
-    songOffset = query.get("songOffset", 0)
-
+async def search(query:str = Query(), artistCount:int = Query(default=20), artistOffset:int = Query(default=0),
+ albumCount:int = Query(default=20), albumOffset:int = Query(default=0), 
+ songCount:int = Query(default=20), songOffset:int = Query(default=0), session: Session = Depends(db.get_session)):
+    name = query
     artists = session.exec(select(db.Artist)).all()
     if artistCount * artistOffset >= len(artists):
         artists = []
