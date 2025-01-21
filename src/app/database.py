@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Session, create_engine, Field, Relationship
 
 
 DATABASE_URL = "sqlite:///database.db"
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def init_db():
     SQLModel.metadata.create_all(engine)
@@ -10,7 +10,6 @@ def init_db():
 def get_session():
     with Session(engine) as session:
         yield session
-
 
 # Таблицы связи "многие к многим"
 class GenreTrack(SQLModel, table=True):
@@ -99,7 +98,7 @@ class Track(SQLModel, table=True):
     album_id: int | None = Field(foreign_key="Albums.id")
     album_position: int | None
     duration: int
-    release_date: str | None
+    year: str | None
     plays_count: int
     # cover_preview: bytes
 
@@ -125,7 +124,7 @@ class Album(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     total_tracks: int
-    release_date: str | None
+    year: str | None
     # cover_preview: bytes
     cover_path: str
 
