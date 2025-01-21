@@ -20,6 +20,7 @@ class UnknownTag(StrEnum):
 class AudioInfo:
     def __init__(self,
                  file_path: str,
+                 type: str,
                  title: str,
                  artists: list[str],
                  album: str,
@@ -28,6 +29,7 @@ class AudioInfo:
                  year: int | None,
                  duration: int):
         self.file_path = file_path
+        self.type = type
         self.title = title
         self.artists = artists
         self.album = album
@@ -40,6 +42,7 @@ def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
     return AudioInfo (
         file_path=file_path,
+        type="audio/mpeg",
         title=       str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else UnknownTag.Title,
         artists=     str(audio_file["TPE1"]).split(", ") if "TPE1" in audio_file.tags else [UnknownTag.Artist],
         album=       str(audio_file["TALB"]) if "TALB" in audio_file.tags else UnknownTag.Album,
@@ -53,6 +56,7 @@ def extract_metadata_flac(file_path):
     audio_file = FLAC(file_path)
     return AudioInfo (
         file_path=file_path,
+        type="audio/flac",
         title=       str(audio_file["TITLE"][0]) if "TITLE" in audio_file.tags else UnknownTag.Title,
         artists=        (audio_file["ARTIST"]) if "ARTIST" in audio_file.tags else [UnknownTag.Artist],
         album=       str(audio_file["ALBUM"][0]) if "ALBUM" in audio_file.tags else UnknownTag.Album,
@@ -126,6 +130,7 @@ def load_audio_data(audio: AudioInfo):
         if track == None:
             track = db.Track(
                 file_path=audio.file_path,
+                type=audio.type,
                 title=audio.title,
                 album_id=album.id,
                 album_position=audio.track_number,

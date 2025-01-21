@@ -94,6 +94,7 @@ class Track(SQLModel, table=True):
     __tablename__ = "Tracks"
     id: int | None = Field(default=None, primary_key=True)
     file_path: str
+    type: str
     title: str = Field(index=True)
     album_id: int | None = Field(foreign_key="Albums.id")
     album_position: int | None
