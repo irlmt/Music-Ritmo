@@ -6,7 +6,7 @@ import { Playlist } from "@/entities/playlist";
 import { Tracklist } from "@/widgets/track-list";
 import styles from "./author.module.css";
 
-export default function Genre() {
+export default function Artist() {
   const [playlists, setPlaylists] = useState([
     {
       name: "Chill Vibes",
