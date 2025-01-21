@@ -4,12 +4,14 @@ from . import database as db
 
 router = APIRouter()
 
+
 @router.post("/users/")
 def add_user(user: db.User, session: Session = Depends(db.get_session)):
     session.add(user)
     session.commit()
     session.refresh(user)
     return user
+
 
 @router.post("/tracks/")
 def add_track(track: db.Track, session: Session = Depends(db.get_session)):
@@ -18,12 +20,14 @@ def add_track(track: db.Track, session: Session = Depends(db.get_session)):
     session.refresh(track)
     return track
 
+
 @router.post("/albums/")
 def add_album(album: db.Album, session: Session = Depends(db.get_session)):
     session.add(album)
     session.commit()
     session.refresh(album)
     return album
+
 
 @router.post("/genres/")
 def add_genre(genre: db.Genre, session: Session = Depends(db.get_session)):
@@ -32,6 +36,7 @@ def add_genre(genre: db.Genre, session: Session = Depends(db.get_session)):
     session.refresh(genre)
     return genre
 
+
 @router.post("/tracks/{track_id}/genres/{genre_id}")
 def add_track_genre(track_id: int, genre_id: int, session: Session = Depends(db.get_session)):
     track_genre = db.GenreTrack(genre_id=genre_id, track_id=track_id)
@@ -39,6 +44,7 @@ def add_track_genre(track_id: int, genre_id: int, session: Session = Depends(db.
     session.commit()
     session.refresh(track_genre)
     return track_genre
+
 
 @router.post("/users/{user_id}/favourite/tracks/{track_id}")
 def add_favourite_track(user_id: int, track_id: int, session: Session = Depends(db.get_session)):
@@ -54,10 +60,12 @@ def get_track_album(id: int, session: Session = Depends(db.get_session)):
     query = select(db.Track).where(db.Track.id == id)
     return session.exec(query).one().album
 
+
 @router.get("/tracks/{id}/genres")
 def get_track_genres(id: int, session: Session = Depends(db.get_session)):
     query = select(db.Track).where(db.Track.id == id)
     return session.exec(query).one().genres
+
 
 @router.get("/users/{id}/favourite/tracks")
 def get_favourite_tracks(id: int, session: Session = Depends(db.get_session)):
@@ -73,25 +81,32 @@ def get_favourite_tracks(id: int, session: Session = Depends(db.get_session)):
 def get_tracks_by_genre(genre_name: str, session: Session = Depends(db.get_session)):
     genre = session.exec(select(db.Genre).where(db.Genre.name == genre_name)).one_or_none()
     return genre.tracks
+
+
 @router.get("/users/")
 def get_users(session: Session = Depends(db.get_session)):
     return session.exec(select(db.User)).all()
+
 
 @router.get("/tracks/")
 def get_tracks(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Track)).all()
 
+
 @router.get("/albums/")
 def get_tracks(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Album)).all()
+
 
 @router.get("/playlists/")
 def get_tracks(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Playlist)).all()
 
+
 @router.get("/genres/")
 def get_tracks(session: Session = Depends(db.get_session)):
     return session.exec(select(db.Genre)).all()
+
 
 @router.get("/tags/")
 def get_tracks(session: Session = Depends(db.get_session)):
