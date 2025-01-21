@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, Session
 from . import database as db
 
 open_subsonic_router = APIRouter(prefix="/rest")
@@ -25,28 +24,24 @@ async def ping():
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
+
 @open_subsonic_router.get("/getPlaylists")
-async def get_playlists(session: AsyncSession = Depends(db.get_session)):
+async def get_playlists(session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
 
-    try:
-        result = await session.execute(select(db.Playlist))
-        playlists = result.scalars().all()
+    playlists = session.exec(select(db.Playlist)).all()
 
-        rsp.data["playlists"] = {
-            "playlist": [
-                {
-                    "id": playlist.id,
-                    "name": playlist.name,
-                    "owner": playlist.user_id,
-                    "songCount": playlist.total_tracks,
-                    "created": playlist.create_date,
-                }
-                for playlist in playlists
-            ]
+    playlist_data = [
+        {
+            "id": playlist.id,
+            "name": playlist.name,
+            "owner": playlist.user_id,
+            "songCount": playlist.total_tracks,
+            "createDate": playlist.create_date,
         }
-    except Exception as e:
-        rsp.data["status"] = "failed"
-        rsp.data["error"] = str(e)
+        for playlist in playlists
+    ]
+
+    rsp.data["playlists"] = {"playlist": playlist_data}
 
     return rsp.to_json_rsp()
