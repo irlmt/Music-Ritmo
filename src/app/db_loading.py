@@ -81,7 +81,7 @@ def scan_directory_for_audio_files(dir) -> list[AudioInfo]:
                 data.append(info)
 
             except Exception as e:
-                    logger.warning(f"Error while parsing file {file_path}: {e}")
+                logger.warning(f"Error while parsing file {file_path}: {e}")
 
     return data
 
