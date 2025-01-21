@@ -40,6 +40,14 @@ export default function Playlist() {
     setPlaylists((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleFavouriteToggle = (index: number) => {
+    setPlaylists((prev) => {
+      const updatedPlaylists = [...prev];
+      updatedPlaylists[index].favourite = !updatedPlaylists[index].favourite;
+      return updatedPlaylists;
+    });
+  };
+
   return (
     <>
       <Container
@@ -65,6 +73,8 @@ export default function Playlist() {
               favourite={playlist.favourite}
               time={playlist.time}
               onRemove={() => handleRemove(index)}
+              showRemoveButton={true}
+              onFavouriteToggle={() => handleFavouriteToggle(index)}
             />
           ))}
         </div>

@@ -1,14 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Container } from "@/shared/container";
-import { Button } from "@/shared/button";
 import { useState } from "react";
 import { Tracklist } from "@/widgets/track-list";
-import styles from "./playlist.module.css";
+import styles from "./favourite-track.module.css";
 
 export default function FavouriteTrack() {
-  const router = useRouter();
   const [playlists, setPlaylists] = useState([
     {
       name: "Chill Vibes",
@@ -23,7 +20,7 @@ export default function FavouriteTrack() {
       name_link: "/track1",
       author: "Hitmaker",
       author_link: "/author1",
-      favourite: false,
+      favourite: true,
       time: 180,
     },
     {
@@ -36,9 +33,13 @@ export default function FavouriteTrack() {
     },
   ]);
 
-  const handleRemove = (index: number) => {
-    setPlaylists((prev) => prev.filter((_, i) => i !== index));
+  const toggleFavourite = (index: number) => {
+    const updatedPlaylists = [...playlists];
+    updatedPlaylists[index].favourite = false;
+    setPlaylists(updatedPlaylists.filter((playlist) => playlist.favourite));
   };
+
+  const favouritePlaylists = playlists.filter((playlist) => playlist.favourite);
 
   return (
     <>
@@ -53,9 +54,9 @@ export default function FavouriteTrack() {
         arrow={true}
         link_arrow="/"
       >
-        <h1 className={styles.playlist__title}>Название плейлиста 1</h1>
+        <h1 className={styles.playlist__title}>Избранные треки</h1>
         <div className={styles.playlist}>
-          {playlists.map((playlist, index) => (
+          {favouritePlaylists.map((playlist, index) => (
             <Tracklist
               key={index}
               name={playlist.name}
@@ -64,24 +65,12 @@ export default function FavouriteTrack() {
               author_link={playlist.author_link}
               favourite={playlist.favourite}
               time={playlist.time}
-              onRemove={() => handleRemove(index)}
+              showRemoveButton={false}
+              onFavouriteToggle={() => toggleFavourite(index)}
             />
           ))}
         </div>
       </Container>
-
-      <div className={styles.playlist_button}>
-        <Button
-          type="normal"
-          color="green"
-          disabled={false}
-          onClick={() => {
-            router.push("/rename-playlist");
-          }}
-        >
-          редактировать
-        </Button>
-      </div>
     </>
   );
 }
