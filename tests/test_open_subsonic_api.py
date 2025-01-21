@@ -1,5 +1,7 @@
 from src.app.main import app
+from src.app import database as db
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
 client = TestClient(app)
 
@@ -17,13 +19,22 @@ def test_ping():
 
 
 def test_getPlaylists():
-    response = client.post("/playlists", json={
-        "name": "My Playlist",
-        "user_id": 1,
-        "total_tracks": 10,
-        "create_date": "2025-01-01"
-    })
-    assert response.status_code == 200
+    with Session(db.engine) as session:
+        user = db.User(login="test_user", password="password", avatar="line")
+        session.add(user)
+        session.commit()
+
+        playlist = db.Playlist(
+            name="My Playlist",
+            user_id=user.id,
+            total_tracks=10,
+            create_date="2025-01-01"
+        )
+        session.add(playlist)
+        session.commit()
+
+        assert user.id is not None
+        assert playlist.user_id == user.id
 
     response = client.get("/rest/getPlaylists")
     assert response.status_code == 200
@@ -36,6 +47,6 @@ def test_getPlaylists():
 
     playlist = playlists[0]
     assert playlist["name"] == "My Playlist"
-    assert playlist["owner"] == 1
+    assert playlist["owner"] == user.id
     assert playlist["songCount"] == 10
     assert playlist["createDate"] == "2025-01-01"
