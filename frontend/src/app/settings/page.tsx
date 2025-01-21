@@ -39,7 +39,7 @@ export default function Settings() {
             router.push("/");
           }}
         >
-          Сахранить аватар
+          Сохранить аватар
         </Button>
       </div>
       <div className={styles.settings__content}>
@@ -75,7 +75,7 @@ export default function Settings() {
                 router.push("/");
               }}
             >
-              зарегистрироваться
+              Сохранить изменения
             </Button>
           </div>
         </Container>
