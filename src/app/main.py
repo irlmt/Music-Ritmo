@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from .database import init_db
 from .db_endpoints import router
 from .open_subsonic_api import open_subsonic_router
-from .registration import registration_router
+from .registration import frontend_router
 
 app = FastAPI()
 
@@ -12,4 +12,4 @@ app.include_router(router)
 
 app.include_router(open_subsonic_router)
 
-app.include_router(registration_router)
+app.include_router(frontend_router)

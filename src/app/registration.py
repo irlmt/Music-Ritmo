@@ -1,17 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel, Field
+from cryptography.fernet import Fernet
 from . import database as db
-from fastapi.responses import RedirectResponse
 import httpx
 
-registration_router = APIRouter()
+SECRET_KEY = Fernet.generate_key()
+fernet = Fernet(SECRET_KEY)
+
+frontend_router = APIRouter()
 
 class RegisterRequest(BaseModel):
     login: str = Field(..., min_length=5, max_length=64)
     password: str = Field(..., min_length=5, max_length=64)
 
-@registration_router.post("/registration/")
+def generate_token(user_id: int) -> str:
+    user_id_bytes = str(user_id).encode()
+    token = fernet.encrypt(user_id_bytes)
+    return token.decode()
+
+def decode_token(token: str) -> int:
+    try:
+        user_id_bytes = fernet.decrypt(token.encode())
+        return int(user_id_bytes.decode())
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@frontend_router.post("/registration/")
 async def signup(
     register_data: RegisterRequest,
     session: Session = Depends(db.get_session)
@@ -42,4 +57,6 @@ async def signup(
     session.commit()
     session.refresh(new_user)
 
-    return RedirectResponse(url="/", status_code=303)
+    token = generate_token(new_user.id)
+
+    return {"message": "Registration successful", "token": token}
