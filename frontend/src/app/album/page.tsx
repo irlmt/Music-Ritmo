@@ -1,14 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Container } from "@/shared/container";
-import { Button } from "@/shared/button";
 import { useState } from "react";
 import { Tracklist } from "@/widgets/track-list";
-import styles from "./playlist.module.css";
+import styles from "./album.module.css";
 
-export default function Playlist() {
-  const router = useRouter();
+export default function Album() {
   const [playlists, setPlaylists] = useState([
     {
       name: "Chill Vibes",
@@ -66,21 +63,70 @@ export default function Playlist() {
       favourite: true,
       time: 240,
     },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
+    {
+      name: "Workout Mix",
+      name_link: "/track1",
+      author: "Fitness Beats",
+      author_link: "/author1",
+      favourite: true,
+      time: 240,
+    },
   ]);
 
-  const handleRemove = (index: number) => {
-    setPlaylists((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleFavouriteToggle = (index: number) => {
-    setPlaylists((prev) => {
-      const updatedPlaylists = [...prev];
-      updatedPlaylists[index] = {
-        ...updatedPlaylists[index],
-        favourite: !updatedPlaylists[index].favourite,
-      };
-      return updatedPlaylists;
-    });
+    setPlaylists((prev) =>
+      prev.map((playlist, i) =>
+        i === index ? { ...playlist, favourite: !playlist.favourite } : playlist
+      )
+    );
   };
 
   return (
@@ -96,7 +142,7 @@ export default function Playlist() {
         arrow={true}
         link_arrow="/"
       >
-        <h1 className={styles.playlist__title}>Название плейлиста 1</h1>
+        <h1 className={styles.playlist__title}>Название альбома</h1>
         <div className={styles.playlist}>
           {playlists.map((playlist, index) => (
             <Tracklist
@@ -107,26 +153,12 @@ export default function Playlist() {
               author_link={playlist.author_link}
               favourite={playlist.favourite}
               time={playlist.time}
-              onRemove={() => handleRemove(index)}
-              showRemoveButton={true}
+              showRemoveButton={false}
               onFavouriteToggle={() => handleFavouriteToggle(index)}
             />
           ))}
         </div>
       </Container>
-
-      <div className={styles.playlist_button}>
-        <Button
-          type="normal"
-          color="green"
-          disabled={false}
-          onClick={() => {
-            router.push("/rename-playlist");
-          }}
-        >
-          редактировать
-        </Button>
-      </div>
     </>
   );
 }

@@ -1,5 +1,5 @@
 .playlist {
-  position: relative; /* Для того чтобы иконка была расположена относительно этого элемента */
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
