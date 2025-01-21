@@ -69,6 +69,10 @@ def get_favourite_tracks(id: int, session: Session = Depends(db.get_session)):
     return tracks
 
 
+@router.get("/genres/{genre_name}/tracks")
+def get_tracks_by_genre(genre_name: str, session: Session = Depends(db.get_session)):
+    genre = session.exec(select(db.Genre).where(db.Genre.name == genre_name)).one_or_none()
+    return genre.tracks
 @router.get("/users/")
 def get_users(session: Session = Depends(db.get_session)):
     return session.exec(select(db.User)).all()
