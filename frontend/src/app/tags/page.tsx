@@ -104,6 +104,9 @@ export default function Tags() {
           >
             очистить все
           </Button>
+          <Button type="normal" color="green" disabled={false}>
+            сохранить
+          </Button>
         </div>
       </Container>
     </>
