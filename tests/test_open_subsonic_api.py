@@ -29,7 +29,7 @@ def test_get_tracks_by_genre():
                    'album': "id=3 year='2023' name='Atomic Heart (Original Game Soundtrack)' total_tracks=2",
                    'artistId': '', 'artist': '', 'coverArt': None, 'duration': 262.25895691609975, 'bitRate': 0,
                    'bitDepth': 16, 'samplingRate': 44100, 'channelCount': 2, 'userRating': 0, 'averageRating': 0.0,
-                   'track': 1, 'year': 2023, 'genre': None, 'size': 0, 'discNumber': 1, 'suffix': '',
+                   'track': 1, 'year': "2023", 'genre': None, 'size': 0, 'discNumber': 1, 'suffix': '',
                    'contentType': 'audio/mpeg',
                    'path': './tracks/Atomic Heart/03. Arlekino (Geoffrey Day Remix).flac'}
 
@@ -38,7 +38,7 @@ def test_get_tracks_by_genre():
                     'album': "id=3 year='2023' name='Atomic Heart (Original Game Soundtrack)' total_tracks=2",
                     'artistId': '', 'artist': '', 'coverArt': None, 'duration': 235.682947845805, 'bitRate': 0,
                     'bitDepth': 16, 'samplingRate': 44100, 'channelCount': 2, 'userRating': 0, 'averageRating': 0.0,
-                    'track': 1, 'year': 2023, 'genre': None, 'size': 0, 'discNumber': 1, 'suffix': '',
+                    'track': 1, 'year': "2023", 'genre': None, 'size': 0, 'discNumber': 1, 'suffix': '',
                     'contentType': 'audio/mpeg',
                     'path': './tracks/Atomic Heart/02. Trava u Doma (Geoffrey Day Remix).flac'}
 

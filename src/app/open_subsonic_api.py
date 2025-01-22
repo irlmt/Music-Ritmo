@@ -61,37 +61,20 @@ async def ping():
 @open_subsonic_router.get("/getTracksByGenre")
 def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
-    genre = session.exec(select(db.Genre).where(db.Genre.name == genre)).one_or_none()
+    genre_record = session.exec(select(db.Genre).where(db.Genre.name == genre)).one_or_none()
+
     tracks_data = []
-    for track in genre.tracks:
-        track_info = SubsonicTrack(
-            id=str(track.id),
-            parent=SubsonicTrack.model_fields['parent'].default,
-            title=track.title,
-            isDir=SubsonicTrack.model_fields['isDir'].default,
-            isVideo=SubsonicTrack.model_fields['isVideo'].default,
-            type=track.type,
-            albumId=str(track.album_id),
-            album=str(track.album),
-            artistId=SubsonicTrack.model_fields['artistId'].default,
-            artist=SubsonicTrack.model_fields['artist'].default,
-            coverArt=SubsonicTrack.model_fields['coverArt'].default,
-            duration=track.duration,
-            bitRate=SubsonicTrack.model_fields['bitRate'].default,
-            bitDepth=SubsonicTrack.model_fields['bitDepth'].default,
-            samplingRate=SubsonicTrack.model_fields['samplingRate'].default,
-            channelCount=SubsonicTrack.model_fields['channelCount'].default,
-            userRating=SubsonicTrack.model_fields['userRating'].default,
-            averageRating=SubsonicTrack.model_fields['averageRating'].default,
-            track=SubsonicTrack.model_fields['track'].default,
-            year=track.year,
-            genre=SubsonicTrack.model_fields['genre'].default,
-            size=SubsonicTrack.model_fields['size'].default,
-            discNumber=SubsonicTrack.model_fields['discNumber'].default,
-            suffix=SubsonicTrack.model_fields['suffix'].default,
-            contentType=SubsonicTrack.model_fields['contentType'].default,
-            path=track.file_path
-        )
+    for track in genre_record.tracks:
+        track_info = SubsonicTrack()
+        track_info.id = str(track.id)
+        track_info.title = track.title
+        track_info.type = track.type
+        track_info.albumId = str(track.album_id)
+        track_info.album = str(track.album)
+        track_info.duration = track.duration
+        track_info.year = track.year
+        track_info.path = track.file_path
         tracks_data.append(track_info.model_dump())
+
     rsp.data["track"] = tracks_data
     return rsp.to_json_rsp()
