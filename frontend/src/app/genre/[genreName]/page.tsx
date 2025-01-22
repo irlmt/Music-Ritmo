@@ -25,28 +25,33 @@ export default function TracksGenre() {
     const fetchTracks = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/getTracksByGenre?genre=${genreName}`
+          `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}`
         );
         const data = await response.json();
+        const songs = data["subsonic-response"]?.songsByGenre?.song;
 
-        const tracksData = data["subsonic-response"].data.track.map(
-          (track: {
-            id: string;
-            title: string;
-            artist: string;
-            duration: number;
-            path: string;
-          }) => ({
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-            duration: track.duration,
-            path: track.path,
-            favourite: false,
-          })
-        );
+        if (songs && songs.length > 0) {
+          const tracksData = songs.map(
+            (track: {
+              id: string;
+              title: string;
+              artist: string;
+              duration: number;
+              path: string;
+            }) => ({
+              id: track.id,
+              title: track.title,
+              artist: track.artist,
+              duration: Math.floor(track.duration),
+              path: track.path,
+              favourite: false,
+            })
+          );
 
-        setTracks(tracksData);
+          setTracks(tracksData);
+        } else {
+          console.error("Треки не найдены в ответе сервера");
+        }
       } catch (error) {
         console.error("Ошибка при загрузке треков:", error);
       }
