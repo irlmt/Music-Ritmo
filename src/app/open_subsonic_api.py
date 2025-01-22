@@ -213,6 +213,7 @@ async def search2(
         trackTitles = [t.title for t in tracks]
         filePath = [p.file_path for p in tracks]
         playCount = [c.plays_count for c in tracks]
+        years = [y.year for y in tracks]
         types = [t.type for t in tracks]
         tracks = [t.model_dump() for t in tracks]
         for i in range(len(tracks)):
@@ -237,12 +238,10 @@ async def search2(
             tracks[i]["path"] = filePath[i]
             tracks[i]["playCount"] = playCount[i]
             tracks[i]["discNumber"] = 1
-            tracks[i]["created"] = types
+            tracks[i]["created"] = years[i]
             tracks[i]["albumId"] = albumTrack[i].id if albumTrack[i] is not None else -1
-            tracks[i]["artistId"] = (
-                artistTrack[i][0].id if len(artistTrack[i]) > 0 else -1
-            )
-            tracks[i]["type"] = "music"
+            tracks[i]["artistId"] = artistTrack[i][0].id if len(artistTrack[i]) > 0 else -1
+            tracks[i]["type"] = types[i]
             tracks[i]["isVideo"] = False
         tracks = tracks[
             songCount
@@ -255,5 +254,25 @@ async def search2(
     searchResult["album"] = albums
     rsp = SubsonicResponse()
     rsp.data["searchResult"] = searchResult
+
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getGenres")
+async def getGenres(session: Session = Depends(db.get_session)):
+    genres = session.exec(select(db.Genre)).all()
+    genresValue = [v.name for v in genres]
+    tracks = [g.tracks for g in genres]
+    genres = [{} for g in genres]
+    for i in range(len(genres)):
+        genres[i]["value"] = genresValue[i]
+        genres[i]["songCount"] = len(tracks[i])
+        albums = [a.album.name for a in tracks[i]]
+        albums = set(albums)
+        genres[i]["albumCount"] = len(albums)
+    genresResult = {}
+    genresResult["genre"] = genres
+    rsp = SubsonicResponse()
+    rsp.data["genres"] = genresResult
 
     return rsp.to_json_rsp()
