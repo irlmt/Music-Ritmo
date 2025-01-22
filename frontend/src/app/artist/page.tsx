@@ -4,7 +4,7 @@ import { Container } from "@/shared/container";
 import { useState } from "react";
 import { Playlist } from "@/entities/playlist";
 import { Tracklist } from "@/widgets/track-list";
-import styles from "./author.module.css";
+import styles from "./artist.module.css";
 
 export default function Artist() {
   const [playlists, setPlaylists] = useState([
