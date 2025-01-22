@@ -80,7 +80,7 @@ def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
     return rsp.to_json_rsp()
 
 
-@open_subsonic_router.get("/search")
+@open_subsonic_router.get("/search2")
 async def search2(
     query: str = Query(),
     artistCount: int = Query(default=20),
