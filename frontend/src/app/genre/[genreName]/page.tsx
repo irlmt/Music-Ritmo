@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Tracklist } from "@/widgets/track-list";
 import styles from "./genre.module.css";
@@ -10,43 +11,54 @@ interface Track {
   title: string;
   artist: string;
   duration: number;
+  path: string;
   favourite: boolean;
 }
 
 export default function TracksGenre() {
+  const { genreName } = useParams();
   const [tracks, setTracks] = useState<Track[]>([]);
 
   useEffect(() => {
+    if (!genreName) return;
+
     const fetchTracks = async () => {
       try {
-        const response = await fetch("/api/tracks");
-        const data = await response.json();
-
-        const tracksData = data["subsonic-response"].songsByGenre.song.map(
-          (track: {
-            id: string;
-            title: string;
-            artist: string;
-            duration: number;
-            path: string;
-          }) => ({
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-            duration: track.duration,
-            path: track.path,
-            favourite: false,
-          })
+        const response = await fetch(
+          `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}`
         );
+        const data = await response.json();
+        const songs = data["subsonic-response"]?.songsByGenre?.song;
 
-        setTracks(tracksData);
+        if (songs && songs.length > 0) {
+          const tracksData = songs.map(
+            (track: {
+              id: string;
+              title: string;
+              artist: string;
+              duration: number;
+              path: string;
+            }) => ({
+              id: track.id,
+              title: track.title,
+              artist: track.artist,
+              duration: Math.floor(track.duration),
+              path: track.path,
+              favourite: false,
+            })
+          );
+
+          setTracks(tracksData);
+        } else {
+          console.error("Треки не найдены в ответе сервера");
+        }
       } catch (error) {
         console.error("Ошибка при загрузке треков:", error);
       }
     };
 
     fetchTracks();
-  }, []);
+  }, [genreName]);
 
   const handleFavouriteToggle = (index: number) => {
     setTracks((prevTracks) =>
@@ -69,10 +81,10 @@ export default function TracksGenre() {
         arrow={true}
         link_arrow="/"
       >
-        <h1 className={styles.playlist__title}>Название жанра</h1>
+        <h1 className={styles.playlist__title}>{genreName}</h1>
         <div className={styles.playlist}>
           {tracks.length > 0 ? (
-            tracks.map((track) => (
+            tracks.map((track, index) => (
               <Tracklist
                 key={track.id}
                 name={track.title}
@@ -82,9 +94,7 @@ export default function TracksGenre() {
                 favourite={track.favourite}
                 time={track.duration}
                 showRemoveButton={false}
-                onFavouriteToggle={() =>
-                  handleFavouriteToggle(tracks.indexOf(track))
-                }
+                onFavouriteToggle={() => handleFavouriteToggle(index)}
               />
             ))
           ) : (
