@@ -58,6 +58,28 @@ async def ping():
     return rsp.to_json_rsp()
 
 
+@open_subsonic_router.get("/getPlaylists")
+async def get_playlists(session: Session = Depends(db.get_session)):
+    rsp = SubsonicResponse()
+
+    playlists = session.exec(select(db.Playlist)).all()
+
+    playlist_data = [
+        {
+            "id": playlist.id,
+            "name": playlist.name,
+            "owner": playlist.user_id,
+            "songCount": playlist.total_tracks,
+            "createDate": playlist.create_date,
+        }
+        for playlist in playlists
+    ]
+
+    rsp.data["playlists"] = {"playlist": playlist_data}
+
+    return rsp.to_json_rsp()
+
+
 @open_subsonic_router.get("/scroble")
 def scroble(id: int, session: Session = Depends(db.get_session)):
     track = session.exec(select(db.Track).where(db.Track.id == id)).first()
