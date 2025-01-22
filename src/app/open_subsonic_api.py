@@ -58,6 +58,20 @@ async def ping():
     return rsp.to_json_rsp()
 
 
+@open_subsonic_router.get("/scroble")
+def scroble(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+
+    track.plays_count += 1
+    session.add(track)
+    session.commit()
+
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
 @open_subsonic_router.get("/getTracksByGenre")
 def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
@@ -190,4 +204,5 @@ async def search2(
     searchResult["album"] = albums
     rsp = SubsonicResponse()
     rsp.data["searchResult"] = searchResult
+
     return rsp.to_json_rsp()
