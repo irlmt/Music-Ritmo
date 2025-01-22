@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/widgets/header";
 import { SearchPanel } from "@/features/search-panel";
 import { Button } from "@/shared/button";
+import { Playlist } from "@/entities/playlist";
 import styles from "./page.module.css";
 
 interface Genre {
@@ -18,7 +19,7 @@ export default function Home() {
   useEffect(() => {
     const fetchGenres = async () => {
       try {
-        const response = await fetch("/api/genres");
+        const response = await fetch("http://localhost:8000/rest/getGenres");
         const data = await response.json();
 
         const genresData = data["subsonic-response"].genres.genre;
@@ -34,23 +35,18 @@ export default function Home() {
     fetchGenres();
   }, []);
 
-  const handleGenreClick = (genreName: string) => {
-    router.push(`/genre/${genreName}`);
-  };
-
   return (
     <>
       <Header />
       <SearchPanel />
       <div className={styles.home_playlists}>
         {genres.map((genre, index) => (
-          <div
+          <Playlist
             key={index}
-            className={styles.genre_item}
-            onClick={() => handleGenreClick(genre.value)}
-          >
-            <h3>{genre.value}</h3>
-          </div>
+            name={genre.value}
+            link={`/genre/${genre.value}`}
+            showDelete={false}
+          />
         ))}
       </div>
 
