@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
@@ -61,7 +61,9 @@ async def ping():
 @open_subsonic_router.get("/getTracksByGenre")
 def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
-    genre_record = session.exec(select(db.Genre).where(db.Genre.name == genre)).one_or_none()
+    genre_record = session.exec(
+        select(db.Genre).where(db.Genre.name == genre)
+    ).one_or_none()
 
     tracks_data = []
     for track in genre_record.tracks:
@@ -78,3 +80,21 @@ def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
 
     rsp.data["track"] = tracks_data
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/download")
+async def download(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+
+    return FileResponse(track.file_path)
+
+
+@open_subsonic_router.get("/stream")
+async def download(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+
+    return FileResponse(track.file_path)
