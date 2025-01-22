@@ -94,8 +94,8 @@ def scroble(id: int, session: Session = Depends(db.get_session)):
     return rsp.to_json_rsp()
 
 
-@open_subsonic_router.get("/getTracksByGenre")
-def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
+@open_subsonic_router.get("/getSongsByGenre")
+def get_songs_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
     genre_record = session.exec(
         select(db.Genre).where(db.Genre.name == genre)
@@ -106,15 +106,18 @@ def get_tracks_by_genre(genre: str, session: Session = Depends(db.get_session)):
         track_info = SubsonicTrack()
         track_info.id = str(track.id)
         track_info.title = track.title
-        track_info.type = track.type
         track_info.albumId = str(track.album_id)
-        track_info.album = str(track.album)
+        track_info.album = track.album.name
+        track_info.artistId = str(track.artists[0].id)
+        artist = [a.name for a in track.artists]
+        track_info.artist = ", ".join(artist)
+        track_info.genre = track.genres[0].name
         track_info.duration = track.duration
         track_info.year = track.year
         track_info.path = track.file_path
         tracks_data.append(track_info.model_dump())
 
-    rsp.data["track"] = tracks_data
+    rsp.data["songsByGenre"] = {"song": tracks_data}
     return rsp.to_json_rsp()
 
 
@@ -175,7 +178,9 @@ async def search2(
         albArtists = [a.artists for a in albums]
         albums = [a.model_dump() for a in albums]
         for i in range(len(albums)):
-            albums[i]["parent"] = albArtists[i][0].id if albArtists[i][0] is not None else -1
+            albums[i]["parent"] = (
+                albArtists[i][0].id if albArtists[i][0] is not None else -1
+            )
             albums[i]["coverArt"] = "ar-100000002"
             albums[i]["album"] = names[i]
             albums[i]["title"] = names[i]
@@ -185,7 +190,9 @@ async def search2(
             albums[i]["isDir"] = True
             albums[i]["songCount"] = len(songs[i])
             albums[i]["playCount"] = 0
-            albums[i]["artistId"] = albArtists[i][0].id if albArtists[i][0] is not None else -1
+            albums[i]["artistId"] = (
+                albArtists[i][0].id if albArtists[i][0] is not None else -1
+            )
             albums[i]["artist"] = albArtists[i][0].name
             duration = sum([s.duration for s in songs[i]])
             albums[i]["duration"] = duration
@@ -232,7 +239,9 @@ async def search2(
             tracks[i]["discNumber"] = 1
             tracks[i]["created"] = types
             tracks[i]["albumId"] = albumTrack[i].id if albumTrack[i] is not None else -1
-            tracks[i]["artistId"] = artistTrack[i][0].id if len(artistTrack[i]) > 0 else -1
+            tracks[i]["artistId"] = (
+                artistTrack[i][0].id if len(artistTrack[i]) > 0 else -1
+            )
             tracks[i]["type"] = "music"
             tracks[i]["isVideo"] = False
         tracks = tracks[
