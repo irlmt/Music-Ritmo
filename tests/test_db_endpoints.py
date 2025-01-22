@@ -3,6 +3,7 @@ from src.app.main import app
 
 client = TestClient(app)
 
+
 def test_user():
     response = client.post("/users", json={"login": "Ivan", "password": "123", "avatar": "cool"})
     print(response.json())
@@ -10,6 +11,7 @@ def test_user():
 
     response = client.delete(f"/users/{response.json()['id']}")
     assert response.status_code == 200
+
 
 def test_favourite_track():
     response = client.post("/users", json={"login": "Ivan", "password": "123", "avatar": "cool"})
@@ -28,15 +30,18 @@ def test_favourite_track():
     response = client.delete(f"/users/{user_id}")
     assert response.status_code == 200
 
+
 def test_get_track_album():
     response = client.get("/tracks/2/album")
     print(response.json())
     assert response.status_code == 200
 
+
 def test_get_track_genres():
     response = client.get("/tracks/1/genres")
     print(response.json())
     assert response.status_code == 200
+
 
 def test_get_favourite_tracks():
     response = client.get("/users/1/favourite/tracks")
@@ -49,15 +54,18 @@ def test_get_users():
     print(response.json())
     assert response.status_code == 200
 
+
 def test_get_tracks():
     response = client.get("/tracks")
     print(response.json())
     assert response.status_code == 200
 
+
 def test_get_artists():
     response = client.get("/artists")
     print(response.json())
     assert response.status_code == 200
+
 
 def test_get_albums():
     response = client.get("/albums")
