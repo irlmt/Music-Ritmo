@@ -4,11 +4,11 @@ import styles from "./playlist.module.css";
 interface PlaylistProps {
   name: string;
   link: string;
+  showDelete: boolean;
 }
 
-export const Playlist = ({ name, link }: PlaylistProps) => {
+export const Playlist = ({ name, link, showDelete }: PlaylistProps) => {
   const colorOptions = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
-
   const [randomColor, setRandomColor] = useState<string>("");
 
   useEffect(() => {
@@ -26,7 +26,9 @@ export const Playlist = ({ name, link }: PlaylistProps) => {
       className={styles.playlist}
       style={{ backgroundColor: randomColor }}
     >
-      <i className={`fa-regular fa-trash-can ${styles.deleteIcon}`}></i>
+      {showDelete && (
+        <i className={`fa-regular fa-trash-can ${styles.deleteIcon}`}></i>
+      )}
       <div className={styles.playlist__name}>{name}</div>
     </a>
   );
