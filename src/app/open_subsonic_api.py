@@ -31,9 +31,9 @@ class SubsonicTrack(BaseModel):
     isVideo: bool = False
     type: str = "music"
     albumId: str = Field(default_factory=str)
-    album: Optional[str] = None
+    album: str = ""
     artistId: str = Field(default_factory=str)
-    artist: Optional[str] = ""
+    artist: str = ""
     coverArt: Optional[str] = None
     duration: float = 0
     bitRate: int = 0
@@ -43,8 +43,8 @@ class SubsonicTrack(BaseModel):
     userRating: int = 0
     averageRating: float = 0.0
     track: int = 1
-    year: Optional[int] = None
-    genre: Optional[str] = None
+    year: str = ""
+    genre: str = ""
     size: int = 0
     discNumber: int = 1
     suffix: str = Field(default_factory=str)
