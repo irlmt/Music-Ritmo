@@ -276,3 +276,27 @@ async def getGenres(session: Session = Depends(db.get_session)):
     rsp.data["genres"] = genresResult
 
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getSong")
+def getSong(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    
+    track_info = SubsonicTrack()
+    track_info.id = str(track.id)
+    track_info.title = track.title
+    track_info.albumId = str(track.album_id)
+    track_info.album = track.album.name
+    track_info.artistId = str(track.artists[0].id)
+    artist = [a.name for a in track.artists]
+    track_info.artist = ", ".join(artist)
+    track_info.genre = track.genres[0].name
+    track_info.duration = track.duration
+    track_info.year = track.year
+    track_info.path = track.file_path
+
+    rsp = SubsonicResponse()
+    rsp.data["song"] = track_info.model_dump()
+    return rsp.to_json_rsp()
