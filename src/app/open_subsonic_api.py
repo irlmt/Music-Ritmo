@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+
 from . import database as db
 
 open_subsonic_router = APIRouter(prefix="/rest")
