@@ -1,3 +1,4 @@
+from typing import List
 from sqlmodel import Session
 from . import DAOs
 from . import database as db
@@ -20,7 +21,7 @@ class AlbumService:
             "coverArt": f"al-{album.id}",
             "songCount": album.total_tracks,
             "created": album.year,
-            "duration": sum([int(t["duration"]) for t in album.tracks]),
+            "duration": sum([int(t.duration) for t in album.tracks]),
             "playCount": min([t.plays_count for t in album.tracks]),
             "artistId": album.artists[0].id if album.artists[0] is not None else -1,
             "artist": (
@@ -44,10 +45,10 @@ class AlbumService:
         if album:
             album = self.__class__.getOpenSubsonicFormat(album, withSongs=True)
         return album
-    
+
     def getAlbumInfo2(self, id):
         pass
-    
+
     def getAlbumList(
         self,
         type,
@@ -126,7 +127,7 @@ class GenreService:
         if ItemGenre:
             return {"name": genre.name}
         resGenre = {
-            "songCount": genre.tracks.count(),
+            "songCount": len(genre.tracks),
             "AlbumCount": len(set([a.album.name for a in genre.tracks])),
             "value": genre.name,
         }
@@ -150,7 +151,7 @@ class ArtistService:
             "id": artist.id,
             "name": artist.name,
             "coverArt": f"ar-{artist.id}",
-            "albumCount": artist.albums.count(),
+            "albumCount": len(artist.albums),
             "starred": "",
         }
         if withAlbums:
@@ -171,3 +172,67 @@ class ArtistService:
 
     def getArtistInfo2(self, id, count=20, includeNotPresent=False):
         pass
+
+
+class SearchService:
+    def __init__(self, session: Session):
+        self.ArtistDAO = DAOs.ArtistDao(session)
+        self.AlbumDao = DAOs.AlbumDao(session)
+        self.TrackDao = DAOs.TrackDao(session)
+
+    @staticmethod
+    def getOpenSubsonicFormat(
+        artists: List[db.Artist], albums: List[db.Album], tracks: List[db.Track]
+    ):
+
+        resSearch = {
+            "artist": [ArtistService.getOpenSubsonicFormat(a) for a in artists],
+            "album": [AlbumService.getOpenSubsonicFormat(a) for a in albums],
+            "song": [TrackService.getOpenSubsonicFormat(a) for a in tracks],
+        }
+
+        return resSearch
+
+    def search2(
+        self,
+        query,
+        artistCount,
+        artistOffset,
+        albumCount,
+        albumOffset,
+        songCount,
+        songOffset,
+    ):
+        artists = self.ArtistDAO.getAllArtists()
+        artists = [a for a in artists if query in a.name]
+        if artistCount * artistOffset >= len(artists):
+            artists = []
+        else:
+            artists = artists[
+                artistCount
+                * artistOffset : min(
+                    len(artists), artistCount * artistOffset + artistCount
+                )
+            ]
+
+        albums = self.AlbumDao.getAllAlbums()
+        albums = [a for a in albums if query in a.name]
+        if albumCount * albumOffset >= len(albums):
+            albums = []
+        else:
+            albums = albums[
+                albumCount
+                * albumOffset : min(len(albums), albumCount * albumOffset + albumCount)
+            ]
+
+        tracks = self.TrackDao.getAllTracks()
+        tracks = [t for t in tracks if query in t.title]
+        if songCount * songOffset >= len(tracks):
+            tracks = []
+        else:
+            tracks = tracks[
+                songCount
+                * songOffset : min(len(tracks), songCount * songOffset + songCount)
+            ]
+        
+        return self.__class__.getOpenSubsonicFormat(artists, albums, tracks)
