@@ -1,0 +1,173 @@
+from sqlmodel import Session
+from . import DAOs
+from . import database as db
+
+
+class AlbumService:
+    def __init__(self, session: Session):
+        self.DAO = DAOs.AlbumDao(session)
+
+    @staticmethod
+    def getOpenSubsonicFormat(album: db.Album, withSongs=False):
+        genres = [g.genres for g in album.tracks]
+        resAlbum = {
+            "id": album.id,
+            "parent": album.artists[0].id if album.artists[0] is not None else -1,
+            "album": album.name,
+            "title": album.name,
+            "name": album.name,
+            "isDir": True,
+            "coverArt": f"al-{album.id}",
+            "songCount": album.total_tracks,
+            "created": album.year,
+            "duration": sum([int(t["duration"]) for t in album.tracks]),
+            "playCount": min([t.plays_count for t in album.tracks]),
+            "artistId": album.artists[0].id if album.artists[0] is not None else -1,
+            "artist": (
+                album.artists[0].name
+                if album.artists[0] is not None
+                else "Unknown Artist"
+            ),
+            "year": album.year,
+            "starred": "",
+            "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
+        }
+        if withSongs:
+            tracks = []
+            for i in album.tracks:
+                tracks.append(TrackService.getOpenSubsonicFormat(i))
+            resAlbum["song"] = tracks
+        return resAlbum
+
+    def getAlbumById(self, id):
+        album = self.DAO.getAlbumById(id)
+        if album:
+            album = self.__class__.getOpenSubsonicFormat(album, withSongs=True)
+        return album
+    
+    def getAlbumInfo2(self, id):
+        pass
+    
+    def getAlbumList(
+        self,
+        type,
+        size=10,
+        offset=10,
+        fromYear=None,
+        toYear=None,
+        genre=None,
+        musicFolderId=None,
+    ):
+        pass
+
+
+class TrackService:
+    def __init__(self, session: Session):
+        self.DAO = DAOs.TrackDao(session)
+
+    @staticmethod
+    def getOpenSubsonicFormat(track: db.Track, withGenres=False):
+        resSong = {
+            "id": track.id,
+            "parent": track.album_id,
+            "isDir": False,
+            "title": track.title,
+            "album": track.album.name,
+            "artist": "".join([a.name for a in track.artists]),
+            "track": 1,
+            "year": track.year,
+            "coverArt": f"mf-{track.id}",
+            "size": 19866778,
+            "contentType": track.type,
+            "suffix": "mp3",
+            "starred": "",
+            "duration": track.duration,
+            "bitRate": 880,
+            "bitDepth": 16,
+            "samplingRate": 44100,
+            "channelCount": 2,
+            "path": track.file_path,
+            "playCount": track.plays_count,
+            "discNumber": 1,
+            "created": track.year,
+            "albumId": track.album_id,
+            "artistId": track.artists[0].id if len(track.artists) > 0 else -1,
+            "type": track.type,
+            "isVideo": False,
+        }
+        if withGenres:
+            genres = []
+            for i in track.genres:
+                genres.append(GenreService.getOpenSubsonicFormat(i, ItemGenre=True))
+            resSong["genres"] = genres
+        return resSong
+
+    def getSongById(self, id):
+        track = self.DAO.getTrackById(id)
+        if track:
+            track = self.__class__.getOpenSubsonicFormat(track, withGenres=True)
+        return track
+
+    def getSongsByGenre(self, genre, count=10, offset=0, musicFolder=None):
+        pass
+
+    def getRandomSongs(
+        self, size=10, genre=None, gromYear=None, toYear=None, musicFolderId=None
+    ):
+        pass
+
+
+class GenreService:
+    def __init__(self, session: Session):
+        self.DAO = DAOs.GenresDao(session)
+
+    @staticmethod
+    def getOpenSubsonicFormat(genre: db.Genre, ItemGenre=False):
+        if ItemGenre:
+            return {"name": genre.name}
+        resGenre = {
+            "songCount": genre.tracks.count(),
+            "AlbumCount": len(set([a.album.name for a in genre.tracks])),
+            "value": genre.name,
+        }
+
+        return resGenre
+
+    def getGenres(self):
+        genres = self.DAO.getAllGenres()
+        if genres:
+            genres = [self.__class__.getOpenSubsonicFormat(g) for g in genres]
+        return genres
+
+
+class ArtistService:
+    def __init__(self, session: Session):
+        self.DAO = DAOs.ArtistDao(session)
+
+    @staticmethod
+    def getOpenSubsonicFormat(artist: db.Artist, withAlbums=False):
+        resArtist = {
+            "id": artist.id,
+            "name": artist.name,
+            "coverArt": f"ar-{artist.id}",
+            "albumCount": artist.albums.count(),
+            "starred": "",
+        }
+        if withAlbums:
+            albums = []
+            for i in artist.albums:
+                albums.append(AlbumService.getOpenSubsonicFormat(i))
+            resArtist["album"] = albums
+        return resArtist
+
+    def getArtistById(self, id):
+        artist = self.DAO.getArtistById(id)
+        if artist:
+            artist = self.__class__.getOpenSubsonicFormat(artist, withAlbums=True)
+        return artist
+
+    def getArtists(self, musicFolder=None):
+        pass
+
+    def getArtistInfo2(self, id, count=20, includeNotPresent=False):
+        pass
