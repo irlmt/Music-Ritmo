@@ -27,7 +27,8 @@ class AudioInfo:
                  genres: list[str],
                  track_number: int | None,
                  year: int | None,
-                 duration: int):
+                 duration: int,
+                 cover: bytes | None):
         self.file_path = file_path
         self.type = type
         self.title = title
@@ -37,6 +38,7 @@ class AudioInfo:
         self.track_number = track_number
         self.year = year
         self.duration = duration
+        self.cover = cover
 
 def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
@@ -49,7 +51,8 @@ def extract_metadata_mp3(file_path):
         genres=      str(audio_file["TCON"]).split(", ") if "TCON" in audio_file.tags else [UnknownTag.Genre],
         track_number=int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None,
         year=        int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
-        duration=audio_file.info.length
+        duration=audio_file.info.length,
+        cover= audio_file["APIC:3.jpeg"].data if "APIC:3.jpeg" in audio_file.tags else None
     )
 
 def extract_metadata_flac(file_path):
@@ -63,7 +66,8 @@ def extract_metadata_flac(file_path):
         genres=         (audio_file["GENRE"]) if "GENRE" in audio_file.tags else [UnknownTag.Genre],
         track_number=int(str(audio_file["TRACKNUMBER"][0])) if "TRACKNUMBER" in audio_file.tags else None,
         year=        int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
-        duration=audio_file.info.length
+        duration=audio_file.info.length,
+        cover= audio_file.pictures[0].data if len(audio_file.pictures) > 0 else None
     )
 
 def scan_directory_for_audio_files(dir) -> list[AudioInfo]:
@@ -107,6 +111,7 @@ def load_audio_data(audio: AudioInfo):
                 name=audio.album,
                 total_tracks=1,
                 year=audio.year,
+                cover=audio.cover,
                 artists=artists
             )
             session.add(album)
@@ -136,6 +141,7 @@ def load_audio_data(audio: AudioInfo):
                 duration=audio.duration,
                 year=audio.year,
                 plays_count=0,
+                cover=audio.cover,
                 genres=genres,
                 artists=artists
             )

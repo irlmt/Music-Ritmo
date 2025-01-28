@@ -102,7 +102,7 @@ class Track(SQLModel, table=True):
     duration: int
     year: str | None
     plays_count: int
-    # cover_preview: bytes
+    cover: bytes | None
 
     album: "Album" = Relationship(back_populates="tracks")
     genres:  list["Genre"]  = Relationship(back_populates="tracks", link_model=GenreTrack)
@@ -127,8 +127,7 @@ class Album(SQLModel, table=True):
     name: str = Field(index=True)
     total_tracks: int
     year: str | None
-    # cover_preview: bytes
-    # cover_path: str
+    cover: bytes | None
 
     tracks: list["Track"] = Relationship(back_populates="album")
     artists: list["Artist"] = Relationship(back_populates="albums", link_model=ArtistAlbum)
