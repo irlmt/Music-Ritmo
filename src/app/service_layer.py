@@ -1,12 +1,12 @@
 from typing import List
 from sqlmodel import Session
-from . import DAOs
+from . import db_helpers
 from . import database as db
 
 
 class AlbumService:
     def __init__(self, session: Session):
-        self.DAO = DAOs.AlbumDao(session)
+        self.DBHelper = db_helpers.AlbumDBHelper(session)
 
     @staticmethod
     def getOpenSubsonicFormat(album: db.Album, withSongs=False):
@@ -41,7 +41,7 @@ class AlbumService:
         return resAlbum
 
     def getAlbumById(self, id):
-        album = self.DAO.getAlbumById(id)
+        album = self.DBHelper.getAlbumById(id)
         if album:
             album = self.__class__.getOpenSubsonicFormat(album, withSongs=True)
         return album
@@ -64,7 +64,7 @@ class AlbumService:
 
 class TrackService:
     def __init__(self, session: Session):
-        self.DAO = DAOs.TrackDao(session)
+        self.DBHelper = db_helpers.TrackDBHelper(session)
 
     @staticmethod
     def getOpenSubsonicFormat(track: db.Track, withGenres=False):
@@ -104,7 +104,7 @@ class TrackService:
         return resSong
 
     def getSongById(self, id):
-        track = self.DAO.getTrackById(id)
+        track = self.DBHelper.getTrackById(id)
         if track:
             track = self.__class__.getOpenSubsonicFormat(track, withGenres=True)
         return track
@@ -120,7 +120,7 @@ class TrackService:
 
 class GenreService:
     def __init__(self, session: Session):
-        self.DAO = DAOs.GenresDao(session)
+        self.DBHelper = db_helpers.GenresDBHelper(session)
 
     @staticmethod
     def getOpenSubsonicFormat(genre: db.Genre, ItemGenre=False):
@@ -135,7 +135,7 @@ class GenreService:
         return resGenre
 
     def getGenres(self):
-        genres = self.DAO.getAllGenres()
+        genres = self.DBHelper.getAllGenres()
         if genres:
             genres = [self.__class__.getOpenSubsonicFormat(g) for g in genres]
         return genres
@@ -143,7 +143,7 @@ class GenreService:
 
 class ArtistService:
     def __init__(self, session: Session):
-        self.DAO = DAOs.ArtistDao(session)
+        self.DBHelper = db_helpers.ArtistDBHelper(session)
 
     @staticmethod
     def getOpenSubsonicFormat(artist: db.Artist, withAlbums=False):
@@ -162,7 +162,7 @@ class ArtistService:
         return resArtist
 
     def getArtistById(self, id):
-        artist = self.DAO.getArtistById(id)
+        artist = self.DBHelper.getArtistById(id)
         if artist:
             artist = self.__class__.getOpenSubsonicFormat(artist, withAlbums=True)
         return artist
@@ -176,9 +176,9 @@ class ArtistService:
 
 class SearchService:
     def __init__(self, session: Session):
-        self.ArtistDAO = DAOs.ArtistDao(session)
-        self.AlbumDao = DAOs.AlbumDao(session)
-        self.TrackDao = DAOs.TrackDao(session)
+        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
+        self.AlbumDBHelper = db_helpers.AlbumDBHelper(session)
+        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
 
     @staticmethod
     def getOpenSubsonicFormat(
@@ -203,8 +203,7 @@ class SearchService:
         songCount,
         songOffset,
     ):
-        artists = self.ArtistDAO.getAllArtists()
-        artists = [a for a in artists if query in a.name]
+        artists = self.ArtistDBHelper.getAllArtists(filterName=query)
         if artistCount * artistOffset >= len(artists):
             artists = []
         else:
@@ -215,8 +214,7 @@ class SearchService:
                 )
             ]
 
-        albums = self.AlbumDao.getAllAlbums()
-        albums = [a for a in albums if query in a.name]
+        albums = self.AlbumDBHelper.getAllAlbums(filterName=query)
         if albumCount * albumOffset >= len(albums):
             albums = []
         else:
@@ -225,8 +223,7 @@ class SearchService:
                 * albumOffset : min(len(albums), albumCount * albumOffset + albumCount)
             ]
 
-        tracks = self.TrackDao.getAllTracks()
-        tracks = [t for t in tracks if query in t.title]
+        tracks = self.TrackDBHelper.getAllTracks(filterTitle=query)
         if songCount * songOffset >= len(tracks):
             tracks = []
         else:

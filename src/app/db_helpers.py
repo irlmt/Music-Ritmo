@@ -1,43 +1,52 @@
-from sqlmodel import Session, select 
+from sqlmodel import Session, select, Field 
+from sqlalchemy import func
 from . import database as db
 
-class ArtistDao:
+class ArtistDBHelper:
     def __init__(self, session: Session):
         self.session = session
     
-    def getAllArtists(self):
+    def getAllArtists(self, filterName = None):
+        if filterName:
+            return self.session.exec(select(db.Artist).where(func.lower(db.Artist.name).like(f"%{filterName.lower()}%"))).all()
         return self.session.exec(select(db.Artist)).all()
     
     def getArtistById(self, id):
         return self.session.exec(select(db.Artist).where(db.Artist.id == id)).one_or_none()
     
 
-class AlbumDao:
+class AlbumDBHelper:
     def __init__(self, session: Session):
         self.session = session
     
-    def getAllAlbums(self):
+    def getAllAlbums(self, filterName=None):
+        if filterName:
+            return self.session.exec(select(db.Album).where(func.lower(db.Album.name).like(f"%{filterName.lower()}%"))).all()
         return self.session.exec(select(db.Album)).all()
     
     def getAlbumById(self, id):
         return self.session.exec(select(db.Album).where(db.Album.id == id)).one_or_none()
     
 
-class TrackDao:
+class TrackDBHelper:
     def __init__(self, session: Session):
         self.session = session
     
-    def getAllTracks(self):
+    def getAllTracks(self, filterTitle=None):
+        if filterTitle:
+            return self.session.exec(select(db.Track).where(func.lower(db.Track.title).like(f"%{filterTitle.lower()}%"))).all()
         return self.session.exec(select(db.Track)).all()
     
     def getTrackById(self, id):
         return self.session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     
-class GenresDao:
+class GenresDBHelper:
     def __init__(self, session: Session):
         self.session = session
     
-    def getAllGenres(self):
+    def getAllGenres(self, filterName=None):
+        if filterName:
+            return self.session.exec(select(db.Genre).where(func.lower(db.Genre.name).like(f"%{filterName.lower()}%"))).all()
         return self.session.exec(select(db.Genre)).all()
     
     def getTrackByName(self, name):
