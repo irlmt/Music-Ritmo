@@ -4,8 +4,7 @@ from io import BytesIO
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 
-MAX_COVER_PREVIEW_WIDTH = 300
-MAX_COVER_PREVIEW_HEIGHT = 300
+MAX_COVER_PREVIEW_SIZE = 128
 
 def bytes_to_image(image_bytes: bytes) -> Image.Image:
     return Image.open(BytesIO(image_bytes))
@@ -21,10 +20,10 @@ def get_cover_preview(image_bytes: bytes | None) -> bytes | None:
 
     image = bytes_to_image(image_bytes)
     width, height = image.size
-    if width <= MAX_COVER_PREVIEW_WIDTH and height <= MAX_COVER_PREVIEW_HEIGHT:
+    if width <= MAX_COVER_PREVIEW_SIZE and height <= MAX_COVER_PREVIEW_SIZE:
         return image_bytes
     
-    image.thumbnail((MAX_COVER_PREVIEW_WIDTH, MAX_COVER_PREVIEW_HEIGHT))
+    image.thumbnail((MAX_COVER_PREVIEW_SIZE, MAX_COVER_PREVIEW_SIZE))
     return image_to_bytes(image)
 
 def get_cover_from_mp3(audio_file_mp3: MP3) -> bytes | None:
