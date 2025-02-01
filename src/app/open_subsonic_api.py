@@ -156,7 +156,7 @@ async def search2(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult"] = result
+    rsp.data["searchResult2"] = result
 
     return rsp.to_json_rsp()
 

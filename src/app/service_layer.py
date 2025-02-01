@@ -67,26 +67,26 @@ class TrackService:
         self.DBHelper = db_helpers.TrackDBHelper(session)
 
     @staticmethod
-    def getOpenSubsonicFormat(track: db.Track, withGenres=False):
+    def getOpenSubsonicFormat(track: db.Track, withGenres=False, withArtists=False):
         resSong = {
             "id": track.id,
             "parent": track.album_id,
             "isDir": False,
             "title": track.title,
             "album": track.album.name,
-            "artist": "".join([a.name for a in track.artists]),
+            "artist": ArtistService.joinArtistsNames(track.artists),
             "track": 1,
             "year": track.year,
             "coverArt": f"mf-{track.id}",
-            "size": 19866778,
+            "size": track.file_size,
             "contentType": track.type,
             "suffix": "mp3",
             "starred": "",
             "duration": track.duration,
-            "bitRate": 880,
-            "bitDepth": 16,
-            "samplingRate": 44100,
-            "channelCount": 2,
+            "bitRate": track.bit_rate,
+            "bitDepth": track.bits_per_sample,
+            "samplingRate": track.sample_rate,
+            "channelCount": track.channels,
             "path": track.file_path,
             "playCount": track.plays_count,
             "discNumber": 1,
@@ -101,6 +101,11 @@ class TrackService:
             for i in track.genres:
                 genres.append(GenreService.getOpenSubsonicFormat(i, ItemGenre=True))
             resSong["genres"] = genres
+        if withArtists:
+            artists = []
+            for i in track.artists:
+                artists.append(ArtistService.getOpenSubsonicFormat(i))
+            resSong["artists"] = artists
         return resSong
 
     def getSongById(self, id):
@@ -137,13 +142,17 @@ class GenreService:
     def getGenres(self):
         genres = self.DBHelper.getAllGenres()
         if genres:
-            genres = [self.__class__.getOpenSubsonicFormat(g) for g in genres]
+            genres = {"genre:": [self.__class__.getOpenSubsonicFormat(g) for g in genres]}
         return genres
 
 
 class ArtistService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.ArtistDBHelper(session)
+
+    @staticmethod
+    def joinArtistsNames(artists: List[db.Artist]):
+        return ", ".join(a.name for a in artists)
 
     @staticmethod
     def getOpenSubsonicFormat(artist: db.Artist, withAlbums=False):
