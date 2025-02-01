@@ -111,7 +111,7 @@ class TrackService:
     def getSongById(self, id):
         track = self.DBHelper.getTrackById(id)
         if track:
-            track = self.__class__.getOpenSubsonicFormat(track, withGenres=True)
+            track = self.__class__.getOpenSubsonicFormat(track, withGenres=True, withArtists=True)
         return track
 
     def getSongsByGenre(self, genre, count=10, offset=0, musicFolder=None):
