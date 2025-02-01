@@ -1,11 +1,13 @@
 from typing import Optional, List
+from PIL import Image
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from . import database as db
+from . import utils
 
 open_subsonic_router = APIRouter(prefix="/rest")
 
@@ -300,3 +302,24 @@ def getSong(id: int, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
     rsp.data["song"] = track_info.model_dump()
     return rsp.to_json_rsp()
+
+# id argument is Track.id
+@open_subsonic_router.get("/getCoverArt")
+def getCoverArt(id: int, size: int | None = None,
+            session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    
+    image_bytes = utils.get_cover_art(track)
+    if image_bytes is None:
+        return JSONResponse({"detail": "No cover art for such id"}, status_code=404)
+    
+    image = utils.bytes_to_image(image_bytes)
+    if size is not None:
+        if size <= 0:
+            return JSONResponse({"detail": "Invalid size"}, status_code=400)
+        image.thumbnail((size, size))
+        image_bytes = utils.image_to_bytes(image)
+    
+    return Response(content=image_bytes, media_type=f"image/{image.format.lower()}")
