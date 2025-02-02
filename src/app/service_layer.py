@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List
 from sqlmodel import Session
 from . import db_helpers
@@ -272,3 +273,51 @@ class SearchService:
         tracks = self.TrackDBHelper.getAllTracks()
 
         return self.__class__.getOpenSubsonicFormat(artists, albums, tracks)
+
+
+class IndexService:
+    def __init__(self, session: Session):
+        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
+        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
+
+    @dataclass
+    class ArtistIndex:
+        name: str
+        artist: List[db.Artist]
+
+        def getOpenSubsonicFormat(self):
+            return {
+                "name": self.name,
+                "artist": [ArtistService.getOpenSubsonicFormat(a) for a in self.artist],
+            }
+
+    def getIndexesArtists(
+        self, musicFolderId="", ifModifiedSinceMs=0, withChilds=False
+    ):
+        artists = list(self.ArtistDBHelper.getAllArtists())
+
+        artists.sort(key=lambda a: a.name)
+
+        index: List[IndexService.ArtistIndex] = []
+
+        letter: str = ""
+        letterArtists: List[db.Artist] = []
+        for a in artists:
+            if len(a.name) > 0 and a.name[0] != letter:
+                if len(letterArtists) > 0:
+                    index.append(IndexService.ArtistIndex(letter, letterArtists))
+                letter = a.name[0]
+                letterArtists = []
+            letterArtists.append(a)
+
+        res = {"index": [indexArtist.getOpenSubsonicFormat() for indexArtist in index]}
+
+        if withChilds:
+            tracks: List[str] = []
+            for a in artists:
+                ts: List[db.Track] = self.TrackDBHelper.getTrackByArtistId(a.id)
+                for t in ts:
+                    tracks.append(TrackService.getOpenSubsonicFormat(t))
+            res["child"] = tracks
+
+        return res
