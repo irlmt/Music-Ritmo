@@ -245,3 +245,18 @@ def getIndexes(
     rsp.data["indexes"]["ignoredArticles"] = ""
     rsp.data["indexes"]["lastModified"] = 0
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getArtists")
+def getArtists(
+    musicFolderId: str = Query(default=""),
+    session: Session = Depends(db.get_session),
+):
+    indexService = service_layer.IndexService(session)
+
+    indexes = indexService.getIndexesArtists(musicFolderId)
+
+    rsp = SubsonicResponse()
+    rsp.data["artists"] = indexes
+    rsp.data["artists"]["ignoredArticles"] = ""
+    return rsp.to_json_rsp()

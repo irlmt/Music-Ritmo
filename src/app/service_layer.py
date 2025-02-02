@@ -181,9 +181,6 @@ class ArtistService:
             artist = self.__class__.getOpenSubsonicFormat(artist, withAlbums=True)
         return artist
 
-    def getArtists(self, musicFolder=None):
-        pass
-
     def getArtistInfo2(self, id, count=20, includeNotPresent=False):
         pass
 
