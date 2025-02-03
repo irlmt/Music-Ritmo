@@ -40,6 +40,9 @@ class TrackDBHelper:
     def getTrackById(self, id):
         return self.session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     
+    def getTrackByArtistId(self, artistId):
+        return self.session.exec(select(db.Track).join(db.ArtistTrack).where(db.ArtistTrack.artist_id == artistId)).all()
+
 class GenresDBHelper:
     def __init__(self, session: Session):
         self.session = session
