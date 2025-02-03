@@ -1,8 +1,9 @@
-from dataclasses import dataclass
-from typing import List
+import random
+from typing import List, Optional
 from sqlmodel import Session
 from . import db_helpers
 from . import database as db
+from dataclasses import dataclass
 
 
 class AlbumService:
@@ -66,6 +67,7 @@ class AlbumService:
 class TrackService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.TrackDBHelper(session)
+        self.genre_helper = db_helpers.GenresDBHelper(session)
 
     @staticmethod
     def getOpenSubsonicFormat(track: db.Track, withGenres=False, withArtists=False):
@@ -117,13 +119,44 @@ class TrackService:
             )
         return track
 
+    def _get_tracks_by_genre_without_subsonic(
+        self, genre, count=10, offset=0, musicFolder=None
+    ):
+        genre = self.genre_helper.get_genres_by_name(filterName=genre)
+        return [] if not genre else genre[-1].tracks[offset : offset + count]
+
     def getSongsByGenre(self, genre, count=10, offset=0, musicFolder=None):
-        pass
+        return [
+            self.getOpenSubsonicFormat(track, withGenres=False)
+            for track in self._get_tracks_by_genre_without_subsonic(
+                genre, count, offset, musicFolder
+            )
+        ]
 
     def getRandomSongs(
-        self, size=10, genre=None, gromYear=None, toYear=None, musicFolderId=None
+        self,
+        size=10,
+        genre: Optional[str] = None,
+        fromYear: Optional[str] = None,
+        toYear: Optional[str] = None,
+        musicFolderId: Optional[str] = None,
     ):
-        pass
+        tracks = self.DBHelper.getAllTracks()
+        if genre:
+            tracks = self._get_tracks_by_genre_without_subsonic(genre)
+        if fromYear:
+            tracks = list(
+                filter(lambda track: track.year and track.year >= fromYear, tracks)
+            )
+        if toYear:
+            tracks = list(
+                filter(lambda track: track.year and track.year <= toYear, tracks)
+            )
+        random_tracks = random.sample(tracks, min(size, len(tracks)))
+        return [
+            self.getOpenSubsonicFormat(track, withGenres=False, withArtists=False)
+            for track in random_tracks
+        ]
 
 
 class GenreService:
@@ -180,6 +213,9 @@ class ArtistService:
         if artist:
             artist = self.__class__.getOpenSubsonicFormat(artist, withAlbums=True)
         return artist
+
+    def getArtists(self, musicFolder=None):
+        pass
 
     def getArtistInfo2(self, id, count=20, includeNotPresent=False):
         pass
@@ -270,51 +306,3 @@ class SearchService:
         tracks = self.TrackDBHelper.getAllTracks()
 
         return self.__class__.getOpenSubsonicFormat(artists, albums, tracks)
-
-
-class IndexService:
-    def __init__(self, session: Session):
-        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
-        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
-
-    @dataclass
-    class ArtistIndex:
-        name: str
-        artist: List[db.Artist]
-
-        def getOpenSubsonicFormat(self):
-            return {
-                "name": self.name,
-                "artist": [ArtistService.getOpenSubsonicFormat(a) for a in self.artist],
-            }
-
-    def getIndexesArtists(
-        self, musicFolderId="", ifModifiedSinceMs=0, withChilds=False
-    ):
-        artists = list(self.ArtistDBHelper.getAllArtists())
-
-        artists.sort(key=lambda a: a.name)
-
-        index: List[IndexService.ArtistIndex] = []
-
-        letter: str = ""
-        letterArtists: List[db.Artist] = []
-        for a in artists:
-            if len(a.name) > 0 and a.name[0] != letter:
-                if len(letterArtists) > 0:
-                    index.append(IndexService.ArtistIndex(letter, letterArtists))
-                letter = a.name[0]
-                letterArtists = []
-            letterArtists.append(a)
-
-        res = {"index": [indexArtist.getOpenSubsonicFormat() for indexArtist in index]}
-
-        if withChilds:
-            tracks: List[str] = []
-            for a in artists:
-                ts: List[db.Track] = self.TrackDBHelper.getTrackByArtistId(a.id)
-                for t in ts:
-                    tracks.append(TrackService.getOpenSubsonicFormat(t))
-            res["child"] = tracks
-
-        return res

@@ -98,27 +98,9 @@ def scroble(id: int, session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getSongsByGenre")
 def get_songs_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
-    genre_record = session.exec(
-        select(db.Genre).where(db.Genre.name == genre)
-    ).one_or_none()
-
-    tracks_data = []
-    for track in genre_record.tracks:
-        track_info = SubsonicTrack()
-        track_info.id = str(track.id)
-        track_info.title = track.title
-        track_info.albumId = str(track.album_id)
-        track_info.album = track.album.name
-        track_info.artistId = str(track.artists[0].id)
-        artist = [a.name for a in track.artists]
-        track_info.artist = ", ".join(artist)
-        track_info.genre = track.genres[0].name
-        track_info.duration = track.duration
-        track_info.year = track.year
-        track_info.path = track.file_path
-        tracks_data.append(track_info.model_dump())
-
-    rsp.data["songsByGenre"] = {"song": tracks_data}
+    service = service_layer.TrackService(session)
+    tracks = service.getSongsByGenre(genre)
+    rsp.data["songsByGenre"] = {"song": tracks}
     return rsp.to_json_rsp()
 
 
@@ -184,8 +166,8 @@ async def search3(
 
 @open_subsonic_router.get("/getGenres")
 async def getGenres(session: Session = Depends(db.get_session)):
-    serice = service_layer.GenreService(session)
-    genresResult = serice.getGenres()
+    service = service_layer.GenreService(session)
+    genresResult = service.getGenres()
     rsp = SubsonicResponse()
     rsp.data["genres"] = genresResult
 
@@ -201,6 +183,24 @@ def getSong(id: int, session: Session = Depends(db.get_session)):
 
     rsp = SubsonicResponse()
     rsp.data["song"] = track
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getRandomSongs")
+def getRandomSongs(
+    size: int = 10,
+    genre: Optional[str] = None,
+    fromYear: Optional[str] = None,
+    toYear: Optional[str] = None,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.TrackService(session)
+    tracks = service.getRandomSongs(size, genre, fromYear, toYear)
+    if tracks is None:
+        return JSONResponse({"detail": "No page found"}, status_code=404)
+
+    rsp = SubsonicResponse()
+    rsp.data["randomSongs"] = {"song": tracks}
     return rsp.to_json_rsp()
 
 
