@@ -205,3 +205,55 @@ def getAlbum(id: int, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
     rsp.data["album"] = album
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getPlaylist")
+def get_playlist(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    playlist = service.get_playlist(id)
+    if playlist is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/createPlaylist")
+def create_playlist(
+    name: str,
+    songId: List[int] = Query(default=[]),
+    playlistId: int = None,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.PlaylistService(session)
+    playlist = service.create_playlist(name, songId)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/deletePlaylist")
+def delete_playlist(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    service.delete_playlist(id)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/updatePlaylist")
+def update_playlist(
+    id: int,
+    name: str,
+    songIdToAdd: List[int] = Query(default=[]),
+    songIdToRemove: List[int] = Query(default=[]),
+    comment: str = None,
+    public: str = None,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.PlaylistService(session)
+    playlist = service.update_playlist(id, name, songIdToAdd, songIdToRemove)
+    if playlist is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()

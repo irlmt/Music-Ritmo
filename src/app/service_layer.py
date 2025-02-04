@@ -111,7 +111,9 @@ class TrackService:
     def getSongById(self, id):
         track = self.DBHelper.getTrackById(id)
         if track:
-            track = self.__class__.getOpenSubsonicFormat(track, withGenres=True, withArtists=True)
+            track = self.__class__.getOpenSubsonicFormat(
+                track, withGenres=True, withArtists=True
+            )
         return track
 
     def getSongsByGenre(self, genre, count=10, offset=0, musicFolder=None):
@@ -142,7 +144,9 @@ class GenreService:
     def getGenres(self):
         genres = self.DBHelper.getAllGenres()
         if genres:
-            genres = {"genre:": [self.__class__.getOpenSubsonicFormat(g) for g in genres]}
+            genres = {
+                "genre:": [self.__class__.getOpenSubsonicFormat(g) for g in genres]
+            }
         return genres
 
 
@@ -240,5 +244,50 @@ class SearchService:
                 songCount
                 * songOffset : min(len(tracks), songCount * songOffset + songCount)
             ]
-        
+
         return self.__class__.getOpenSubsonicFormat(artists, albums, tracks)
+
+
+class PlaylistService:
+    def __init__(self, session: Session):
+        self.DBHelper = db_helpers.PlaylistDBHelper(session)
+
+    @staticmethod
+    def getOpenSubsonicFormat(playlist: db.Playlist, withTracks=False):
+        tracks = playlist.playlist_tracks
+        resPlaylist = {
+            "id": playlist.id,
+            "name": playlist.name,
+            "owner": "user",
+            "public": True,
+            "created": playlist.create_date,
+            "changed": max(a.added_at for a in tracks),
+            "songCount": playlist.total_tracks,
+            "duration": sum(t.track.duration for t in tracks),
+        }
+        if withTracks:
+            tracks = [TrackService.getOpenSubsonicFormat(t.track) for t in tracks]
+            resPlaylist["entry"] = tracks
+        return resPlaylist
+
+    def create_playlist(self, name, tracks):
+        playlist_id = self.DBHelper.create_playlist(name, tracks)
+        return self.get_playlist(playlist_id)
+    
+    def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
+        playlist = self.DBHelper.update_playlist(id, name, tracks_to_add, tracks_to_remove)
+        if playlist:
+            playlist = self.__class__.getOpenSubsonicFormat(playlist, withTracks=True)
+        return playlist
+    
+    def delete_playlist(self, id):
+        self.DBHelper.delete_playlist(id)
+    
+    def get_playlist(self, id):
+        playlist = self.DBHelper.get_playlist(id)
+        if playlist:
+            playlist=self.__class__.getOpenSubsonicFormat(playlist, withTracks=True)
+        return playlist
+
+    def get_playlists(self, musicFolder=None):
+        pass
