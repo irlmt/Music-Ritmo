@@ -2,6 +2,7 @@ from xml.etree.ElementInclude import include
 from sqlmodel import Session, select
 from . import database as db
 
+import re
 import os
 import logging
 from enum import StrEnum
@@ -13,12 +14,6 @@ from .utils import get_cover_from_mp3, get_cover_from_flac, get_cover_preview
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
-
-class UnknownTag(StrEnum):
-    Title       = "Unknown Title"
-    Artist      = "Unknown Artist"
-    Album       = "Unknown Album"
-    Genre       = "Unknown Genre"
 
 class AudioInfo:
     def __init__(self,
@@ -55,14 +50,23 @@ class AudioInfo:
 
 def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
+
+    artists: list[str]
+    if "TPE2" in audio_file.tags:
+        artists = str(audio_file["TPE2"]).split(", ")
+    elif "TPE1" in audio_file.tags:
+        artists = str(audio_file["TPE1"]).split(", ")
+    else:
+        artists = ["Неизвестный исполнитель"]
+
     return AudioInfo (
         file_path=file_path,
         file_size=os.path.getsize(file_path),
         type="audio/mpeg",
-        title=       str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else UnknownTag.Title,
-        artists=     str(audio_file["TPE1"]).split(", ") if "TPE1" in audio_file.tags else [UnknownTag.Artist],
-        album=       str(audio_file["TALB"]) if "TALB" in audio_file.tags else UnknownTag.Album,
-        genres=      str(audio_file["TCON"]).split(", ") if "TCON" in audio_file.tags else [UnknownTag.Genre],
+        title= str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else os.path.basename(file_path).split('.')[0],
+        artists=artists,
+        album= str(audio_file["TALB"]) if "TALB" in audio_file.tags else "Неизвестный альбом",
+        genres=re.split(", |; |\\ ", audio_file["TCON"]) if "TCON" in audio_file.tags else [],
         track_number=int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None,
         year=        int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
         cover= get_cover_preview(get_cover_from_mp3(audio_file)),
@@ -75,14 +79,23 @@ def extract_metadata_mp3(file_path):
 
 def extract_metadata_flac(file_path):
     audio_file = FLAC(file_path)
+    
+    artists: list[str]
+    if "ALBUMARTIST" in audio_file.tags and audio_file["ALBUMARTIST"][0] != "Various Artists":
+        artists = audio_file["ALBUMARTIST"]
+    elif "ARTIST" in audio_file.tags:
+        artists = audio_file["ARTIST"]
+    else:
+        artists = ["Неизвестный исполнитель"]
+
     return AudioInfo (
         file_path=file_path,
         file_size=os.path.getsize(file_path),
         type="audio/flac",
-        title=       str(audio_file["TITLE"][0]) if "TITLE" in audio_file.tags else UnknownTag.Title,
-        artists=        (audio_file["ARTIST"]) if "ARTIST" in audio_file.tags else [UnknownTag.Artist],
-        album=       str(audio_file["ALBUM"][0]) if "ALBUM" in audio_file.tags else UnknownTag.Album,
-        genres=         (audio_file["GENRE"]) if "GENRE" in audio_file.tags else [UnknownTag.Genre],
+        title= str(audio_file["TITLE"][0]) if "TITLE" in audio_file.tags else os.path.basename(file_path).split('.')[0],
+        artists=artists,
+        album= str(audio_file["ALBUM"][0]) if "ALBUM" in audio_file.tags else "Неизвестный альбом",
+        genres=    audio_file["GENRE"] if "GENRE" in audio_file.tags else [],
         track_number=int(str(audio_file["TRACKNUMBER"][0])) if "TRACKNUMBER" in audio_file.tags else None,
         year=        int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
         cover= get_cover_preview(get_cover_from_flac(audio_file)),
