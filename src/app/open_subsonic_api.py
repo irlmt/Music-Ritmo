@@ -1,9 +1,13 @@
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Form
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+import base64
 
 from . import database as db
 from . import service_layer
@@ -52,6 +56,15 @@ class SubsonicTrack(BaseModel):
     contentType: str = "audio/mpeg"
     path: str = Field(default_factory=str)
 
+def hash_password(password: str, salt: bytes = b"static_salt") -> str:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend(),
+    )
+    return base64.b64encode(kdf.derive(password.encode())).decode()
 
 @open_subsonic_router.get("/ping")
 async def ping():
@@ -259,4 +272,26 @@ def getArtists(
     rsp = SubsonicResponse()
     rsp.data["artists"] = indexes
     rsp.data["artists"]["ignoredArticles"] = ""
+    return rsp.to_json_rsp()
+
+@open_subsonic_router.post("/register")
+def register_user(
+    login: str = Form(...),
+    password: str = Form(...),
+    session: Session = Depends(db.get_session)
+):
+    existing_user = session.exec(select(db.User).where(db.User.login == login)).first()
+    if existing_user:
+        rsp = SubsonicResponse()
+        rsp.data["status"] = "failed"
+        rsp.data["error"] = {"code": 10, "message": "User already exists"}
+        return rsp.to_json_rsp()
+    
+    hashed_password = hash_password(password)
+    new_user = db.User(login=login, password=hashed_password, avatar="")
+    session.add(new_user)
+    session.commit()
+    
+    rsp = SubsonicResponse()
+    rsp.data["message"] = "User registered successfully"
     return rsp.to_json_rsp()

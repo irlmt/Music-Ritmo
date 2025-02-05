@@ -1,7 +1,7 @@
 from src.app.main import app
 from src.app import database as db
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 client = TestClient(app)
 
@@ -74,3 +74,30 @@ def test_get_random_songs_with_year_filter():
 
     response = client.get("/rest/getRandomSongs?size=2&toYear=2010")
     assert not response.json()["subsonic-response"]["randomSongs"]["song"]
+
+def test_register_user():
+    response = client.post(
+        "/rest/register",
+        data={"login": "testuser", "password": "securepassword"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["subsonic-response"]["status"] == "ok"
+    assert data["subsonic-response"]["message"] == "User registered successfully"
+
+    with Session(db.engine) as session:
+        user = session.exec(select(db.User).where(db.User.login == "testuser")).first()
+        assert user is not None
+        assert user.login == "testuser"
+
+    response = client.post(
+        "/rest/register",
+        data={"login": "testuser", "password": "securepassword"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["subsonic-response"]["status"] == "failed"
+    assert data["subsonic-response"]["error"]["code"] == 10
+    assert data["subsonic-response"]["error"]["message"] == "User already exists"
