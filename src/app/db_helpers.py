@@ -62,9 +62,26 @@ class TrackDBHelper:
         ).one_or_none()
 
 
+    def getTrackByArtistId(self, artistId):
+        return self.session.exec(
+            select(db.Track)
+            .join(db.ArtistTrack)
+            .where(db.ArtistTrack.artist_id == artistId)
+        ).all()
+
+
 class GenresDBHelper:
     def __init__(self, session: Session):
         self.session = session
+
+
+    def get_genres_by_name(self, filterName=None):
+        if filterName:
+            return self.session.exec(
+                select(db.Genre).where(func.lower(db.Genre.name) == filterName.lower())
+            ).all()
+        return self.session.exec(select(db.Genre)).all()
+
 
     def getAllGenres(self, filterName=None):
         if filterName:

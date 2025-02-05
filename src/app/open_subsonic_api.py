@@ -86,27 +86,9 @@ def scroble(id: int, session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getSongsByGenre")
 def get_songs_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
-    genre_record = session.exec(
-        select(db.Genre).where(db.Genre.name == genre)
-    ).one_or_none()
-
-    tracks_data = []
-    for track in genre_record.tracks:
-        track_info = SubsonicTrack()
-        track_info.id = str(track.id)
-        track_info.title = track.title
-        track_info.albumId = str(track.album_id)
-        track_info.album = track.album.name
-        track_info.artistId = str(track.artists[0].id)
-        artist = [a.name for a in track.artists]
-        track_info.artist = ", ".join(artist)
-        track_info.genre = track.genres[0].name
-        track_info.duration = track.duration
-        track_info.year = track.year
-        track_info.path = track.file_path
-        tracks_data.append(track_info.model_dump())
-
-    rsp.data["songsByGenre"] = {"song": tracks_data}
+    service = service_layer.TrackService(session)
+    tracks = service.getSongsByGenre(genre)
+    rsp.data["songsByGenre"] = {"song": tracks}
     return rsp.to_json_rsp()
 
 
@@ -149,10 +131,31 @@ async def search2(
     return rsp.to_json_rsp()
 
 
+@open_subsonic_router.get("/search3")
+async def search3(
+    query: str = Query(),
+    artistCount: int = Query(default=20),
+    artistOffset: int = Query(default=0),
+    albumCount: int = Query(default=20),
+    albumOffset: int = Query(default=0),
+    songCount: int = Query(default=20),
+    songOffset: int = Query(default=0),
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.SearchService(session)
+    result = service.search3(
+        query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
+    )
+    rsp = SubsonicResponse()
+    rsp.data["searchResult3"] = result
+
+    return rsp.to_json_rsp()
+
+
 @open_subsonic_router.get("/getGenres")
 async def getGenres(session: Session = Depends(db.get_session)):
-    serice = service_layer.GenreService(session)
-    genresResult = serice.getGenres()
+    service = service_layer.GenreService(session)
+    genresResult = service.getGenres()
     rsp = SubsonicResponse()
     rsp.data["genres"] = genresResult
 
@@ -168,6 +171,24 @@ def getSong(id: int, session: Session = Depends(db.get_session)):
 
     rsp = SubsonicResponse()
     rsp.data["song"] = track
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getRandomSongs")
+def getRandomSongs(
+    size: int = 10,
+    genre: Optional[str] = None,
+    fromYear: Optional[str] = None,
+    toYear: Optional[str] = None,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.TrackService(session)
+    tracks = service.getRandomSongs(size, genre, fromYear, toYear)
+    if tracks is None:
+        return JSONResponse({"detail": "No page found"}, status_code=404)
+
+    rsp = SubsonicResponse()
+    rsp.data["randomSongs"] = {"song": tracks}
     return rsp.to_json_rsp()
 
 
@@ -244,4 +265,38 @@ def update_playlist(
         return JSONResponse({"detail": "No such id"}, status_code=404)
     rsp = SubsonicResponse()
     rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getIndexes")
+def getIndexes(
+    musicFolderId: str = Query(default=""),
+    ifModifiedSince: int = Query(default=0),
+    session: Session = Depends(db.get_session),
+):
+    indexService = service_layer.IndexService(session)
+
+    indexes = indexService.getIndexesArtists(
+        musicFolderId, ifModifiedSince, withChilds=True
+    )
+
+    rsp = SubsonicResponse()
+    rsp.data["indexes"] = indexes
+    rsp.data["indexes"]["ignoredArticles"] = ""
+    rsp.data["indexes"]["lastModified"] = 0
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getArtists")
+def getArtists(
+    musicFolderId: str = Query(default=""),
+    session: Session = Depends(db.get_session),
+):
+    indexService = service_layer.IndexService(session)
+
+    indexes = indexService.getIndexesArtists(musicFolderId)
+
+    rsp = SubsonicResponse()
+    rsp.data["artists"] = indexes
+    rsp.data["artists"]["ignoredArticles"] = ""
     return rsp.to_json_rsp()
