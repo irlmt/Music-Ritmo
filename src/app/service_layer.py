@@ -306,3 +306,40 @@ class SearchService:
         tracks = self.TrackDBHelper.getAllTracks()
 
         return self.__class__.getOpenSubsonicFormat(artists, albums, tracks)
+    
+
+class StarService:
+    def __init__(self, session: Session):
+        self.DBHelper = db_helpers.FavouriteDBHelper(session)
+        
+    def star(self, track_id, album_id, artist_id, playlist_id, user_id=0):
+        if track_id:
+            self.DBHelper.star_track(track_id, user_id)
+        if artist_id:
+            self.DBHelper.star_artist(artist_id, user_id)
+        if album_id:
+            self.DBHelper.star_album(album_id, user_id)
+        if playlist_id:
+            self.DBHelper.star_track(playlist_id, user_id)
+
+    def unstar(self, track_id, album_id, artist_id, playlist_id, user_id=0):
+        if track_id:
+            self.DBHelper.unstar_track(track_id, user_id)
+        if artist_id:
+            self.DBHelper.unstar_artist(artist_id, user_id)
+        if album_id:
+            self.DBHelper.unstar_album(album_id, user_id)
+        if playlist_id:
+            self.DBHelper.unstar_track(playlist_id, user_id)
+
+    def get_starred(self, user_id=0):
+        tracks = self.DBHelper.get_starred_tracks(user_id)
+        albums = self.DBHelper.get_starred_albums(user_id)
+        artists = self.DBHelper.get_starred_artists(user_id)
+        playlists = self.DBHelper.get_starred_playlists(user_id)
+
+        tracks = [TrackService.getOpenSubsonicFormat(t) for t in tracks]
+        albums = [AlbumService.getOpenSubsonicFormat(t) for t in albums]
+        artists = [ArtistService.getOpenSubsonicFormat(t) for t in artists]
+        # playlists = [PlaylistService.getOpenSubsonicFormat(t) for t in playlists]
+        return {"artist": artists, "album": albums, "song": tracks}

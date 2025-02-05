@@ -260,3 +260,61 @@ def getArtists(
     rsp.data["artists"] = indexes
     rsp.data["artists"]["ignoredArticles"] = ""
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/star")
+def star(
+    id: int = 0,
+    albumId: int = 0,
+    artistId: int = 0,
+    playlistId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    service.star(id, albumId, artistId, playlistId)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/unstar")
+def unstar(
+    id: int = 0,
+    albumId: int = 0,
+    artistId: int = 0,
+    playlistId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    service.unstar(id, albumId, artistId, playlistId)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getStarred")
+def get_starred(
+    id: int = 0,
+    albumId: int = 0,
+    artistId: int = 0,
+    playlistId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    starred = service.get_starred()
+    rsp = SubsonicResponse()
+    rsp.data["starred"] = starred
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getStarred2")
+def get_starred2(
+    id: int = 0,
+    albumId: int = 0,
+    artistId: int = 0,
+    playlistId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    starred = service.get_starred()
+    rsp = SubsonicResponse()
+    rsp.data["starred2"] = starred
+    return rsp.to_json_rsp()
