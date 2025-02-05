@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List
-from sqlmodel import Session, select
 from sqlalchemy import func
+from sqlmodel import Session, select
+from typing import List, Optional, Sequence
 from . import database as db
 
 
@@ -9,7 +9,7 @@ class ArtistDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_all_artists(self, filter_name=None):
+    def get_all_artists(self, filter_name=None) -> Sequence[db.Artist]:
         if filter_name:
             return self.session.exec(
                 select(db.Artist).where(
@@ -27,6 +27,7 @@ class ArtistDBHelper:
 class AlbumDBHelper:
     def __init__(self, session: Session):
         self.session = session
+        self.track_db_helper = TrackDBHelper(session)
 
     def get_all_albums(self, filter_name=None):
         if filter_name:
@@ -41,6 +42,23 @@ class AlbumDBHelper:
         return self.session.exec(
             select(db.Album).where(db.Album.id == id)
         ).one_or_none()
+
+    def get_albums_by_name(self, size: int, offset: int) -> Sequence[db.Album]:
+        return self.session.exec(
+            select(db.Album).order_by(db.Album.name).limit(size).offset(offset)
+        ).all()
+
+    def get_first_track(self, albumId) -> Optional[db.Track]:
+        return self.session.exec(
+            select(db.Track)
+            .where(db.Track.album_id == albumId)
+            .order_by(db.Track.album_position)  # type: ignore
+            .limit(1)
+        ).one_or_none()
+
+    def get_album_artist(self, albumId: int) -> Optional[db.Artist]:
+        track = self.get_first_track(albumId)
+        return self.track_db_helper.get_album_artist(track.id) if track else None
 
 
 class TrackDBHelper:
@@ -67,6 +85,15 @@ class TrackDBHelper:
             .join(db.ArtistTrack)
             .where(db.ArtistTrack.artist_id == artist_id)
         ).all()
+
+    def get_album_artist(self, trackId) -> Optional[db.Artist]:  # temporary optional
+        return self.session.exec(
+            select(db.Artist)
+            .join(db.ArtistTrack)
+            .where(db.Artist.id == db.ArtistTrack.artist_id)
+            .where(db.ArtistTrack.track_id == trackId)
+            .limit(1)
+        ).one_or_none()
 
 
 class GenresDBHelper:
