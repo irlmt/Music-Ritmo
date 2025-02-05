@@ -60,23 +60,11 @@ async def ping():
 
 
 @open_subsonic_router.get("/getPlaylists")
-async def get_playlists(session: Session = Depends(db.get_session)):
+async def get_playlists(username: str = "", session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    playlists = service.get_playlists()
     rsp = SubsonicResponse()
-
-    playlists = session.exec(select(db.Playlist)).all()
-
-    playlist_data = [
-        {
-            "id": playlist.id,
-            "name": playlist.name,
-            "owner": playlist.user_id,
-            "songCount": playlist.total_tracks,
-            "createDate": playlist.create_date,
-        }
-        for playlist in playlists
-    ]
-
-    rsp.data["playlists"] = {"playlist": playlist_data}
+    rsp.data["playlists"] = playlists
 
     return rsp.to_json_rsp()
 
@@ -222,7 +210,7 @@ def get_playlist(id: int, session: Session = Depends(db.get_session)):
 def create_playlist(
     name: str,
     songId: List[int] = Query(default=[]),
-    playlistId: int = None,
+    playlistId: int = 0,
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.PlaylistService(session)
@@ -243,11 +231,11 @@ def delete_playlist(id: int, session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/updatePlaylist")
 def update_playlist(
     id: int,
-    name: str,
+    name: str = "",
     songIdToAdd: List[int] = Query(default=[]),
     songIdToRemove: List[int] = Query(default=[]),
-    comment: str = None,
-    public: str = None,
+    comment: str = "",
+    public: str = "",
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.PlaylistService(session)

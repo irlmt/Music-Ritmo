@@ -85,7 +85,7 @@ class PlaylistDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_playlist(self, name, tracks: List[int], user_id = 0):
+    def create_playlist(self, name, tracks: List[int], user_id=0):
         now = datetime.today()
         playlist = db.Playlist(
             name=name,
@@ -94,7 +94,9 @@ class PlaylistDBHelper:
             create_date=now,
         )
         for t in tracks:
-            playlist_track = db.PlaylistTrack(playlist_id=playlist.id, track_id=t, added_at=now)
+            playlist_track = db.PlaylistTrack(
+                playlist_id=playlist.id, track_id=t, added_at=now
+            )
             playlist.playlist_tracks.append(playlist_track)
         self.session.add(playlist)
         self.session.commit()
@@ -113,16 +115,19 @@ class PlaylistDBHelper:
             for t in track_to_remove:
                 playlist_track = self.session.exec(
                     select(db.PlaylistTrack).where(
-                        db.PlaylistTrack.track_id == t
-                        and db.PlaylistTrack.playlist == playlist
+                        (db.PlaylistTrack.track_id == t)
+                        & (db.PlaylistTrack.playlist_id == playlist.id)
                     )
                 ).one_or_none()
                 if playlist_track:
                     playlist.playlist_tracks.remove(playlist_track)
                     # self.session.delete(playlist_track)
             for t in traks_to_add:
-                playlist_track = db.PlaylistTrack(added_at=now, track_id=t, playlist_id=id)
+                playlist_track = db.PlaylistTrack(
+                    added_at=now, track_id=t, playlist_id=id
+                )
                 playlist.playlist_tracks.append(playlist_track)
+            playlist.total_tracks = len(playlist.playlist_tracks)
             self.session.commit()
         return playlist
 

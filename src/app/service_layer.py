@@ -36,7 +36,7 @@ class AlbumService:
         if withSongs:
             tracks = []
             for i in album.tracks:
-                tracks.append(TrackService.getOpenSubsonicFormat(i))
+                tracks.append(TrackService.get_open_subsonic_format(i))
             resAlbum["song"] = tracks
         return resAlbum
 
@@ -67,7 +67,7 @@ class TrackService:
         self.DBHelper = db_helpers.TrackDBHelper(session)
 
     @staticmethod
-    def getOpenSubsonicFormat(track: db.Track, withGenres=False, withArtists=False):
+    def get_open_subsonic_format(track: db.Track, withGenres=False, withArtists=False):
         resSong = {
             "id": track.id,
             "parent": track.album_id,
@@ -111,7 +111,7 @@ class TrackService:
     def getSongById(self, id):
         track = self.DBHelper.getTrackById(id)
         if track:
-            track = self.__class__.getOpenSubsonicFormat(
+            track = self.__class__.get_open_subsonic_format(
                 track, withGenres=True, withArtists=True
             )
         return track
@@ -201,7 +201,7 @@ class SearchService:
         resSearch = {
             "artist": [ArtistService.getOpenSubsonicFormat(a) for a in artists],
             "album": [AlbumService.getOpenSubsonicFormat(a) for a in albums],
-            "song": [TrackService.getOpenSubsonicFormat(a) for a in tracks],
+            "song": [TrackService.get_open_subsonic_format(a) for a in tracks],
         }
 
         return resSearch
@@ -253,7 +253,7 @@ class PlaylistService:
         self.DBHelper = db_helpers.PlaylistDBHelper(session)
 
     @staticmethod
-    def getOpenSubsonicFormat(playlist: db.Playlist, withTracks=False):
+    def get_open_subsonic_format(playlist: db.Playlist, with_tracks=False):
         tracks = playlist.playlist_tracks
         resPlaylist = {
             "id": playlist.id,
@@ -265,29 +265,37 @@ class PlaylistService:
             "songCount": playlist.total_tracks,
             "duration": sum(t.track.duration for t in tracks),
         }
-        if withTracks:
-            tracks = [TrackService.getOpenSubsonicFormat(t.track) for t in tracks]
+        if with_tracks:
+            tracks = [TrackService.get_open_subsonic_format(t.track) for t in tracks]
             resPlaylist["entry"] = tracks
         return resPlaylist
 
     def create_playlist(self, name, tracks):
         playlist_id = self.DBHelper.create_playlist(name, tracks)
         return self.get_playlist(playlist_id)
-    
+
     def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
-        playlist = self.DBHelper.update_playlist(id, name, tracks_to_add, tracks_to_remove)
+        playlist = self.DBHelper.update_playlist(
+            id, name, tracks_to_add, tracks_to_remove
+        )
         if playlist:
-            playlist = self.__class__.getOpenSubsonicFormat(playlist, withTracks=True)
+            playlist = self.__class__.get_open_subsonic_format(
+                playlist, with_tracks=True
+            )
         return playlist
-    
+
     def delete_playlist(self, id):
         self.DBHelper.delete_playlist(id)
-    
+
     def get_playlist(self, id):
         playlist = self.DBHelper.get_playlist(id)
         if playlist:
-            playlist=self.__class__.getOpenSubsonicFormat(playlist, withTracks=True)
+            playlist = self.__class__.get_open_subsonic_format(
+                playlist, with_tracks=True
+            )
         return playlist
 
-    def get_playlists(self, musicFolder=None):
-        pass
+    def get_playlists(self, music_folder=None):
+        playlists = self.DBHelper.get_all_playlists()
+        playlists = [self.get_open_subsonic_format(i) for i in playlists]
+        return {"playlist": playlists}
