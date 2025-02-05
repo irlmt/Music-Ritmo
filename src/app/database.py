@@ -102,7 +102,8 @@ class Track(SQLModel, table=True):
     album_position: int | None
     year: str | None
     plays_count: int
-    cover: bytes | None
+    cover: bytes
+    cover_type: str
 
     bit_rate: int
     bits_per_sample: int

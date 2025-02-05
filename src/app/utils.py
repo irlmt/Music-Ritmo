@@ -16,17 +16,18 @@ def image_to_bytes(image: Image.Image) -> bytes:
     image.save(buf, format=image.format)
     return buf.getvalue()
 
-def get_cover_preview(image_bytes: bytes | None) -> bytes | None:
+def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes | None, str]:
     if image_bytes == None:
+        # return default preview
         return None
 
     image = bytes_to_image(image_bytes)
     width, height = image.size
     if width <= MAX_COVER_PREVIEW_SIZE and height <= MAX_COVER_PREVIEW_SIZE:
-        return image_bytes
+        return image_bytes, image.format.lower()
     
     image.thumbnail((MAX_COVER_PREVIEW_SIZE, MAX_COVER_PREVIEW_SIZE))
-    return image_to_bytes(image)
+    return image_to_bytes(image), image.format.lower()
 
 def get_cover_from_mp3(audio_file_mp3: MP3) -> bytes | None:
     return audio_file_mp3["APIC:3.jpeg"].data if "APIC:3.jpeg" in audio_file_mp3.tags else None

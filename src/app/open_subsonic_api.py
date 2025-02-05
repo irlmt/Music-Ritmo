@@ -1,5 +1,4 @@
-from typing import Optional, List
-from PIL import Image
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse, Response
@@ -208,16 +207,16 @@ def getAlbum(id: int, session: Session = Depends(db.get_session)):
     rsp.data["album"] = album
     return rsp.to_json_rsp()
 
-# id argument is Track.id
 @open_subsonic_router.get("/getCoverArt")
 def getCoverArt(id: int, size: int | None = None,
             session: Session = Depends(db.get_session)):
-    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+    track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
-    
+
     image_bytes = utils.get_cover_art(track)
     if image_bytes is None:
+        # return FileResponse("./resources/default_cover.jpeg")
         return JSONResponse({"detail": "No cover art for such id"}, status_code=404)
     
     image = utils.bytes_to_image(image_bytes)
