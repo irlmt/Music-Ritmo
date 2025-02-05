@@ -9,6 +9,14 @@ import styles from "./playlists.module.css";
 export default function Playlists() {
   const router = useRouter();
 
+  const Playlists = [
+    { name: "Ммтао1", link: "/здфндшые1" },
+    { name: "Ммтао2", link: "/здфндшые2" },
+    { name: "Ммтао3", link: "/здфндшые3" },
+    { name: "Ммтао4", link: "/здфндшые4" },
+    { name: "Ммтао5", link: "/здфндшые5" },
+  ];
+
   return (
     <>
       <Container
@@ -24,25 +32,14 @@ export default function Playlists() {
       >
         <h1 className={styles.playlists__title}>Ваши плейлисты</h1>
         <div className={styles.playlists}>
-          <Playlist name="Ммтао1" link="/здфндшые1" />
-          <Playlist name="Ммтао2" link="/здфндшые2" />
-          <Playlist name="Ммтао3" link="/здфндшые3" />
-          <Playlist name="Ммтао4" link="/здфндшые4" />
-          <Playlist name="Ммтао5" link="/здфндшые5" />
-          <Playlist name="Ммтао1" link="/здфндшые1" />
-          <Playlist name="Ммтао2" link="/здфндшые2" />
-          <Playlist name="Ммтао3" link="/здфндшые3" />
-          <Playlist name="Ммтао4" link="/здфндшые4" />
-          <Playlist name="Ммтао5" link="/здфндшые5" />
-          <Playlist name="Ммтао1" link="/здфндшые1" />
-          <Playlist name="Ммтао2" link="/здфндшые2" />
-          <Playlist name="Ммтао1" link="/здфндшые1" />
-          <Playlist name="Ммтао2" link="/здфндшые2" />
-          <Playlist name="Ммтао3" link="/здфндшые3" />
-          <Playlist name="Ммтао4" link="/здфндшые4" />
-          <Playlist name="Ммтао5" link="/здфндшые5" />
-          <Playlist name="Ммтао1" link="/здфндшые1" />
-          <Playlist name="Ммтао2" link="/здфндшые2" />
+          {Playlists.map((playlist, index) => (
+            <Playlist
+              key={index}
+              name={playlist.name}
+              link={playlist.link}
+              showDelete={true}
+            />
+          ))}
         </div>
       </Container>
 

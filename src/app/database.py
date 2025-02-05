@@ -2,15 +2,15 @@ from sqlmodel import SQLModel, Session, create_engine, Field, Relationship
 
 
 DATABASE_URL = "sqlite:///database.db"
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def init_db():
+    SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
 
 def get_session():
     with Session(engine) as session:
         yield session
-
 
 # Таблицы связи "многие к многим"
 class GenreTrack(SQLModel, table=True):
@@ -95,13 +95,20 @@ class Track(SQLModel, table=True):
     __tablename__ = "Tracks"
     id: int | None = Field(default=None, primary_key=True)
     file_path: str
-    name: str = Field(index=True)
+    file_size: int
+    type: str
+    title: str = Field(index=True)
     album_id: int | None = Field(foreign_key="Albums.id")
     album_position: int | None
-    duration: int
-    release_date: str | None
+    year: str | None
     plays_count: int
-    # cover_preview: bytes
+    cover: bytes | None
+
+    bit_rate: int
+    bits_per_sample: int
+    sample_rate: int
+    channels: int
+    duration: int
 
     album: "Album" = Relationship(back_populates="tracks")
     genres:  list["Genre"]  = Relationship(back_populates="tracks", link_model=GenreTrack)
@@ -125,9 +132,8 @@ class Album(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     total_tracks: int
-    release_date: str | None
-    # cover_preview: bytes
-    cover_path: str
+    year: str | None
+    cover: bytes | None
 
     tracks: list["Track"] = Relationship(back_populates="album")
     artists: list["Artist"] = Relationship(back_populates="albums", link_model=ArtistAlbum)
