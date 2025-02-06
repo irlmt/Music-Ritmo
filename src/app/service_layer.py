@@ -116,6 +116,10 @@ class AlbumService:
         artist: Optional[db.Artist] = self.DBHelper.get_album_artist(album_id)
         return "" if artist is None else artist.name
 
+    def get_sorted_artist_albums(self, artistId: int, size: int = 10, offset: int = 0):
+        albums = self.DBHelper.get_sorted_artist_albums(artistId, size, offset)
+        return {"album": [AlbumService.get_open_subsonic_format(a) for a in albums]}
+
 
 class TrackService:
     def __init__(self, session: Session):

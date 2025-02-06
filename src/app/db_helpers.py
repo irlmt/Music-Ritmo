@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import func
+from sqlalchemy import desc, func
 from sqlmodel import Session, select
 from typing import List, Optional, Sequence
 from . import database as db
@@ -59,6 +59,20 @@ class AlbumDBHelper:
     def get_album_artist(self, albumId: int) -> Optional[db.Artist]:
         track = self.get_first_track(albumId)
         return self.track_db_helper.get_album_artist(track.id) if track else None
+
+    def get_sorted_artist_albums(
+        self, artist_id: int, size: int, offset: int
+    ) -> Sequence[db.Album]:
+        return self.session.exec(
+            select(db.Album)
+            .join(db.ArtistAlbum)
+            .where(db.ArtistAlbum.album_id == db.Album.id)
+            .where(db.ArtistAlbum.artist_id == artist_id)
+            .distinct()
+            .order_by(desc(db.Album.year), db.Album.name)  # type: ignore
+            .limit(size)
+            .offset(offset)
+        ).all()
 
 
 class TrackDBHelper:
@@ -130,7 +144,9 @@ class FavouriteDBHelper:
         track = TrackDBHelper(self.session).get_track_by_id(id)
 
         if track:
-            if (id, user_id) in [(t.track_id, t.user_id) for t in track.track_favourites]:
+            if (id, user_id) in [
+                (t.track_id, t.user_id) for t in track.track_favourites
+            ]:
                 return
             self.session.add(
                 db.FavouriteTrack(
@@ -142,7 +158,9 @@ class FavouriteDBHelper:
     def star_album(self, id: int, user_id: int = 0):
         album = AlbumDBHelper(self.session).get_album_by_id(id)
         if album:
-            if (id, user_id) in [(a.album_id, a.user_id) for a in album.album_favourites]:
+            if (id, user_id) in [
+                (a.album_id, a.user_id) for a in album.album_favourites
+            ]:
                 return
             self.session.add(
                 db.FavouriteAlbum(
@@ -154,7 +172,9 @@ class FavouriteDBHelper:
     def star_artist(self, id: int, user_id: int = 0):
         artist = ArtistDBHelper(self.session).get_artist_by_id(id)
         if artist:
-            if (id, user_id) in [(a.artist_id, a.user_id) for a in artist.artist_favourites]:
+            if (id, user_id) in [
+                (a.artist_id, a.user_id) for a in artist.artist_favourites
+            ]:
                 return
             self.session.add(
                 db.FavouriteArtist(
@@ -166,7 +186,9 @@ class FavouriteDBHelper:
     def star_playlist(self, id: int, user_id: int = 0):
         playlist = PlaylistDBHelper(self.session).get_playlist(id)
         if playlist:
-            if (id, user_id) in [(a.playlist_id, a.user_id) for a in playlist.playlist_favourites]:
+            if (id, user_id) in [
+                (a.playlist_id, a.user_id) for a in playlist.playlist_favourites
+            ]:
                 return
             self.session.add(
                 db.FavouritePlaylist(
