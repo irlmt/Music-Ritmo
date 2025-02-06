@@ -86,8 +86,6 @@ export const SearchPanel = () => {
   };
 
   const handleSelectResult = (result: SearchResult) => {
-    console.log("Выбран результат:", result);
-
     if (result.type === "song") {
       router.push(`/track/${result.id}`);
     } else if (result.type === "album") {

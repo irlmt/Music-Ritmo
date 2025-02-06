@@ -9,8 +9,8 @@ import styles from "./artist.module.css";
 interface Playlist {
   name: string;
   name_link: string;
-  author: string;
-  author_link: string;
+  artist: string;
+  artist_link: string;
   favourite: boolean;
   time: number;
 }
@@ -40,7 +40,6 @@ export default function Artist() {
         .then((response) => response.json())
         .then((data) => {
           setArtist(data["subsonic-response"].artist);
-          console.log(data["subsonic-response"].artist);
         })
         .catch((error) =>
           console.error("Ошибка при получении данных об исполнителе:", error)

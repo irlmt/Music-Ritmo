@@ -10,24 +10,24 @@ export default function FavouriteTrack() {
     {
       name: "Chill Vibes",
       name_link: "/track1",
-      author: "DJ Relax",
-      author_link: "/author1",
+      artist: "DJ Relax",
+      artist_link: "/artist1",
       favourite: true,
       time: 216,
     },
     {
       name: "Top 40 Hits",
       name_link: "/track1",
-      author: "Hitmaker",
-      author_link: "/author1",
+      artist: "Hitmaker",
+      artist_link: "/artist1",
       favourite: true,
       time: 180,
     },
     {
       name: "Workout Mix",
       name_link: "/track1",
-      author: "Fitness Beats",
-      author_link: "/author1",
+      artist: "Fitness Beats",
+      artist_link: "/artist1",
       favourite: true,
       time: 240,
     },
@@ -61,8 +61,8 @@ export default function FavouriteTrack() {
               key={index}
               name={playlist.name}
               name_link={playlist.name_link}
-              author={playlist.author}
-              author_link={playlist.author_link}
+              artist={playlist.artist}
+              artist_link={playlist.artist_link}
               favourite={playlist.favourite}
               time={playlist.time}
               showRemoveButton={false}
