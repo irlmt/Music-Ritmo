@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { Container } from "@/shared/container";
 import { useState, useEffect } from "react";
 import { Tracklist } from "@/widgets/track-list";
@@ -37,7 +38,7 @@ interface SearchResult {
   type: "song" | "album" | "artist";
 }
 
-export default function SearchResultsPage() {
+function SearchResultsPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [query, setQuery] = useState<string>("");
 
@@ -100,73 +101,77 @@ export default function SearchResultsPage() {
   const songs = results.filter((result) => result.type === "song");
 
   return (
-    <>
-      <Container
-        style={{
-          height: "75vh",
-          width: "85vw",
-          margin: "auto",
-          marginTop: "50px",
-        }}
-        direction="column"
-        arrow={true}
-        link_arrow="/"
-      >
-        <h1 className={styles.playlist__title}>
-          Результаты поиска для {query}
-        </h1>
+    <Container
+      style={{
+        height: "75vh",
+        width: "85vw",
+        margin: "auto",
+        marginTop: "50px",
+      }}
+      direction="column"
+      arrow={true}
+      link_arrow="/"
+    >
+      <h1 className={styles.playlist__title}>Результаты поиска для {query}</h1>
 
-        <div className={styles.playlist}>
-          <div className={styles.album_playlists}>
-            {albums.length > 0 && (
-              <div className={styles.album_playlists}>
-                {albums.map((album, index) => (
-                  <Playlist
-                    key={index}
-                    name={album.title}
-                    link={`/album/${album.id}`}
-                    showDelete={false}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className={styles.album_playlists}>
-            {artist.length > 0 && (
-              <div className={styles.album_playlists}>
-                {artist.map((artist, index) => (
-                  <Artist
-                    key={index}
-                    name={artist.name}
-                    link={`/artist/${artist.id}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className={styles.tracklist}>
-            {songs.length > 0 && (
-              <div>
-                {songs.map((song, index) => (
-                  <Tracklist
-                    key={index}
-                    name={song.title}
-                    name_link={`/track/${song.id}`}
-                    artist={song.artist}
-                    artist_link={`/artist/${song.artist}`}
-                    favourite={false}
-                    time={0}
-                    showRemoveButton={false}
-                    onFavouriteToggle={() => {}}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+      <div className={styles.playlist}>
+        <div className={styles.album_playlists}>
+          {albums.length > 0 && (
+            <div className={styles.album_playlists}>
+              {albums.map((album, index) => (
+                <Playlist
+                  key={index}
+                  name={album.title}
+                  link={`/album/${album.id}`}
+                  showDelete={false}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </Container>
-    </>
+
+        <div className={styles.album_playlists}>
+          {artist.length > 0 && (
+            <div className={styles.album_playlists}>
+              {artist.map((artist, index) => (
+                <Artist
+                  key={index}
+                  name={artist.name}
+                  link={`/artist/${artist.id}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={styles.tracklist}>
+          {songs.length > 0 && (
+            <div>
+              {songs.map((song, index) => (
+                <Tracklist
+                  key={index}
+                  name={song.title}
+                  name_link={`/track/${song.id}`}
+                  artist={song.artist}
+                  artist_link={`/artist/${song.artist}`}
+                  favourite={false}
+                  time={0}
+                  showRemoveButton={false}
+                  onFavouriteToggle={() => {}}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Container>
+  );
+}
+
+export default function SearchResultsWithSuspense() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <SearchResultsPage />
+    </Suspense>
   );
 }
