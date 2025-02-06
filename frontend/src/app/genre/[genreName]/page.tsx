@@ -19,6 +19,9 @@ export default function TracksGenre() {
   const { genreName } = useParams();
   const [tracks, setTracks] = useState<Track[]>([]);
 
+  const decodedGenreName =
+    typeof genreName === "string" ? decodeURIComponent(genreName) : "";
+
   useEffect(() => {
     if (!genreName) return;
 
@@ -81,7 +84,7 @@ export default function TracksGenre() {
         arrow={true}
         link_arrow="/"
       >
-        <h1 className={styles.playlist__title}>{genreName}</h1>
+        <h1 className={styles.playlist__title}>{decodedGenreName}</h1>
         <div className={styles.playlist}>
           {tracks.length > 0 ? (
             tracks.map((track, index) => (
