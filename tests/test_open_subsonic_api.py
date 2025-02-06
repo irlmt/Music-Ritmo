@@ -75,25 +75,24 @@ def test_get_random_songs_with_year_filter():
     response = client.get("/rest/getRandomSongs?size=2&toYear=2010")
     assert not response.json()["subsonic-response"]["randomSongs"]["song"]
 
-def test_register_user():
-    response = client.post(
-        "/rest/register",
-        data={"login": "testuser", "password": "securepassword"}
+def test_create_user():
+    response = client.get(
+        "/rest/createUser",
+        params={"username": "testuser", "password": "securepassword"}
     )
 
     assert response.status_code == 200
     data = response.json()
     assert data["subsonic-response"]["status"] == "ok"
-    assert data["subsonic-response"]["message"] == "User registered successfully"
 
     with Session(db.engine) as session:
         user = session.exec(select(db.User).where(db.User.login == "testuser")).first()
         assert user is not None
         assert user.login == "testuser"
 
-    response = client.post(
-        "/rest/register",
-        data={"login": "testuser", "password": "securepassword"}
+    response = client.get(
+        "/rest/createUser",
+        params={"username": "testuser", "password": "securepassword"}
     )
 
     assert response.status_code == 200

@@ -274,24 +274,24 @@ def getArtists(
     rsp.data["artists"]["ignoredArticles"] = ""
     return rsp.to_json_rsp()
 
-@open_subsonic_router.post("/register")
-def register_user(
-    login: str = Form(...),
-    password: str = Form(...),
+@open_subsonic_router.get("/createUser")
+def create_user(
+    username: str = Query(..., alias="username"),
+    password: str = Query(..., alias="password"),  
     session: Session = Depends(db.get_session)
 ):
-    existing_user = session.exec(select(db.User).where(db.User.login == login)).first()
+    existing_user = session.exec(select(db.User).where(db.User.login == username)).first()
     if existing_user:
         rsp = SubsonicResponse()
         rsp.data["status"] = "failed"
         rsp.data["error"] = {"code": 10, "message": "User already exists"}
         return rsp.to_json_rsp()
-    
+
     hashed_password = hash_password(password)
-    new_user = db.User(login=login, password=hashed_password, avatar="")
+    new_user = db.User(login=username, password=hashed_password, avatar="")
     session.add(new_user)
     session.commit()
-    
+
     rsp = SubsonicResponse()
-    rsp.data["message"] = "User registered successfully"
+    rsp.data["status"] = "ok"
     return rsp.to_json_rsp()
