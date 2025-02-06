@@ -95,6 +95,144 @@ class GenresDBHelper:
         ).one_or_none()
 
 
+class FavouriteDBHelper:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def star_track(self, id: int, user_id: int = 0):
+        track = TrackDBHelper(self.session).get_track_by_id(id)
+
+        if track:
+            if (id, user_id) in [(t.track_id, t.user_id) for t in track.track_favourites]:
+                return
+            self.session.add(
+                db.FavouriteTrack(
+                    user_id=user_id, track_id=id, added_at=datetime.today()
+                )
+            )
+            self.session.commit()
+
+    def star_album(self, id: int, user_id: int = 0):
+        album = AlbumDBHelper(self.session).get_album_by_id(id)
+        if album:
+            if (id, user_id) in [(a.album_id, a.user_id) for a in album.album_favourites]:
+                return
+            self.session.add(
+                db.FavouriteAlbum(
+                    user_id=user_id, album_id=id, added_at=datetime.today()
+                )
+            )
+            self.session.commit()
+
+    def star_artist(self, id: int, user_id: int = 0):
+        artist = ArtistDBHelper(self.session).get_artist_by_id(id)
+        if artist:
+            if (id, user_id) in [(a.artist_id, a.user_id) for a in artist.artist_favourites]:
+                return
+            self.session.add(
+                db.FavouriteArtist(
+                    user_id=user_id, artist_id=id, added_at=datetime.today()
+                )
+            )
+            self.session.commit()
+
+    def star_playlist(self, id: int, user_id: int = 0):
+        playlist = PlaylistDBHelper(self.session).get_playlist(id)
+        if playlist:
+            if (id, user_id) in [(a.playlist_id, a.user_id) for a in playlist.playlist_favourites]:
+                return
+            self.session.add(
+                db.FavouritePlaylist(
+                    user_id=user_id, playlist_id=id, added_at=datetime.today()
+                )
+            )
+            self.session.commit()
+
+    def unstar_track(self, id: int, user_id: int = 0):
+        fav_track = self.session.exec(
+            select(db.FavouriteTrack).where(
+                (db.FavouriteTrack.track_id == id)
+                & (db.FavouriteTrack.user_id == user_id)
+            )
+        ).one_or_none()
+        if fav_track:
+            self.session.delete(fav_track)
+            self.session.commit()
+
+    def unstar_album(self, id: int, user_id: int = 0):
+        fav_album = self.session.exec(
+            select(db.FavouriteAlbum).where(
+                (db.FavouriteAlbum.album_id == id)
+                & (db.FavouriteAlbum.user_id == user_id)
+            )
+        ).one_or_none()
+        if fav_album:
+            self.session.delete(fav_album)
+            self.session.commit()
+
+    def unstar_artist(self, id: int, user_id: int = 0):
+        fav_artist = self.session.exec(
+            select(db.FavouriteArtist).where(
+                (db.FavouriteArtist.artist_id == id)
+                & (db.FavouriteArtist.user_id == user_id)
+            )
+        ).one_or_none()
+        if fav_artist:
+            self.session.delete(fav_artist)
+            self.session.commit()
+
+    def unstar_playlist(self, id: int, user_id: int = 0):
+        fav_playlist = self.session.exec(
+            select(db.FavouritePlaylist).where(
+                (db.FavouritePlaylist.playlist_id == id)
+                & (db.FavouritePlaylist.user_id == user_id)
+            )
+        ).one_or_none()
+        if fav_playlist:
+            self.session.delete(fav_playlist)
+            self.session.commit()
+
+    def get_starred_tracks(self, user_id=0):
+        return self.session.exec(
+            select(db.Track).where(
+                (
+                    (db.FavouriteTrack.track_id == db.Track.id)
+                    & (db.FavouriteTrack.user_id == user_id)
+                )
+            )
+        ).all()
+
+    def get_starred_artists(self, user_id=0):
+        return self.session.exec(
+            select(db.Artist).where(
+                (
+                    (db.FavouriteArtist.artist_id == db.Artist.id)
+                    & (db.FavouriteArtist.user_id == user_id)
+                )
+            )
+        ).all()
+
+    def get_starred_albums(self, user_id=0):
+        return self.session.exec(
+            select(db.Album).where(
+                (
+                    (db.FavouriteAlbum.album_id == db.Album.id)
+                    & (db.FavouriteAlbum.user_id == user_id)
+                )
+            )
+        ).all()
+
+    def get_starred_playlists(self, user_id=0):
+        return self.session.exec(
+            select(db.Playlist).where(
+                (
+                    (db.FavouritePlaylist.playlist_id == db.Playlist.id)
+                    & (db.FavouritePlaylist.user_id == user_id)
+                )
+            )
+        ).all()
+
+
 class PlaylistDBHelper:
     def __init__(self, session: Session):
         self.session = session

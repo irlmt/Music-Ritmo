@@ -304,6 +304,58 @@ def get_artists(
     return rsp.to_json_rsp()
 
 
+@open_subsonic_router.get("/star")
+def star(
+    id: List[int] = Query(default=[]),
+    albumId: List[int] = Query(default=[]),
+    artistId: List[int] = Query(default=[]),
+    playlistId: List[int] = Query(default=[]),
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    service.star(id, albumId, artistId, playlistId)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/unstar")
+def unstar(
+    id: List[int] = Query(default=[]),
+    albumId: List[int] = Query(default=[]),
+    artistId: List[int] = Query(default=[]),
+    playlistId: List[int] = Query(default=[]),
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    service.unstar(id, albumId, artistId, playlistId)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getStarred")
+def get_starred(
+    musicFolderId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    starred = service.get_starred()
+    rsp = SubsonicResponse()
+    rsp.data["starred"] = starred
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getStarred2")
+def get_starred2(
+    musicFolderId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    starred = service.get_starred()
+    rsp = SubsonicResponse()
+    rsp.data["starred2"] = starred
+    return rsp.to_json_rsp()
+
+
 @open_subsonic_router.get("/startScan")
 async def start_scan():
     db_loading.scanStatus["scanning"] = True

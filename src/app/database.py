@@ -79,6 +79,16 @@ class FavouritePlaylist(SQLModel, table=True):
     playlist: "Playlist" = Relationship(back_populates="playlist_favourites")
 
 
+class FavouriteArtist(SQLModel, table=True):
+    __tablename__ = "Favourite_Artists"
+    user_id: int = Field(default=None, primary_key=True, foreign_key="Users.id")
+    artist_id: int = Field(default=None, primary_key=True, foreign_key="Artists.id")
+    added_at: str
+
+    user: "User" = Relationship(back_populates="favourite_artists")
+    artist: "Artist" = Relationship(back_populates="artist_favourites")
+
+
 # Основные таблицы
 class User(SQLModel, table=True):
     __tablename__ = "Users"
@@ -91,6 +101,7 @@ class User(SQLModel, table=True):
     favourite_tracks: list["FavouriteTrack"] = Relationship(back_populates="user")
     favourite_albums: list["FavouriteAlbum"] = Relationship(back_populates="user")
     favourite_playlists: list["FavouritePlaylist"] = Relationship(back_populates="user")
+    favourite_artists: list["FavouriteArtist"] = Relationship(back_populates="user")
 
 
 class Track(SQLModel, table=True):
@@ -133,6 +144,7 @@ class Artist(SQLModel, table=True):
     albums: list["Album"] = Relationship(
         back_populates="artists", link_model=ArtistAlbum
     )
+    artist_favourites: list["FavouriteArtist"] = Relationship(back_populates="artist")
 
 
 class Album(SQLModel, table=True):
