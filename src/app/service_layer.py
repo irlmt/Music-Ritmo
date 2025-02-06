@@ -316,8 +316,60 @@ class SearchService:
         artists = self.ArtistDBHelper.get_all_artists()
         albums = self.AlbumDBHelper.get_all_albums()
         tracks = self.TrackDBHelper.get_all_tracks()
-
         return self.__class__.get_open_subsonic_format(artists, albums, tracks)
+
+
+class PlaylistService:
+    def __init__(self, session: Session):
+        self.DBHelper = db_helpers.PlaylistDBHelper(session)
+
+    @staticmethod
+    def get_open_subsonic_format(playlist: db.Playlist, with_tracks=False):
+        playlist_tracks = playlist.playlist_tracks
+        res_playlist: dict[str, Optional[Union[str, int, List[dict]]]] = {
+            "id": playlist.id,
+            "name": playlist.name,
+            "owner": "user",
+            "public": True,
+            "created": playlist.create_date,
+            "changed": max([a.added_at for a in playlist_tracks], default=playlist.create_date),
+            "songCount": playlist.total_tracks,
+            "duration": sum(t.track.duration for t in playlist_tracks),
+        }
+        if with_tracks:
+            tracks = [TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks]
+            res_playlist["entry"] = tracks
+        return res_playlist
+
+    def create_playlist(self, name, tracks):
+        playlist_id = self.DBHelper.create_playlist(name, tracks)
+        return self.get_playlist(playlist_id)
+
+    def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
+        playlist = self.DBHelper.update_playlist(
+            id, name, tracks_to_add, tracks_to_remove
+        )
+        if playlist:
+            playlist = self.__class__.get_open_subsonic_format(
+                playlist, with_tracks=True
+            )
+        return playlist
+
+    def delete_playlist(self, id):
+        self.DBHelper.delete_playlist(id)
+
+    def get_playlist(self, id):
+        playlist = self.DBHelper.get_playlist(id)
+        if playlist:
+            playlist = self.__class__.get_open_subsonic_format(
+                playlist, with_tracks=True
+            )
+        return playlist
+
+    def get_playlists(self, music_folder=None):
+        playlists = self.DBHelper.get_all_playlists()
+        playlists = [self.get_open_subsonic_format(i) for i in playlists]
+        return {"playlist": playlists}
 
 
 class IndexService:

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse
@@ -61,23 +61,11 @@ async def ping():
 
 
 @open_subsonic_router.get("/getPlaylists")
-async def get_playlists(session: Session = Depends(db.get_session)):
+async def get_playlists(username: str = "", session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    playlists = service.get_playlists()
     rsp = SubsonicResponse()
-
-    playlists = session.exec(select(db.Playlist)).all()
-
-    playlist_data = [
-        {
-            "id": playlist.id,
-            "name": playlist.name,
-            "owner": playlist.user_id,
-            "songCount": playlist.total_tracks,
-            "createDate": playlist.create_date,
-        }
-        for playlist in playlists
-    ]
-
-    rsp.data["playlists"] = {"playlist": playlist_data}
+    rsp.data["playlists"] = playlists
 
     return rsp.to_json_rsp()
 
@@ -226,6 +214,57 @@ def get_album(id: int, session: Session = Depends(db.get_session)):
 
     rsp = SubsonicResponse()
     rsp.data["album"] = album
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getPlaylist")
+def get_playlist(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    playlist = service.get_playlist(id)
+    if playlist is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/createPlaylist")
+def create_playlist(
+    name: str,
+    songId: List[int] = Query(default=[]),
+    playlistId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.PlaylistService(session)
+    playlist = service.create_playlist(name, songId)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/deletePlaylist")
+def delete_playlist(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    service.delete_playlist(id)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/updatePlaylist")
+def update_playlist(
+    playlistId: int,
+    name: str = "",
+    songIdToAdd: List[int] = Query(default=[]),
+    songIdToRemove: List[int] = Query(default=[]),
+    comment: str = "",
+    public: str = "",
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.PlaylistService(session)
+    playlist = service.update_playlist(playlistId, name, songIdToAdd, songIdToRemove)
+    if playlist is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
 
