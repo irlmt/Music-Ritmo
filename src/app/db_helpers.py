@@ -101,7 +101,10 @@ class FavouriteDBHelper:
 
     def star_track(self, id: int, user_id: int = 0):
         track = TrackDBHelper(self.session).get_track_by_id(id)
+
         if track:
+            if (id, user_id) in [(t.track_id, t.user_id) for t in track.track_favourites]:
+                return
             self.session.add(
                 db.FavouriteTrack(
                     user_id=user_id, track_id=id, added_at=datetime.today()
@@ -112,6 +115,8 @@ class FavouriteDBHelper:
     def star_album(self, id: int, user_id: int = 0):
         album = AlbumDBHelper(self.session).get_album_by_id(id)
         if album:
+            if (id, user_id) in [(a.album_id, a.user_id) for a in album.album_favourites]:
+                return
             self.session.add(
                 db.FavouriteAlbum(
                     user_id=user_id, album_id=id, added_at=datetime.today()
@@ -122,6 +127,8 @@ class FavouriteDBHelper:
     def star_artist(self, id: int, user_id: int = 0):
         artist = ArtistDBHelper(self.session).get_artist_by_id(id)
         if artist:
+            if (id, user_id) in [(a.artist_id, a.user_id) for a in artist.artist_favourites]:
+                return
             self.session.add(
                 db.FavouriteArtist(
                     user_id=user_id, artist_id=id, added_at=datetime.today()
@@ -132,6 +139,8 @@ class FavouriteDBHelper:
     def star_playlist(self, id: int, user_id: int = 0):
         playlist = PlaylistDBHelper(self.session).get_playlist(id)
         if playlist:
+            if (id, user_id) in [(a.playlist_id, a.user_id) for a in playlist.playlist_favourites]:
+                return
             self.session.add(
                 db.FavouritePlaylist(
                     user_id=user_id, playlist_id=id, added_at=datetime.today()
@@ -187,8 +196,8 @@ class FavouriteDBHelper:
         return self.session.exec(
             select(db.Track).where(
                 (
-                    (db.FavouriteTrack.track_id
-                    == db.Track.id) & (db.FavouriteTrack.user_id == user_id)
+                    (db.FavouriteTrack.track_id == db.Track.id)
+                    & (db.FavouriteTrack.user_id == user_id)
                 )
             )
         ).all()
@@ -197,8 +206,8 @@ class FavouriteDBHelper:
         return self.session.exec(
             select(db.Artist).where(
                 (
-                    (db.FavouriteArtist.artist_id
-                    == db.Artist.id) & (db.FavouriteArtist.user_id == user_id)
+                    (db.FavouriteArtist.artist_id == db.Artist.id)
+                    & (db.FavouriteArtist.user_id == user_id)
                 )
             )
         ).all()
@@ -207,8 +216,8 @@ class FavouriteDBHelper:
         return self.session.exec(
             select(db.Album).where(
                 (
-                    (db.FavouriteAlbum.album_id
-                    == db.Album.id) & (db.FavouriteAlbum.user_id == user_id)
+                    (db.FavouriteAlbum.album_id == db.Album.id)
+                    & (db.FavouriteAlbum.user_id == user_id)
                 )
             )
         ).all()
@@ -217,8 +226,8 @@ class FavouriteDBHelper:
         return self.session.exec(
             select(db.Playlist).where(
                 (
-                    (db.FavouritePlaylist.playlist_id
-                    == db.Playlist.id) & (db.FavouritePlaylist.user_id == user_id)
+                    (db.FavouritePlaylist.playlist_id == db.Playlist.id)
+                    & (db.FavouritePlaylist.user_id == user_id)
                 )
             )
         ).all()

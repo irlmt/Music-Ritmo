@@ -304,10 +304,10 @@ def get_artists(
 
 @open_subsonic_router.get("/star")
 def star(
-    id: int = 0,
-    albumId: int = 0,
-    artistId: int = 0,
-    playlistId: int = 0,
+    id: List[int] = Query(default=[]),
+    albumId: List[int] = Query(default=[]),
+    artistId: List[int] = Query(default=[]),
+    playlistId: List[int] = Query(default=[]),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
@@ -318,10 +318,10 @@ def star(
 
 @open_subsonic_router.get("/unstar")
 def unstar(
-    id: int = 0,
-    albumId: int = 0,
-    artistId: int = 0,
-    playlistId: int = 0,
+    id: List[int] = Query(default=[]),
+    albumId: List[int] = Query(default=[]),
+    artistId: List[int] = Query(default=[]),
+    playlistId: List[int] = Query(default=[]),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
