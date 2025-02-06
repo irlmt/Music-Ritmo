@@ -202,7 +202,7 @@ class ArtistService:
 
     @staticmethod
     def get_open_subsonic_format(
-        artist: db.Artist, with_albums: bool = False
+        artist: db.Artist, with_albums: bool = False, with_tracks: bool = False
     ) -> dict[str, Optional[Union[str, int, List[dict]]]]:
         res_artist: dict[str, Optional[Union[str, int, List[dict]]]] = {
             "id": artist.id,
@@ -216,12 +216,17 @@ class ArtistService:
             for i in artist.albums:
                 albums.append(AlbumService.get_open_subsonic_format(i))
             res_artist["album"] = albums
+        if with_tracks:
+            tracks = []
+            for i in artist.tracks:
+                tracks.append(TrackService.get_open_subsonic_format(i))
+            res_artist["song"] = tracks
         return res_artist
 
     def get_artist_by_id(self, id):
         artist = self.DBHelper.get_artist_by_id(id)
         if artist:
-            artist = self.__class__.get_open_subsonic_format(artist, with_albums=True)
+            artist = self.__class__.get_open_subsonic_format(artist, with_albums=True, with_tracks=True)
         return artist
 
     def get_artists(self, music_folder=None):
