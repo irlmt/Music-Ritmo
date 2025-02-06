@@ -221,6 +221,7 @@ def load_audio_data(audio: AudioInfo):
                 year=audio.year,
                 plays_count=0,
                 cover=audio.cover,
+                cover_type=audio.cover_type,
                 bit_rate=audio.bit_rate,
                 bits_per_sample=audio.bits_per_sample,
                 sample_rate=audio.sample_rate,

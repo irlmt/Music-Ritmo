@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from PIL import Image
 
 from . import database as db
 from . import service_layer
@@ -331,11 +332,13 @@ def getCoverArt(id: int, size: int | None = None,
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     image_bytes = utils.get_cover_art(track)
+    image: Image.Image
     if image_bytes is None:
-        # return FileResponse("./resources/default_cover.jpeg")
-        return JSONResponse({"detail": "No cover art for such id"}, status_code=404)
-    
-    image = utils.bytes_to_image(image_bytes)
+        image = utils.get_default_cover()
+        image_bytes = utils.image_to_bytes(image)
+    else:
+        image = utils.bytes_to_image(image_bytes)
+
     if size is not None:
         if size <= 0:
             return JSONResponse({"detail": "Invalid size"}, status_code=400)

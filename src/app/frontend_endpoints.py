@@ -29,4 +29,4 @@ def getCoverArtPreview(id: int, session: Session = Depends(db.get_session)):
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
-    return Response(content=track.cover, media_type=track.cover_type)
+    return Response(content=track.cover, media_type=f"image/{track.cover_type}")

@@ -7,6 +7,8 @@ from mutagen.flac import FLAC
 from . import database as db
 
 MAX_COVER_PREVIEW_SIZE = 128
+DEFAULT_COVER_PREVIEW_PATH = "./resources/default_cover_preview.jpg"
+DEFAULT_COVER_PATH = "./resources/default_cover.jpg"
 
 
 def bytes_to_image(image_bytes: bytes) -> Image.Image:
@@ -18,11 +20,14 @@ def image_to_bytes(image: Image.Image) -> bytes:
     image.save(buf, format=image.format)
     return buf.getvalue()
 
-def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes | None, str]:
-    if image_bytes == None:
-        # return default preview
-        return None
+def get_default_cover():
+    return Image.open(DEFAULT_COVER_PATH)
 
+def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes | None, str]:
+    if image_bytes is None:
+        image = Image.open(DEFAULT_COVER_PREVIEW_PATH)
+        return image_to_bytes(image), image.format.lower()
+    
     image = bytes_to_image(image_bytes)
     width, height = image.size
     if width <= MAX_COVER_PREVIEW_SIZE and height <= MAX_COVER_PREVIEW_SIZE:
