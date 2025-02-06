@@ -304,8 +304,8 @@ def get_artists(
     return rsp.to_json_rsp()
 
 
-@open_subsonic_router.post("/startScan")
-async def startScan():
+@open_subsonic_router.get("/startScan")
+async def start_scan():
     db_loading.scanStatus["scanning"] = True
     db_loading.scanStatus["count"] = 0
 
@@ -317,7 +317,7 @@ async def startScan():
 
 
 @open_subsonic_router.get("/getScanStatus")
-def getScanStatus():
+def get_scan_status():
     rsp = SubsonicResponse()
     rsp.data["scanStatus"] = db_loading.scanStatus
     return rsp.to_json_rsp()
