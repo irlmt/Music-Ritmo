@@ -9,45 +9,79 @@ import { Playlist } from "@/entities/playlist";
 import styles from "./page.module.css";
 
 interface Genre {
+  songCount: number;
+  albumCount: number;
   value: string;
 }
 
-export default function Home() {
+interface GenresResponse {
+  "subsonic-response": {
+    status: string;
+    version: string;
+    type: string;
+    serverVersion: string;
+    openSubsonic: boolean;
+    genres: {
+      "genre:": Genre[];
+    };
+  };
+}
+
+const GenreList = () => {
+  const [responseData, setResponseData] = useState<GenresResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const [genres, setGenres] = useState<Genre[]>([]);
 
   useEffect(() => {
     const fetchGenres = async () => {
       try {
         const response = await fetch("http://localhost:8000/rest/getGenres");
-        const data = await response.json();
 
-        const genresData = data["subsonic-response"].genres.genre;
-
-        if (genresData) {
-          setGenres(genresData);
+        if (!response.ok) {
+          throw new Error("Не удалось получить данные с сервера");
         }
+
+        const data: GenresResponse = await response.json();
+        console.log("Ответ от сервера:", data);
+        setResponseData(data);
       } catch (error) {
-        console.error("Ошибка при загрузке жанров:", error);
+        setError(error instanceof Error ? error.message : "Неизвестная ошибка");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchGenres();
   }, []);
 
+  if (loading) {
+    return <div>Загрузка...</div>;
+  }
+
+  if (error) {
+    return <div>Ошибка: {error}</div>;
+  }
+
+  const genres = responseData?.["subsonic-response"]?.genres?.["genre:"];
+
   return (
     <>
       <Header />
       <SearchPanel />
       <div className={styles.home_playlists}>
-        {genres.map((genre, index) => (
-          <Playlist
-            key={index}
-            name={genre.value}
-            link={`/genre/${genre.value}`}
-            showDelete={false}
-          />
-        ))}
+        {genres && genres.length > 0 ? (
+          genres.map((genre, index) => (
+            <Playlist
+              key={index}
+              name={genre.value}
+              link={`/genre/${genre.value}`}
+              showDelete={false}
+            />
+          ))
+        ) : (
+          <p>Нет доступных жанров</p>
+        )}
       </div>
 
       <div className={styles.home_button}>
@@ -64,4 +98,6 @@ export default function Home() {
       </div>
     </>
   );
-}
+};
+
+export default GenreList;
