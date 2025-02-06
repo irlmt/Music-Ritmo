@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./search-panel.module.css";
 import { Button } from "@/shared/button";
+import { Artist } from "@/entities/artist";
 
 interface Song {
   id: string;
@@ -88,11 +89,11 @@ export const SearchPanel = () => {
     console.log("Выбран результат:", result);
 
     if (result.type === "song") {
-      router.push(`/songs/${encodeURIComponent(result.title)}`);
+      router.push(`/track/${result.id}`);
     } else if (result.type === "album") {
-      router.push(`/album/${encodeURIComponent(result.album)}`);
+      router.push(`/album/${result.id}`);
     } else if (result.type === "artist") {
-      router.push(`/artist/${encodeURIComponent(result.artist)}`);
+      router.push(`/artist/${result.id}`);
     }
 
     setQuery(result.title);
