@@ -4,6 +4,10 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+import hashlib
 
 from . import database as db
 from . import service_layer
@@ -247,17 +251,63 @@ def get_indexes(
     rsp.data["indexes"]["lastModified"] = 0
     return rsp.to_json_rsp()
 
-
-@open_subsonic_router.get("/getArtists")
-def get_artists(
-    musicFolderId: str = Query(default=""),
-    session: Session = Depends(db.get_session),
+@open_subsonic_router.get("/authenticate")
+def authenticate_user(
+    u: str = Query(None, alias="username"),
+    p: str = Query(None, alias="password"),
+    t: str = Query(None, alias="token"),
+    s: str = Query(None, alias="salt"),
+    apiKey: str = Query(None, alias="apiKey"),
+    session: Session = Depends(db.get_session)
 ):
-    index_service = service_layer.IndexService(session)
-
-    indexes = index_service.get_indexes_artists(musicFolderId)
-
     rsp = SubsonicResponse()
-    rsp.data["artists"] = indexes
-    rsp.data["artists"]["ignoredArticles"] = ""
+
+    if apiKey and (u or p or t or s):
+        rsp.data["status"] = "failed"
+        rsp.data["error"] = {"code": 43, "message": "Multiple conflicting authentication mechanisms provided"}
+        return rsp.to_json_rsp()
+
+    if (p and t) or (p and s) or (t and not s) or (s and not t):
+        rsp.data["status"] = "failed"
+        rsp.data["error"] = {"code": 43, "message": "Multiple conflicting authentication mechanisms provided"}
+        return rsp.to_json_rsp()
+
+    if apiKey:
+        rsp.data["status"] = "failed"
+        rsp.data["error"] = {"code": 42, "message": "API key authentication not implemented"}
+        return rsp.to_json_rsp()
+
+    user = session.exec(select(db.User).where(db.User.login == u)).first()
+    if not user:
+        rsp.data["status"] = "failed"
+        rsp.data["error"] = {"code": 40, "message": "Invalid credentials"}
+        return rsp.to_json_rsp()
+
+    if t and s:
+        if t != md5_hash(user.password, s):
+            rsp.data["status"] = "failed"
+            rsp.data["error"] = {"code": 40, "message": "Invalid credentials"}
+            return rsp.to_json_rsp()
+    
+    elif p:
+        if not verify_password(p, user.password):
+            rsp.data["status"] = "failed"
+            rsp.data["error"] = {"code": 40, "message": "Invalid credentials"}
+            return rsp.to_json_rsp()
+    
+    else:
+        rsp.data["status"] = "failed"
+        rsp.data["error"] = {"code": 10, "message": "Required parameter is missing"}
+        return rsp.to_json_rsp()
+
+    rsp.data["user"] = {"username": user.login}
     return rsp.to_json_rsp()
+
+def md5_hash(password: str, salt: str) -> str:
+    return hashlib.md5((password + salt).encode("utf-8")).hexdigest()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not plain_password:
+        return False
+    hashed_input = hashlib.pbkdf2_hmac("sha256", plain_password.encode(), b"static_salt", 100000).hex()
+    return hashed_input == hashed_password
