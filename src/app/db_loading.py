@@ -9,8 +9,11 @@ from sqlmodel import Session, select
 from . import database as db
 from .utils import get_cover_from_mp3, get_cover_from_flac, get_cover_preview
 
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
+
+scanStatus = { "scanning": True, "count": 0 }
 
 
 class UnknownTag(StrEnum):
@@ -223,3 +226,14 @@ def load_audio_data(audio: AudioInfo):
             session.add(track)
             session.commit()
             session.refresh(track)
+
+
+def scan_and_load(directory_path: str = "./tracks/"):
+    db.init_db()
+
+    audio_files = scan_directory_for_audio_files(directory_path)
+    for file in audio_files:
+        load_audio_data(file)
+        scanStatus["count"] = scanStatus["count"] + 1
+
+    scanStatus["scanning"] = False
