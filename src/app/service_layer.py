@@ -275,7 +275,9 @@ class ArtistService:
     def get_artist_by_id(self, id):
         artist = self.DBHelper.get_artist_by_id(id)
         if artist:
-            artist = self.__class__.get_open_subsonic_format(artist, with_albums=True, with_tracks=True)
+            artist = self.__class__.get_open_subsonic_format(
+                artist, with_albums=True, with_tracks=True
+            )
         return artist
 
     def get_artists(self, music_folder=None):
@@ -376,25 +378,25 @@ class SearchService:
 class StarService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.FavouriteDBHelper(session)
-        
+
     def star(self, track_id, album_id, artist_id, playlist_id, user_id=0):
-        for id in  track_id:
+        for id in track_id:
             self.DBHelper.star_track(id, user_id)
-        for id in  artist_id:
+        for id in artist_id:
             self.DBHelper.star_artist(id, user_id)
-        for id in  album_id:
+        for id in album_id:
             self.DBHelper.star_album(id, user_id)
-        for id in  playlist_id:
+        for id in playlist_id:
             self.DBHelper.star_playlist(id, user_id)
 
     def unstar(self, track_id, album_id, artist_id, playlist_id, user_id=0):
-        for id in  track_id:
+        for id in track_id:
             self.DBHelper.unstar_track(id, user_id)
-        for id in  artist_id:
+        for id in artist_id:
             self.DBHelper.unstar_artist(id, user_id)
-        for id in  album_id:
+        for id in album_id:
             self.DBHelper.unstar_album(id, user_id)
-        for id in  playlist_id:
+        for id in playlist_id:
             self.DBHelper.unstar_playlist(id, user_id)
 
     def get_starred(self, user_id=0):
@@ -407,7 +409,12 @@ class StarService:
         albums = [AlbumService.get_open_subsonic_format(t) for t in albums]
         artists = [ArtistService.get_open_subsonic_format(t) for t in artists]
         playlists = [PlaylistService.get_open_subsonic_format(t) for t in playlists]
-        return {"artist": artists, "album": albums, "song": tracks, "playlist": playlists}
+        return {
+            "artist": artists,
+            "album": albums,
+            "song": tracks,
+            "playlist": playlists,
+        }
 
 
 class PlaylistService:
