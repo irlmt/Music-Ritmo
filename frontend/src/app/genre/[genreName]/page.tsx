@@ -10,6 +10,7 @@ interface Track {
   id: string;
   title: string;
   artist: string;
+  artistId: string;
   duration: number;
   path: string;
   favourite: boolean;
@@ -18,6 +19,9 @@ interface Track {
 export default function TracksGenre() {
   const { genreName } = useParams();
   const [tracks, setTracks] = useState<Track[]>([]);
+
+  const decodedGenreName =
+    typeof genreName === "string" ? decodeURIComponent(genreName) : "";
 
   useEffect(() => {
     if (!genreName) return;
@@ -36,12 +40,14 @@ export default function TracksGenre() {
               id: string;
               title: string;
               artist: string;
+              artistId: string;
               duration: number;
               path: string;
             }) => ({
               id: track.id,
               title: track.title,
               artist: track.artist,
+              artistId: track.artistId,
               duration: Math.floor(track.duration),
               path: track.path,
               favourite: false,
@@ -81,7 +87,7 @@ export default function TracksGenre() {
         arrow={true}
         link_arrow="/"
       >
-        <h1 className={styles.playlist__title}>{genreName}</h1>
+        <h1 className={styles.playlist__title}>{decodedGenreName}</h1>
         <div className={styles.playlist}>
           {tracks.length > 0 ? (
             tracks.map((track, index) => (
@@ -89,8 +95,8 @@ export default function TracksGenre() {
                 key={track.id}
                 name={track.title}
                 name_link={`/track/${track.id}`}
-                author={track.artist}
-                author_link={`/author/${track.artist}`}
+                artist={track.artist}
+                artist_link={`/artist/${track.artistId}`}
                 favourite={track.favourite}
                 time={track.duration}
                 showRemoveButton={false}

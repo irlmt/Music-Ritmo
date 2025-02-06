@@ -1,37 +1,50 @@
-from pathlib import Path
-from sqlmodel import Session, select
-from . import database as db
-
-import re
-import os
 import logging
+import os
+import re
+from enum import StrEnum
 
-from mutagen.mp3 import MP3
+from pathlib import Path
 from mutagen.flac import FLAC
+from mutagen.mp3 import MP3
+from sqlmodel import Session, select
 
+from . import database as db
 from .utils import get_cover_from_mp3, get_cover_from_flac, get_cover_preview
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
+scanStatus = { "scanning": True, "count": 0 }
+
+
+class UnknownTag(StrEnum):
+    Title = "Unknown Title"
+    Artist = "Unknown Artist"
+    Album = "Unknown Album"
+    Genre = "Unknown Genre"
+
+
 class AudioInfo:
-    def __init__(self,
-                 file_path: str,
-                 file_size: int,
-                 type: str,
-                 title: str,
-                 artists: list[str],
-                 album_artist: str | None,
-                 album: str,
-                 genres: list[str],
-                 track_number: int | None,
-                 year: int | None,
-                 cover: bytes | None,
-                 bit_rate: int,
-                 bits_per_sample: int,
-                 sample_rate: int,
-                 channels: int,
-                 duration: int):
+    def __init__(
+        self,
+        file_path: str,
+        file_size: int,
+        type: str,
+        title: str,
+        artists: list[str],
+        album_artist: str | None,
+        album: str,
+        genres: list[str],
+        track_number: int | None,
+        year: int | None,
+        cover: bytes | None,
+        bit_rate: int,
+        bits_per_sample: int,
+        sample_rate: int,
+        channels: int,
+        duration: int,
+    ):
         self.file_path = file_path
         self.file_size = file_size
         self.type = type
@@ -49,47 +62,91 @@ class AudioInfo:
         self.channels = channels
         self.duration = duration
 
+
 def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
-    return AudioInfo (
+    return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
         type="audio/mpeg",
-        title=       str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else Path(file_path).stem,
-        artists=     str(audio_file["TPE1"]).split(", ") if "TPE1" in audio_file.tags else ["Неизвестный исполнитель"],
-        album_artist=str(audio_file["TPE2"]).split(", ")[0] if "TPE2" in audio_file.tags else None,
-        album=       str(audio_file["TALB"]) if "TALB" in audio_file.tags else "Неизвестный альбом",
-        genres=re.split(", |; |\\ ", audio_file["TCON"]) if "TCON" in audio_file.tags else [],
-        track_number=int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None,
-        year=        int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
-        cover= get_cover_preview(get_cover_from_mp3(audio_file)),
-        bit_rate=   audio_file.info.bitrate,
-        bits_per_sample=int(audio_file.info.bitrate / (audio_file.info.sample_rate * audio_file.info.channels)),
+        title=(
+            str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else Path(file_path).stem
+        ),
+        artists=(
+            str(audio_file["TPE1"]).split(", ")
+            if "TPE1" in audio_file.tags
+            else ["Неизвестный исполнитель"]
+        ),
+        album_artist=(
+            str(audio_file["TPE2"]).split(", ")[0]
+            if "TPE2" in audio_file.tags
+            else None
+        ),
+        album=(
+            str(audio_file["TALB"]) if "TALB" in audio_file.tags else "Неизвестный альбом"
+        ),
+        genres=(
+            re.split(", |; |\\ ", audio_file["TCON"])
+            if "TCON" in audio_file.tags
+            else []
+        ),
+        track_number=(
+            int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None
+        ),
+        year=int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
+        cover=get_cover_preview(get_cover_from_mp3(audio_file)),
+        bit_rate=audio_file.info.bitrate,
+        bits_per_sample=int(
+            audio_file.info.bitrate
+            / (audio_file.info.sample_rate * audio_file.info.channels)
+        ),
         sample_rate=audio_file.info.sample_rate,
-        channels=   audio_file.info.channels,
-        duration=   audio_file.info.length
+        channels=audio_file.info.channels,
+        duration=audio_file.info.length,
     )
+
 
 def extract_metadata_flac(file_path):
     audio_file = FLAC(file_path)
-    return AudioInfo (
+    return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
         type="audio/flac",
-        title=   str(audio_file["TITLE"][0]) if "TITLE" in audio_file.tags else Path(file_path).stem,
-        artists=     audio_file["ARTIST"] if "ARTIST" in audio_file.tags else ["Неизвестный исполнитель"],
-        album_artist=audio_file["ALBUMARTIST"][0] if "ALBUMARTIST" in audio_file.tags else None,
-        album=   str(audio_file["ALBUM"][0]) if "ALBUM" in audio_file.tags else "Неизвестный альбом",
-        genres=      audio_file["GENRE"] if "GENRE" in audio_file.tags else [],
-        track_number=int(str(audio_file["TRACKNUMBER"][0])) if "TRACKNUMBER" in audio_file.tags else None,
-        year=        int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
-        cover= get_cover_preview(get_cover_from_flac(audio_file)),
-        bit_rate=       audio_file.info.bitrate,
+        title=(
+        str(audio_file["TITLE"][0])
+            if "TITLE" in audio_file.tags
+            else Path(file_path).stem
+        ),
+        artists=(
+            audio_file["ARTIST"]
+            if "ARTIST" in audio_file.tags
+            else ["Неизвестный исполнитель"]
+        ),
+        album_artist=(
+            audio_file["ALBUMARTIST"][0] if "ALBUMARTIST" in audio_file.tags else None
+        ),
+        album=(
+        str(audio_file["ALBUM"][0])
+            if "ALBUM" in audio_file.tags
+            else "Неизвестный альбом"
+        ),
+        genres=(
+            audio_file["GENRE"] if "GENRE" in audio_file.tags else []
+        ),
+        track_number=(
+        int(str(audio_file["TRACKNUMBER"][0]))
+            if "TRACKNUMBER" in audio_file.tags
+            else None
+        ),
+        year=int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
+        cover=get_cover_preview(get_cover_from_flac(audio_file)),
+        bit_rate=audio_file.info.bitrate,
         bits_per_sample=audio_file.info.bits_per_sample,
-        sample_rate=    audio_file.info.sample_rate,
-        channels=       audio_file.info.channels,
-        duration=       audio_file.info.length
+        sample_rate=audio_file.info.sample_rate,
+        channels=audio_file.info.channels,
+        duration=audio_file.info.length,
     )
+
 
 def scan_directory_for_audio_files(dir) -> list[AudioInfo]:
     data = []
@@ -114,12 +171,15 @@ def scan_directory_for_audio_files(dir) -> list[AudioInfo]:
 
     return data
 
+
 def load_audio_data(audio: AudioInfo):
     with Session(db.engine) as session:
         artists = []
         for name in audio.artists:
-            artist = session.exec(select(db.Artist).where(db.Artist.name == name)).one_or_none()
-            if artist == None:
+            artist = session.exec(
+                select(db.Artist).where(db.Artist.name == name)
+            ).one_or_none()
+            if artist is None:
                 artist = db.Artist(name=name)
                 session.add(artist)
                 session.commit()
@@ -140,15 +200,17 @@ def load_audio_data(audio: AudioInfo):
         else:
             album_artists = artists
 
-        album = session.exec(select(db.Album).where(db.Album.name == audio.album)).one_or_none()
-        if album == None:
+        album = session.exec(
+            select(db.Album).where(db.Album.name == audio.album)
+        ).one_or_none()
+        if album is None:
             album = db.Album(
                 name=audio.album,
                 album_artist_id=album_artist_id,
                 total_tracks=1,
                 year=audio.year,
                 cover=audio.cover,
-                artists=album_artists
+                artists=album_artists,
             )
             session.add(album)
             session.commit()
@@ -164,15 +226,17 @@ def load_audio_data(audio: AudioInfo):
         genres = []
         for name in audio.genres:
             genre = session.exec(select(db.Genre).where(db.Genre.name == name)).one_or_none()
-            if genre == None:
+            if genre is None:
                 genre = db.Genre(name=name)
                 session.add(genre)
                 session.commit()
                 session.refresh(genre)
             genres.append(genre)
 
-        track = session.exec(select(db.Track).where(db.Track.file_path == audio.file_path)).one_or_none()
-        if track == None:
+        track = session.exec(
+            select(db.Track).where(db.Track.file_path == audio.file_path)
+        ).one_or_none()
+        if track is None:
             track = db.Track(
                 file_path=audio.file_path,
                 file_size=audio.file_size,
@@ -190,8 +254,19 @@ def load_audio_data(audio: AudioInfo):
                 channels=audio.channels,
                 duration=audio.duration,
                 genres=genres,
-                artists=artists
+                artists=artists,
             )
             session.add(track)
             session.commit()
             session.refresh(track)
+
+
+def scan_and_load(directory_path: str = "./tracks/"):
+    db.init_db()
+
+    audio_files = scan_directory_for_audio_files(directory_path)
+    for file in audio_files:
+        load_audio_data(file)
+        scanStatus["count"] = scanStatus["count"] + 1
+
+    scanStatus["scanning"] = False

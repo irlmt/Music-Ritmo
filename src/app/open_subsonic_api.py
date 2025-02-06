@@ -1,4 +1,5 @@
 from typing import Optional, List
+import asyncio
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse
@@ -7,18 +8,20 @@ from sqlmodel import Session, select
 
 from . import database as db
 from . import service_layer
+from . import db_loading
 
 open_subsonic_router = APIRouter(prefix="/rest")
 
 
 class SubsonicResponse:
     def __init__(self):
-        self.data = {}
-        self.data["status"] = "ok"
-        self.data["version"] = "1.16.1"
-        self.data["type"] = "MusicRitmo"
-        self.data["serverVersion"] = "0.1"
-        self.data["openSubsonic"] = True
+        self.data = {
+            "status": "ok",
+            "version": "1.16.1",
+            "type": "MusicRitmo",
+            "serverVersion": "0.1",
+            "openSubsonic": True,
+        }
 
     def to_json_rsp(self) -> JSONResponse:
         return JSONResponse({"subsonic-response": self.data})
@@ -60,23 +63,11 @@ async def ping():
 
 
 @open_subsonic_router.get("/getPlaylists")
-async def get_playlists(session: Session = Depends(db.get_session)):
+async def get_playlists(username: str = "", session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    playlists = service.get_playlists()
     rsp = SubsonicResponse()
-
-    playlists = session.exec(select(db.Playlist)).all()
-
-    playlist_data = [
-        {
-            "id": playlist.id,
-            "name": playlist.name,
-            "owner": playlist.user_id,
-            "songCount": playlist.total_tracks,
-            "createDate": playlist.create_date,
-        }
-        for playlist in playlists
-    ]
-
-    rsp.data["playlists"] = {"playlist": playlist_data}
+    rsp.data["playlists"] = playlists
 
     return rsp.to_json_rsp()
 
@@ -99,7 +90,7 @@ def scroble(id: int, session: Session = Depends(db.get_session)):
 def get_songs_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
     service = service_layer.TrackService(session)
-    tracks = service.getSongsByGenre(genre)
+    tracks = service.get_songs_by_genre(genre)
     rsp.data["songsByGenre"] = {"song": tracks}
     return rsp.to_json_rsp()
 
@@ -114,7 +105,7 @@ async def download(id: int, session: Session = Depends(db.get_session)):
 
 
 @open_subsonic_router.get("/stream")
-async def download(id: int, session: Session = Depends(db.get_session)):
+async def stream(id: int, session: Session = Depends(db.get_session)):
     track = session.exec(select(db.Track).where(db.Track.id == id)).first()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
@@ -165,19 +156,19 @@ async def search3(
 
 
 @open_subsonic_router.get("/getGenres")
-async def getGenres(session: Session = Depends(db.get_session)):
+async def get_genres(session: Session = Depends(db.get_session)):
     service = service_layer.GenreService(session)
-    genresResult = service.getGenres()
+    genres_result = service.get_genres()
     rsp = SubsonicResponse()
-    rsp.data["genres"] = genresResult
+    rsp.data["genres"] = genres_result
 
     return rsp.to_json_rsp()
 
 
 @open_subsonic_router.get("/getSong")
-def getSong(id: int, session: Session = Depends(db.get_session)):
+def get_song(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.TrackService(session)
-    track = service.getSongById(id)
+    track = service.get_song_by_id(id)
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -187,7 +178,7 @@ def getSong(id: int, session: Session = Depends(db.get_session)):
 
 
 @open_subsonic_router.get("/getRandomSongs")
-def getRandomSongs(
+def get_random_songs(
     size: int = 10,
     genre: Optional[str] = None,
     fromYear: Optional[str] = None,
@@ -195,7 +186,7 @@ def getRandomSongs(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.TrackService(session)
-    tracks = service.getRandomSongs(size, genre, fromYear, toYear)
+    tracks = service.get_random_songs(size, genre, fromYear, toYear)
     if tracks is None:
         return JSONResponse({"detail": "No page found"}, status_code=404)
 
@@ -205,9 +196,9 @@ def getRandomSongs(
 
 
 @open_subsonic_router.get("/getArtist")
-def getArtist(id: int, session: Session = Depends(db.get_session)):
+def get_artist(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.ArtistService(session)
-    artist = service.getArtistById(id)
+    artist = service.get_artist_by_id(id)
     if artist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -217,9 +208,9 @@ def getArtist(id: int, session: Session = Depends(db.get_session)):
 
 
 @open_subsonic_router.get("/getAlbum")
-def getAlbum(id: int, session: Session = Depends(db.get_session)):
+def get_album(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.AlbumService(session)
-    album = service.getAlbumById(id)
+    album = service.get_album_by_id(id)
     if album is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -228,16 +219,67 @@ def getAlbum(id: int, session: Session = Depends(db.get_session)):
     return rsp.to_json_rsp()
 
 
+@open_subsonic_router.get("/getPlaylist")
+def get_playlist(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    playlist = service.get_playlist(id)
+    if playlist is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/createPlaylist")
+def create_playlist(
+    name: str,
+    songId: List[int] = Query(default=[]),
+    playlistId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.PlaylistService(session)
+    playlist = service.create_playlist(name, songId)
+    rsp = SubsonicResponse()
+    rsp.data["playlist"] = playlist
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/deletePlaylist")
+def delete_playlist(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.PlaylistService(session)
+    service.delete_playlist(id)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/updatePlaylist")
+def update_playlist(
+    playlistId: int,
+    name: str = "",
+    songIdToAdd: List[int] = Query(default=[]),
+    songIdToRemove: List[int] = Query(default=[]),
+    comment: str = "",
+    public: str = "",
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.PlaylistService(session)
+    playlist = service.update_playlist(playlistId, name, songIdToAdd, songIdToRemove)
+    if playlist is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
 @open_subsonic_router.get("/getIndexes")
-def getIndexes(
+def get_indexes(
     musicFolderId: str = Query(default=""),
     ifModifiedSince: int = Query(default=0),
     session: Session = Depends(db.get_session),
 ):
-    indexService = service_layer.IndexService(session)
+    index_service = service_layer.IndexService(session)
 
-    indexes = indexService.getIndexesArtists(
-        musicFolderId, ifModifiedSince, withChilds=True
+    indexes = index_service.get_indexes_artists(
+        musicFolderId, ifModifiedSince, with_childs=True
     )
 
     rsp = SubsonicResponse()
@@ -248,15 +290,86 @@ def getIndexes(
 
 
 @open_subsonic_router.get("/getArtists")
-def getArtists(
+def get_artists(
     musicFolderId: str = Query(default=""),
     session: Session = Depends(db.get_session),
 ):
-    indexService = service_layer.IndexService(session)
+    index_service = service_layer.IndexService(session)
 
-    indexes = indexService.getIndexesArtists(musicFolderId)
+    indexes = index_service.get_indexes_artists(musicFolderId)
 
     rsp = SubsonicResponse()
     rsp.data["artists"] = indexes
     rsp.data["artists"]["ignoredArticles"] = ""
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/star")
+def star(
+    id: List[int] = Query(default=[]),
+    albumId: List[int] = Query(default=[]),
+    artistId: List[int] = Query(default=[]),
+    playlistId: List[int] = Query(default=[]),
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    service.star(id, albumId, artistId, playlistId)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/unstar")
+def unstar(
+    id: List[int] = Query(default=[]),
+    albumId: List[int] = Query(default=[]),
+    artistId: List[int] = Query(default=[]),
+    playlistId: List[int] = Query(default=[]),
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    service.unstar(id, albumId, artistId, playlistId)
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getStarred")
+def get_starred(
+    musicFolderId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    starred = service.get_starred()
+    rsp = SubsonicResponse()
+    rsp.data["starred"] = starred
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getStarred2")
+def get_starred2(
+    musicFolderId: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    service = service_layer.StarService(session)
+    starred = service.get_starred()
+    rsp = SubsonicResponse()
+    rsp.data["starred2"] = starred
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/startScan")
+async def start_scan():
+    db_loading.scanStatus["scanning"] = True
+    db_loading.scanStatus["count"] = 0
+
+    asyncio.get_running_loop().run_in_executor(None, db_loading.scan_and_load)
+
+    rsp = SubsonicResponse()
+    rsp.data["scanStatus"] = db_loading.scanStatus
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getScanStatus")
+def get_scan_status():
+    rsp = SubsonicResponse()
+    rsp.data["scanStatus"] = db_loading.scanStatus
     return rsp.to_json_rsp()
