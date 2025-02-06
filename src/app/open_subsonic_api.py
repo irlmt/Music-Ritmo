@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import Optional, List
+import asyncio
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse
@@ -7,6 +8,7 @@ from sqlmodel import Session, select
 
 from . import database as db
 from . import service_layer
+from . import db_loading
 
 open_subsonic_router = APIRouter(prefix="/rest")
 
@@ -351,4 +353,23 @@ def get_starred2(
     starred = service.get_starred()
     rsp = SubsonicResponse()
     rsp.data["starred2"] = starred
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/startScan")
+async def start_scan():
+    db_loading.scanStatus["scanning"] = True
+    db_loading.scanStatus["count"] = 0
+
+    asyncio.get_running_loop().run_in_executor(None, db_loading.scan_and_load)
+
+    rsp = SubsonicResponse()
+    rsp.data["scanStatus"] = db_loading.scanStatus
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getScanStatus")
+def get_scan_status():
+    rsp = SubsonicResponse()
+    rsp.data["scanStatus"] = db_loading.scanStatus
     return rsp.to_json_rsp()
