@@ -332,7 +332,7 @@ class PlaylistService:
             "owner": "user",
             "public": True,
             "created": playlist.create_date,
-            "changed": max(a.added_at for a in playlist_tracks),
+            "changed": max([a.added_at for a in playlist_tracks], default=playlist.create_date),
             "songCount": playlist.total_tracks,
             "duration": sum(t.track.duration for t in playlist_tracks),
         }

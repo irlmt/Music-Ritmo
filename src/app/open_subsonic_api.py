@@ -252,7 +252,7 @@ def delete_playlist(id: int, session: Session = Depends(db.get_session)):
 
 @open_subsonic_router.get("/updatePlaylist")
 def update_playlist(
-    id: int,
+    playlistId: int,
     name: str = "",
     songIdToAdd: List[int] = Query(default=[]),
     songIdToRemove: List[int] = Query(default=[]),
@@ -261,11 +261,10 @@ def update_playlist(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.PlaylistService(session)
-    playlist = service.update_playlist(id, name, songIdToAdd, songIdToRemove)
+    playlist = service.update_playlist(playlistId, name, songIdToAdd, songIdToRemove)
     if playlist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
     rsp = SubsonicResponse()
-    rsp.data["playlist"] = playlist
     return rsp.to_json_rsp()
 
 
