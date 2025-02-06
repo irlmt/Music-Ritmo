@@ -154,8 +154,8 @@ export default function SearchResultsPage() {
                     key={index}
                     name={song.title}
                     name_link={`/track/${song.id}`}
-                    author={song.artist}
-                    author_link={`/artist/${song.artist}`}
+                    artist={song.artist}
+                    artist_link={`/artist/${song.artist}`}
                     favourite={false}
                     time={0}
                     showRemoveButton={false}

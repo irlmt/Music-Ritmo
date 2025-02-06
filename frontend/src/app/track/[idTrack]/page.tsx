@@ -69,8 +69,6 @@ export default function PlayedTrack() {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
-        console.log("Полученные данные о треке:", data);
-
         if (data?.["subsonic-response"]?.song) {
           const track = data["subsonic-response"].song;
           setTrackData({
@@ -172,10 +170,10 @@ export default function PlayedTrack() {
             {trackData ? trackData.title : "Загрузка названия трека..."}
           </h2>
           <Link
-            href={`/author/${trackData?.artist}`}
-            className={styles.track__author}
+            href={`/artist/${trackData?.artist}`}
+            className={styles.track__artist}
           >
-            <p className={styles.track__author}>
+            <p className={styles.track__artist}>
               {trackData ? trackData.artist : "Загрузка автора..."}
             </p>
           </Link>

@@ -95,8 +95,8 @@ export default function TracksGenre() {
                 key={track.id}
                 name={track.title}
                 name_link={`/track/${track.id}`}
-                author={track.artist}
-                author_link={`/artist/${track.artistId}`}
+                artist={track.artist}
+                artist_link={`/artist/${track.artistId}`}
                 favourite={track.favourite}
                 time={track.duration}
                 showRemoveButton={false}
