@@ -1,4 +1,5 @@
 import random
+from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Union
 
@@ -6,6 +7,18 @@ from sqlmodel import Session
 
 from . import database as db
 from . import db_helpers
+
+
+class RequestType(Enum):
+    RANDOM = 1
+    NEWEST = 2
+    HIGHEST = 3
+    FREQUENT = 4
+    RECENT = 5
+    BY_NAME = 6
+    BY_ARTIST = 7
+    BY_YEAR = 8
+    BY_GENRE = 9
 
 
 class AlbumService:
@@ -57,15 +70,51 @@ class AlbumService:
 
     def get_album_list(
         self,
-        type,
-        size=10,
-        offset=10,
-        from_year=None,
-        to_year=None,
-        genre=None,
-        music_folder_id=None,
-    ):
-        pass
+        type: RequestType,
+        size: int = 10,
+        offset: int = 0,
+        from_year: Optional[str] = None,
+        to_year: Optional[str] = None,
+        genre: Optional[str] = None,
+        music_folder_id: Optional[str] = None,
+    ) -> Optional[dict[str, Optional[Union[str, int, List[dict]]]]]:
+        result = []
+        match type:
+            case RequestType.RANDOM:
+                albums = self.DBHelper.get_all_albums()
+                result = random.sample(albums, min(size, len(albums)))
+            case RequestType.BY_NAME:
+                result = list(self.DBHelper.get_albums_by_name(size, offset))
+            case RequestType.BY_ARTIST:
+                albums = list(self.DBHelper.get_all_albums())
+                albums.sort(key=lambda album: self.compare_albums_by_artist(album.id))
+                result = albums[offset : offset + size]
+            case RequestType.BY_YEAR if from_year is not None and to_year is not None:
+                albums = self.DBHelper.get_all_albums()
+                result = [
+                    album
+                    for album in albums
+                    if album.year
+                    and min(from_year, to_year) <= album.year <= max(from_year, to_year)
+                ][offset : size + offset]
+                if from_year > to_year:
+                    result.reverse()
+            case (
+                RequestType.NEWEST
+                | RequestType.HIGHEST
+                | RequestType.FREQUENT
+                | RequestType.RECENT
+                | RequestType.BY_GENRE
+            ):
+                raise NotImplementedError()
+            case _:  # validation error
+                return None
+
+        return {"album": [AlbumService.get_open_subsonic_format(a) for a in result]}
+
+    def compare_albums_by_artist(self, album_id: int) -> str:
+        artist: Optional[db.Artist] = self.DBHelper.get_album_artist(album_id)
+        return "" if artist is None else artist.name
 
 
 class TrackService:
@@ -374,12 +423,16 @@ class PlaylistService:
             "owner": "user",
             "public": True,
             "created": playlist.create_date,
-            "changed": max([a.added_at for a in playlist_tracks], default=playlist.create_date),
+            "changed": max(
+                [a.added_at for a in playlist_tracks], default=playlist.create_date
+            ),
             "songCount": playlist.total_tracks,
             "duration": sum(t.track.duration for t in playlist_tracks),
         }
         if with_tracks:
-            tracks = [TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks]
+            tracks = [
+                TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks
+            ]
             res_playlist["entry"] = tracks
         return res_playlist
 

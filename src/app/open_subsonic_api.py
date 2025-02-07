@@ -373,3 +373,83 @@ def get_scan_status():
     rsp = SubsonicResponse()
     rsp.data["scanStatus"] = db_loading.scanStatus
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getAlbumList")
+def get_album_list(
+    type: str,
+    size: int = 10,
+    offset: int = 0,
+    fromYear: Optional[str] = None,
+    toYear: Optional[str] = None,
+    genre: Optional[str] = None,
+    musicFolderId: Optional[str] = None,
+    session: Session = Depends(db.get_session),
+):
+    album_service = service_layer.AlbumService(session)
+
+    request_type: service_layer.RequestType = service_layer.RequestType.BY_NAME
+    match type:
+        case "random":
+            request_type = service_layer.RequestType.RANDOM
+        case "alphabeticalByName":
+            request_type = service_layer.RequestType.BY_NAME
+        case "alphabeticalByArtist":
+            request_type = service_layer.RequestType.BY_ARTIST
+        case "byYear":
+            request_type = service_layer.RequestType.BY_YEAR
+        case "newest" | "highest" | "frequent" | "recent" | "byGenre":
+            # Not implemented
+            request_type = service_layer.RequestType.BY_NAME
+        case _:
+            return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
+
+    albums = album_service.get_album_list(
+        request_type, size, offset, fromYear, toYear, genre, musicFolderId
+    )
+    if albums is None:
+        return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
+
+    rsp = SubsonicResponse()
+    rsp.data["albumList"] = albums
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getAlbumList2")
+def get_album_list2(
+    type: str,
+    size: int = 10,
+    offset: int = 0,
+    fromYear: Optional[str] = None,
+    toYear: Optional[str] = None,
+    genre: Optional[str] = None,
+    musicFolderId: Optional[str] = None,
+    session: Session = Depends(db.get_session),
+):
+    album_service = service_layer.AlbumService(session)
+
+    request_type: service_layer.RequestType = service_layer.RequestType.BY_NAME
+    match type:
+        case "random":
+            request_type = service_layer.RequestType.RANDOM
+        case "alphabeticalByName":
+            request_type = service_layer.RequestType.BY_NAME
+        case "alphabeticalByArtist":
+            request_type = service_layer.RequestType.BY_ARTIST
+        case "byYear":
+            request_type = service_layer.RequestType.BY_YEAR
+        case "newest" | "highest" | "frequent" | "recent" | "byGenre":
+            # Not implemented
+            request_type = service_layer.RequestType.BY_NAME
+        case _:
+            return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
+
+    albums = album_service.get_album_list(
+        request_type, size, offset, fromYear, toYear, genre, musicFolderId
+    )
+    if albums is None:
+        return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
+
+    rsp = SubsonicResponse()
+    rsp.data["albumList2"] = albums
+    return rsp.to_json_rsp()
