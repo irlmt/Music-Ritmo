@@ -100,14 +100,25 @@ class TrackDBHelper:
             .where(db.ArtistTrack.artist_id == artist_id)
         ).all()
 
-    def get_album_artist(self, trackId) -> Optional[db.Artist]:  # temporary optional
+    def get_album_artist(self, track_id) -> db.Artist:
+        track = self.get_track_by_id(track_id)
+        if track is None:
+            raise RuntimeError()
+
+        if track.album_artist_id is not None:
+            artist = self.session.exec(
+                select(db.Artist).where(db.Artist.id == track.album_artist_id).limit(1)
+            ).one_or_none()
+            if artist is not None:
+                return artist
+
         return self.session.exec(
             select(db.Artist)
             .join(db.ArtistTrack)
             .where(db.Artist.id == db.ArtistTrack.artist_id)
-            .where(db.ArtistTrack.track_id == trackId)
+            .where(db.ArtistTrack.track_id == track_id)
             .limit(1)
-        ).one_or_none()
+        ).first()
 
 
 class GenresDBHelper:

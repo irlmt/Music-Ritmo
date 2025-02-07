@@ -27,6 +27,14 @@ class RequestType(Enum):
     BY_GENRE = 9
 
 
+def get_album_artist_id(track: db.Track) -> int:
+    if track.album_artist_id:
+        return track.album_artist_id
+    if len(track.artists) > 0:
+        return track.artists[0].id
+    return -1
+
+
 class AlbumService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.AlbumDBHelper(session)
@@ -48,11 +56,7 @@ class AlbumService:
             "duration": sum([int(t.duration) for t in album.tracks]),
             "playCount": min([t.plays_count for t in album.tracks]),
             "artistId": album.artists[0].id if album.artists[0] is not None else -1,
-            "artist": (
-                album.artists[0].name
-                if album.artists[0] is not None
-                else "Unknown Artist"
-            ),
+            "artist": ArtistService.join_artists_names(album.artists),
             "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
         }
         parse_val(res_album, "year", album.year)
@@ -159,7 +163,7 @@ class TrackService:
             "playCount": track.plays_count,
             "discNumber": 1,
             "albumId": track.album_id,
-            "artistId": track.artists[0].id if len(track.artists) > 0 else -1,
+            "artistId": get_album_artist_id(track),
             "type": track.type,
             "isVideo": False,
         }
