@@ -1,8 +1,15 @@
-from fastapi import APIRouter, HTTPException
-import python_avatars as pa  # type: ignore
 import base64
 
-frontend_router = APIRouter()
+import python_avatars as pa  # type: ignore
+from fastapi import APIRouter, HTTPException, Depends
+from sqlmodel import Session
+
+from src.app.subsonic_response import SubsonicResponse
+
+from . import database as db
+from . import service_layer
+
+frontend_router = APIRouter(prefix='/specific')
 
 
 @frontend_router.get("/generate_avatar/")
@@ -17,3 +24,18 @@ def generate_random_avatar():
         raise HTTPException(
             status_code=500, detail=f"Error generating avatar: {str(e)}"
         )
+
+
+@frontend_router.get("/getSortedArtistAlbums")
+def get_sorted_artist_albums(
+    id: int,
+    size: int = 10,
+    offset: int = 0,
+    session: Session = Depends(db.get_session),
+):
+    album_service = service_layer.AlbumService(session)
+    sortedAlbums = album_service.get_sorted_artist_albums(id, size, offset)
+
+    rsp = SubsonicResponse()
+    rsp.data["sortedAlbums"] = sortedAlbums
+    return rsp.to_json_rsp()

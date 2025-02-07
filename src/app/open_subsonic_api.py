@@ -6,25 +6,13 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from src.app.subsonic_response import SubsonicResponse
+
 from . import database as db
 from . import service_layer
 from . import db_loading
 
 open_subsonic_router = APIRouter(prefix="/rest")
-
-
-class SubsonicResponse:
-    def __init__(self):
-        self.data = {
-            "status": "ok",
-            "version": "1.16.1",
-            "type": "MusicRitmo",
-            "serverVersion": "0.1",
-            "openSubsonic": True,
-        }
-
-    def to_json_rsp(self) -> JSONResponse:
-        return JSONResponse({"subsonic-response": self.data})
 
 
 class SubsonicTrack(BaseModel):
