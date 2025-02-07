@@ -122,7 +122,7 @@ async def change_password(
         return JSONResponse({"detail": "User not found"}, status_code=404)
     rsp = SubsonicResponse()
     if user.login != current_user.login:
-        rsp.data["error"] = {"code": 50, "message": "The user can only change his password"}
+        rsp.set_error(50, "The user can only change his password")
     else:
         user.password = password
         session.commit()
