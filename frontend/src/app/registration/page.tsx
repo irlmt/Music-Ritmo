@@ -24,8 +24,8 @@ export default function Registration() {
           link_arrow="/login"
         >
           <h2 className={styles.registration__content__title}>Регистрация</h2>
-          <Input type="text" placeholder="введите логин" maxLength={64} />
-          <Input type="text" placeholder="введите пароль" maxLength={64} />
+          <Input type="text" placeholder="введите логин" />
+          <Input type="text" placeholder="введите пароль" />
           <div className={styles.registration__content_button}>
             <Button
               type="normal"
