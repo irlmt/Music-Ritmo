@@ -1,8 +1,4 @@
 import asyncio
-from fastapi.responses import JSONResponse
-from starlette.requests import Request
-from sqlmodel import Session, select
-from . import database as db
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .open_subsonic_api import open_subsonic_router
