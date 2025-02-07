@@ -1,49 +1,5 @@
-.media_input {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  padding: 0 30px;
-  border-radius: 20px;
-  color: #405a01;
-  background-color: #fbfbfb;
-  border: 1px solid #758934;
-  font-family: "SteticaLight", sans-serif;
-  font-size: 18px;
+.message {
   text-align: center;
-  cursor: pointer;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-  margin-bottom: 15px;
-}
-
-.media_input:hover {
-  background-color: #b0c586;
-  border-color: #4c7e27;
-}
-
-.media_input:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(84, 136, 29, 0.5);
-}
-
-/* Стиль для пути к файлу */
-.file_path {
-  margin-top: 10px;
-  font-size: 16px;
-  color: #3c3c3c;
-  font-family: "SteticaLight", sans-serif;
-}
-
-/* Стиль для ошибки */
-.file_error {
-  margin-top: 10px;
-  font-size: 16px;
-  color: #ff4d4d; /* Красный для ошибок */
-  font-family: "SteticaLight", sans-serif;
-}
-
-/* Дополнительный стиль для кнопки, если она задизейблена */
-.button:disabled {
-  background-color: #d3d3d3;
-  cursor: not-allowed;
+  color: #405a01;
+  font-family: "SteticaMedium";
 }
