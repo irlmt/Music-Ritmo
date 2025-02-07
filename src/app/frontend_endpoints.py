@@ -48,3 +48,24 @@ def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     return Response(content=track.cover, media_type=f"image/{track.cover_type}")
+
+
+@frontend_router.get("/getTags")
+def get_tags(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    
+    album_artist = ""
+    if track.album_artist_id is not None:
+        album_artist = session.exec(select(db.Artist).where(db.Artist.id == track.album_artist_id)).one_or_none().name
+
+    return JSONResponse({
+        "title": track.title,
+        "artists": ", ".join(artist.name for artist in track.artists),
+        "album_artist": album_artist,
+        "album": track.album.name,
+        "album_position": track.album_position,
+        "year": track.year,
+        "genres": ", ".join(genre.name for genre in track.genres),
+    })
