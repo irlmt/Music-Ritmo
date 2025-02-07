@@ -38,7 +38,8 @@ class AudioInfo:
         genres: list[str],
         track_number: int | None,
         year: int | None,
-        cover: bytes | None,
+        cover: bytes,
+        cover_type: str,
         bit_rate: int,
         bits_per_sample: int,
         sample_rate: int,
@@ -56,6 +57,7 @@ class AudioInfo:
         self.track_number = track_number
         self.year = year
         self.cover = cover
+        self.cover_type = cover_type
         self.bit_rate = bit_rate
         self.bits_per_sample = bits_per_sample
         self.sample_rate = sample_rate
@@ -65,6 +67,7 @@ class AudioInfo:
 
 def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
+    cover, cover_type = get_cover_preview(get_cover_from_mp3(audio_file))
     return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
@@ -94,7 +97,8 @@ def extract_metadata_mp3(file_path):
             int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None
         ),
         year=int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
-        cover=get_cover_preview(get_cover_from_mp3(audio_file)),
+        cover=cover,
+        cover_type=cover_type,
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=int(
             audio_file.info.bitrate
@@ -108,6 +112,7 @@ def extract_metadata_mp3(file_path):
 
 def extract_metadata_flac(file_path):
     audio_file = FLAC(file_path)
+    cover, cover_type = get_cover_preview(get_cover_from_flac(audio_file))
     return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
@@ -139,7 +144,8 @@ def extract_metadata_flac(file_path):
             else None
         ),
         year=int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
-        cover=get_cover_preview(get_cover_from_flac(audio_file)),
+        cover=cover,
+        cover_type=cover_type,
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=audio_file.info.bits_per_sample,
         sample_rate=audio_file.info.sample_rate,
@@ -248,6 +254,7 @@ def load_audio_data(audio: AudioInfo):
                 year=audio.year,
                 plays_count=0,
                 cover=audio.cover,
+                cover_type=audio.cover_type,
                 bit_rate=audio.bit_rate,
                 bits_per_sample=audio.bits_per_sample,
                 sample_rate=audio.sample_rate,

@@ -2,15 +2,18 @@ from typing import Optional, List
 import asyncio
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from src.app.subsonic_response import SubsonicResponse
+from PIL import Image
 
 from . import database as db
 from . import service_layer
+from . import db_helpers
 from . import db_loading
+from . import utils
 
 open_subsonic_router = APIRouter(prefix="/rest")
 
@@ -455,3 +458,49 @@ def get_music_folders():
     rsp = SubsonicResponse()
     rsp.data["musicFolders"] = {"musicFolder": [{"id": 1, "name": "tracks"}]}
     return rsp.to_json_rsp()
+
+@open_subsonic_router.get("/getCoverArt")
+def get_cover_art(id: str, size: int | None = None,
+            session: Session = Depends(db.get_session)):
+    image_bytes: bytes | None = None
+
+    prefix, parsed_id = id.split("-")
+    if prefix == "mf":
+        track = session.exec(select(db.Track).where(db.Track.id == parsed_id)).one_or_none()
+        if track is None:
+            return JSONResponse({"detail": "No such track id"}, status_code=404)
+        image_bytes = utils.get_cover_art(track)
+
+    elif prefix == "al":
+        album = session.exec(select(db.Album).where(db.Album.id == parsed_id)).one_or_none()
+        if album is None:
+            return JSONResponse({"detail": "No such album id"}, status_code=404)
+        
+        album_helpers = db_helpers.AlbumDBHelper(session)
+        track = album_helpers.get_first_track(album.id)
+        if track is None:
+            return JSONResponse({"detail": "No such track id"}, status_code=404)
+        image_bytes = utils.get_cover_art(track)
+        
+    elif prefix == "ar":
+        artist = session.exec(select(db.Artist).where(db.Artist.id == parsed_id)).one_or_none()
+        if artist is None:
+            return JSONResponse({"detail": "No such artist id"}, status_code=404)
+        
+    else:
+        return JSONResponse({"detail": "No such prefix"}, status_code=404)
+
+    image: Image.Image
+    if image_bytes is None:
+        image = utils.get_default_cover()
+        image_bytes = utils.image_to_bytes(image)
+    else:
+        image = utils.bytes_to_image(image_bytes)
+
+    if size is not None:
+        if size <= 0:
+            return JSONResponse({"detail": "Invalid size"}, status_code=400)
+        image.thumbnail((size, size))
+        image_bytes = utils.image_to_bytes(image)
+    
+    return Response(content=image_bytes, media_type=f"image/{image.format.lower()}")
