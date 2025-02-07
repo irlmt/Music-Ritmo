@@ -10,7 +10,7 @@ from . import db_helpers
 
 
 def parse_val(rsp: dict, attr: str, val: Any) -> None:
-    if val is not None or val != "":
+    if val is not None and val != "":
         rsp[attr] = val
 
 
@@ -55,6 +55,7 @@ class AlbumService:
             "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
         }
         parse_val(res_album, "year", album.year)
+
         if len(album.album_favourites) > 0:
             res_album["starred"] = min(a.added_at for a in album.album_favourites)
         if with_songs:
@@ -155,13 +156,13 @@ class TrackService:
             "path": track.file_path,
             "playCount": track.plays_count,
             "discNumber": 1,
-            "created": track.year,
             "albumId": track.album_id,
             "artistId": track.artists[0].id if len(track.artists) > 0 else -1,
             "type": track.type,
             "isVideo": False,
         }
         parse_val(res_song, "year", track.year)
+        parse_val(res_song, "created", track.year)
         if len(track.track_favourites) > 0:
             res_song["starred"] = min(t.added_at for t in track.track_favourites)
         if with_genres:
