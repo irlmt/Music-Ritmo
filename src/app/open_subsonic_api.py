@@ -433,10 +433,11 @@ def star(
     albumId: List[int] = Query(default=[]),
     artistId: List[int] = Query(default=[]),
     playlistId: List[int] = Query(default=[]),
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.star(id, albumId, artistId, playlistId)
+    service.star(id, albumId, artistId, playlistId, current_user.id)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -447,10 +448,11 @@ def unstar(
     albumId: List[int] = Query(default=[]),
     artistId: List[int] = Query(default=[]),
     playlistId: List[int] = Query(default=[]),
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.unstar(id, albumId, artistId, playlistId)
+    service.unstar(id, albumId, artistId, playlistId, current_user.id)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -458,10 +460,11 @@ def unstar(
 @open_subsonic_router.get("/getStarred")
 def get_starred(
     musicFolderId: int = 0,
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    starred = service.get_starred()
+    starred = service.get_starred(current_user.id)
     rsp = SubsonicResponse()
     rsp.data["starred"] = starred
     return rsp.to_json_rsp()
@@ -470,10 +473,11 @@ def get_starred(
 @open_subsonic_router.get("/getStarred2")
 def get_starred2(
     musicFolderId: int = 0,
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    starred = service.get_starred()
+    starred = service.get_starred(current_user.id)
     rsp = SubsonicResponse()
     rsp.data["starred2"] = starred
     return rsp.to_json_rsp()
