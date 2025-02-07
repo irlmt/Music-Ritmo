@@ -9,8 +9,6 @@ from src.app.subsonic_response import SubsonicResponse
 from . import database as db
 from . import service_layer
 
-from . import database as db
-
 frontend_router = APIRouter(prefix='/specific')
 
 
@@ -44,7 +42,7 @@ def get_sorted_artist_albums(
 
     
 @frontend_router.get("/getCoverArtPreview")
-def getCoverArtPreview(id: int, session: Session = Depends(db.get_session)):
+def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)

@@ -11,6 +11,7 @@ from PIL import Image
 
 from . import database as db
 from . import service_layer
+from . import db_helpers
 from . import db_loading
 from . import utils
 
@@ -459,13 +460,36 @@ def get_music_folders():
     return rsp.to_json_rsp()
 
 @open_subsonic_router.get("/getCoverArt")
-def getCoverArt(id: int, size: int | None = None,
+def get_cover_art(id: str, size: int | None = None,
             session: Session = Depends(db.get_session)):
-    track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
-    if track is None:
-        return JSONResponse({"detail": "No such id"}, status_code=404)
+    image_bytes: bytes | None = None
 
-    image_bytes = utils.get_cover_art(track)
+    prefix, parsed_id = id.split("-")
+    if prefix == "mf":
+        track = session.exec(select(db.Track).where(db.Track.id == parsed_id)).one_or_none()
+        if track is None:
+            return JSONResponse({"detail": "No such track id"}, status_code=404)
+        image_bytes = utils.get_cover_art(track)
+
+    elif prefix == "al":
+        album = session.exec(select(db.Album).where(db.Album.id == parsed_id)).one_or_none()
+        if album is None:
+            return JSONResponse({"detail": "No such album id"}, status_code=404)
+        
+        album_helpers = db_helpers.AlbumDBHelper(session)
+        track = album_helpers.get_first_track(album.id)
+        if track is None:
+            return JSONResponse({"detail": "No such track id"}, status_code=404)
+        image_bytes = utils.get_cover_art(track)
+        
+    elif prefix == "ar":
+        artist = session.exec(select(db.Artist).where(db.Artist.id == parsed_id)).one_or_none()
+        if artist is None:
+            return JSONResponse({"detail": "No such artist id"}, status_code=404)
+        
+    else:
+        return JSONResponse({"detail": "No such prefix"}, status_code=404)
+
     image: Image.Image
     if image_bytes is None:
         image = utils.get_default_cover()
