@@ -569,34 +569,42 @@ def get_music_folders():
     rsp.data["musicFolders"] = {"musicFolder": [{"id": 1, "name": "tracks"}]}
     return rsp.to_json_rsp()
 
+
 @open_subsonic_router.get("/getCoverArt")
-def get_cover_art(id: str, size: int | None = None,
-            session: Session = Depends(db.get_session)):
+def get_cover_art(
+    id: str, size: int | None = None, session: Session = Depends(db.get_session)
+):
     image_bytes: bytes | None = None
 
     prefix, parsed_id = id.split("-")
     if prefix == "mf":
-        track = session.exec(select(db.Track).where(db.Track.id == parsed_id)).one_or_none()
+        track = session.exec(
+            select(db.Track).where(db.Track.id == parsed_id)
+        ).one_or_none()
         if track is None:
             return JSONResponse({"detail": "No such track id"}, status_code=404)
         image_bytes = utils.get_cover_art(track)
 
     elif prefix == "al":
-        album = session.exec(select(db.Album).where(db.Album.id == parsed_id)).one_or_none()
+        album = session.exec(
+            select(db.Album).where(db.Album.id == parsed_id)
+        ).one_or_none()
         if album is None:
             return JSONResponse({"detail": "No such album id"}, status_code=404)
-        
+
         album_helpers = db_helpers.AlbumDBHelper(session)
         track = album_helpers.get_first_track(album.id)
         if track is None:
             return JSONResponse({"detail": "No such track id"}, status_code=404)
         image_bytes = utils.get_cover_art(track)
-        
+
     elif prefix == "ar":
-        artist = session.exec(select(db.Artist).where(db.Artist.id == parsed_id)).one_or_none()
+        artist = session.exec(
+            select(db.Artist).where(db.Artist.id == parsed_id)
+        ).one_or_none()
         if artist is None:
             return JSONResponse({"detail": "No such artist id"}, status_code=404)
-        
+
     else:
         return JSONResponse({"detail": "No such prefix"}, status_code=404)
 
@@ -612,5 +620,5 @@ def get_cover_art(id: str, size: int | None = None,
             return JSONResponse({"detail": "Invalid size"}, status_code=400)
         image.thumbnail((size, size))
         image_bytes = utils.image_to_bytes(image)
-    
+
     return Response(content=image_bytes, media_type=f"image/{image.format.lower()}")
