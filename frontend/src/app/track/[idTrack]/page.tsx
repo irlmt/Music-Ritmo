@@ -1,32 +1,169 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Container } from "@/shared/container";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import styles from "./track.module.css";
 
 interface TrackData {
   title: string;
   artist: string;
+  artistId: string;
   genre: string;
 }
 
+interface PlaylistType {
+  id: string;
+  name: string;
+  owner: string;
+  public: boolean;
+  created: string;
+  changed: string;
+  songCount: number;
+  duration: number;
+}
+
+const Modal = ({
+  onClose,
+  trackId,
+}: {
+  onClose: () => void;
+  trackId: number;
+}) => {
+  const [playlists, setPlaylists] = useState<PlaylistType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      try {
+        const userLogin = "test_user";
+        const response = await fetch(
+          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+        );
+        const data = await response.json();
+
+        if (data["subsonic-response"].status === "ok") {
+          const fetchedPlaylists = data["subsonic-response"].playlists.playlist;
+          if (fetchedPlaylists.length === 0) {
+            setError("У вас нет плейлистов");
+          } else {
+            setPlaylists(fetchedPlaylists);
+            setError(null);
+          }
+        } else {
+          setError("Не удалось загрузить плейлисты");
+        }
+      } catch {
+        setError("Произошла ошибка при получении плейлистов");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlaylists();
+  }, []);
+
+  const addTrackToPlaylist = async (
+    playlistId: string,
+    playlistName: string
+  ) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIdToAdd=${trackId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+      const data = await response.json();
+      console.log(data);
+
+      if (data["subsonic-response"].status === "ok") {
+        setSuccessMessage(`Трек успешно добавлен в плейлист "${playlistName}"`);
+      } else {
+        setError("Не удалось добавить трек в плейлист");
+      }
+    } catch (error) {
+      console.error("Ошибка при добавлении трека в плейлист:", error);
+      setError("Произошла ошибка при добавлении трека в плейлист");
+    }
+  };
+
+  const colorOptions = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
+
+  const getRandomColor = (colors: string[]): string => {
+    const randomIndex = Math.floor(Math.random() * colors.length);
+    return colors[randomIndex];
+  };
+
+  return (
+    <div className={styles.modal}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h2>
+            Выберите плейлист
+            {successMessage && (
+              <p className={styles.successMessage}>{successMessage}</p>
+            )}
+          </h2>
+
+          <button onClick={onClose} className={styles.closeButton}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div className={styles.playlists}>
+          {loading && <div>Загрузка плейлистов...</div>}
+          {error && <div className={styles.message}>{error}</div>}
+          {!loading &&
+            !error &&
+            playlists.length > 0 &&
+            playlists.map((playlist) => (
+              <div
+                key={playlist.id}
+                className={styles.playlistItem}
+                style={{ backgroundColor: getRandomColor(colorOptions) }}
+                onClick={() => addTrackToPlaylist(playlist.id, playlist.name)}
+              >
+                <div className={styles.playlistItem__name}>{playlist.name}</div>
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function PlayedTrack() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [trackId, setTrackId] = useState<number>(0);
+
+  const toggleModal = () => {
+    setIsModalOpen((prev) => !prev);
+  };
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFavourite, setIsFavourite] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRotateRight, setIsRotateRight] = useState(false);
+  const [isRightLong, setIsRightLong] = useState(true);
+
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [randomColor, setRandomColor] = useState<string>("");
   const [audioUrl, setAudioUrl] = useState<string>("");
-  const [trackId, setTrackId] = useState<number>(1);
   const [trackData, setTrackData] = useState<TrackData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const totalTracks = 6;
 
   useEffect(() => {
     const idFromUrl = pathname?.split("/")[2];
@@ -74,21 +211,23 @@ export default function PlayedTrack() {
           setTrackData({
             title: track.title || "Неизвестное название",
             artist: track.artist || "Неизвестный автор",
+            artistId: track.artistId || "Неизвестный id автора",
             genre: track.genre || "Неизвестный жанр",
           });
         } else {
-          console.error("Данные о треке не найдены:", data);
           setTrackData({
             title: "Неизвестное название",
             artist: "Неизвестный автор",
+            artistId: "Неизвестный id автора",
             genre: "Неизвестный жанр",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error("Ошибка при загрузке данных о треке:", error);
         setTrackData({
           title: "Неизвестное название",
           artist: "Неизвестный автор",
+          artistId: "Неизвестный id автора",
           genre: "Неизвестный жанр",
         });
       } finally {
@@ -134,14 +273,113 @@ export default function PlayedTrack() {
   };
 
   const handleForward = () => {
-    const nextTrackId = trackId + 1;
-    setTrackId(nextTrackId);
-    router.push(`/track/${nextTrackId}`);
+    switch (true) {
+      case isRepeat:
+        if (trackId < totalTracks) {
+          setTrackId(trackId + 1);
+          router.push(`/track/${trackId + 1}`);
+        } else {
+          setTrackId(1);
+          router.push(`/track/1`);
+        }
+        break;
+
+      case isShuffle:
+        const randomTrackId = Math.floor(Math.random() * totalTracks) + 1;
+        setTrackId(randomTrackId);
+        router.push(`/track/${randomTrackId}`);
+        break;
+
+      case isRotateRight:
+        setTrackId(trackId);
+        break;
+
+      case isRightLong:
+        if (trackId < totalTracks) {
+          setTrackId(trackId + 1);
+          router.push(`/track/${trackId + 1}`);
+        }
+        break;
+    }
   };
 
   const handleBackward = () => {
-    router.back();
+    switch (true) {
+      case isRepeat:
+        if (trackId > 1) {
+          setTrackId(trackId - 1);
+          router.push(`/track/${trackId - 1}`);
+        } else {
+          setTrackId(totalTracks);
+          router.push(`/track/${totalTracks}`);
+        }
+        break;
+
+      case isShuffle:
+        const randomTrackId = Math.floor(Math.random() * totalTracks) + 1;
+        setTrackId(randomTrackId);
+        router.push(`/track/${randomTrackId}`);
+        break;
+
+      case isRotateRight:
+        setTrackId(trackId);
+        break;
+
+      case isRightLong:
+        if (trackId > 1) {
+          setTrackId(trackId - 1);
+          router.push(`/track/${trackId - 1}`);
+        }
+        break;
+    }
   };
+
+  const handleChangeMode = () => {
+    let newRepeat = isRepeat;
+    let newShuffle = isShuffle;
+    let newRotateRight = isRotateRight;
+    let newRightLong = isRightLong;
+
+    if (isRepeat) {
+      newRepeat = false;
+      newShuffle = true;
+    } else if (isShuffle) {
+      newShuffle = false;
+      newRotateRight = true;
+    } else if (isRotateRight) {
+      newRotateRight = false;
+      newRightLong = true;
+    } else if (isRightLong) {
+      newRightLong = false;
+      newRepeat = true;
+    }
+
+    setIsRepeat(newRepeat);
+    setIsShuffle(newShuffle);
+    setIsRotateRight(newRotateRight);
+    setIsRightLong(newRightLong);
+
+    localStorage.setItem(
+      "playbackModes",
+      JSON.stringify({
+        isRepeat: newRepeat,
+        isShuffle: newShuffle,
+        isRotateRight: newRotateRight,
+        isRightLong: newRightLong,
+      })
+    );
+  };
+
+  useEffect(() => {
+    const savedModes = localStorage.getItem("playbackModes");
+    if (savedModes) {
+      const parsedModes = JSON.parse(savedModes);
+      setIsRepeat(parsedModes.isRepeat);
+      setIsShuffle(parsedModes.isShuffle);
+      setIsRotateRight(parsedModes.isRotateRight);
+      setIsRightLong(parsedModes.isRightLong);
+    }
+  }, []);
 
   if (isLoading) {
     return <div>Загрузка...</div>;
@@ -170,7 +408,7 @@ export default function PlayedTrack() {
             {trackData ? trackData.title : "Загрузка названия трека..."}
           </h2>
           <Link
-            href={`/artist/${trackData?.artist}`}
+            href={`/artist/${trackData?.artistId}`}
             className={styles.track__artist}
           >
             <p className={styles.track__artist}>
@@ -204,7 +442,25 @@ export default function PlayedTrack() {
         </div>
 
         <div className={styles.track__controls}>
-          <i className={`fa-solid fa-repeat ${styles.track__controlIcon}`}></i>
+          <div onClick={handleChangeMode}>
+            {isRepeat ? (
+              <i
+                className={`fa-solid fa-repeat ${styles.track__controlIcon}`}
+              ></i>
+            ) : isShuffle ? (
+              <i
+                className={`fa-solid fa-shuffle ${styles.track__controlIcon}`}
+              ></i>
+            ) : isRotateRight ? (
+              <i
+                className={`fa-solid fa-arrow-rotate-right ${styles.track__controlIcon}`}
+              ></i>
+            ) : isRightLong ? (
+              <i
+                className={`fa-solid fa-arrow-right-long ${styles.track__controlIcon}`}
+              ></i>
+            ) : null}
+          </div>
 
           <i
             className={`fa-solid fa-backward ${styles.track__controlIcon}`}
@@ -242,9 +498,10 @@ export default function PlayedTrack() {
         </div>
 
         <div className={styles.track__controls}>
-          <Link href="/select-playlist">
-            <i className={`fa-solid fa-share ${styles.track__controlIcon}`}></i>
-          </Link>
+          <i
+            className={`fa-solid fa-share ${styles.track__controlIcon}`}
+            onClick={toggleModal}
+          ></i>
           <i className={`fa-solid fa-list-ul ${styles.track__controlIcon}`}></i>
         </div>
       </Container>
@@ -254,9 +511,22 @@ export default function PlayedTrack() {
           ref={audioRef}
           src={audioUrl}
           onTimeUpdate={handleTimeUpdate}
-          onEnded={() => setIsPlaying(false)}
+          onLoadedMetadata={() => {
+            if (audioRef.current) {
+              setDuration(audioRef.current.duration);
+            }
+          }}
+          onEnded={() => {
+            if (isRepeat) {
+              handleForward();
+            } else {
+              setIsPlaying(false);
+            }
+          }}
         />
       )}
+
+      {isModalOpen && <Modal onClose={toggleModal} trackId={trackId} />}
     </div>
   );
 }

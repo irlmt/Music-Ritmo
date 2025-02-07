@@ -4,7 +4,7 @@ import styles from "./playlist.module.css";
 
 interface PlaylistProps {
   name: string;
-  link: string;
+  link?: string;
   showDelete: boolean;
   playlist_id?: string;
   onDelete?: (id: string) => void;
