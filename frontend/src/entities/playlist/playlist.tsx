@@ -6,8 +6,8 @@ interface PlaylistProps {
   name: string;
   link: string;
   showDelete: boolean;
-  playlist_id: string;
-  onDelete: (id: string) => void;
+  playlist_id?: string;
+  onDelete?: (id: string) => void;
 }
 
 export const Playlist = ({
@@ -36,6 +36,11 @@ export const Playlist = ({
   };
 
   const handleDeleteConfirm = async () => {
+    if (!playlist_id) {
+      setDeleteStatus("Не удалось найти идентификатор плейлиста");
+      return;
+    }
+
     try {
       const response = await fetch(
         `http://localhost:8000/rest/deletePlaylist?id=${playlist_id}`
@@ -44,7 +49,11 @@ export const Playlist = ({
 
       if (data["subsonic-response"]?.status === "ok") {
         setDeleteStatus("Плейлист успешно удален!");
-        onDelete(playlist_id);
+
+        if (onDelete) {
+          onDelete(playlist_id);
+        }
+
         setTimeout(() => setShowModal(false), 2000);
       } else {
         setDeleteStatus("Ошибка при удалении плейлиста");
