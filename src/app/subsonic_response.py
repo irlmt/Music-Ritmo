@@ -11,5 +11,9 @@ class SubsonicResponse:
             "openSubsonic": True,
         }
 
+    def set_error(self, code: int, message: str):
+        self.data["status"] = "failed"
+        self.data["error"] = {"code": code, "message": message}
+
     def to_json_rsp(self) -> JSONResponse:
         return JSONResponse({"subsonic-response": self.data})
