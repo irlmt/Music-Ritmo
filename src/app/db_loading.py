@@ -15,7 +15,7 @@ from .utils import get_cover_from_mp3, get_cover_from_flac, get_cover_preview
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-scanStatus = { "scanning": True, "count": 0 }
+scanStatus = {"scanning": True, "count": 0}
 
 
 class UnknownTag(StrEnum):
@@ -73,7 +73,9 @@ def extract_metadata_mp3(file_path):
         file_size=os.path.getsize(file_path),
         type="audio/mpeg",
         title=(
-            str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else Path(file_path).stem
+            str(audio_file["TIT2"])
+            if "TIT2" in audio_file.tags
+            else Path(file_path).stem
         ),
         artists=(
             str(audio_file["TPE1"]).split(", ")
@@ -86,7 +88,9 @@ def extract_metadata_mp3(file_path):
             else None
         ),
         album=(
-            str(audio_file["TALB"]) if "TALB" in audio_file.tags else "Неизвестный альбом"
+            str(audio_file["TALB"])
+            if "TALB" in audio_file.tags
+            else "Неизвестный альбом"
         ),
         genres=(
             re.split(", |; |\\ ", audio_file["TCON"])
@@ -118,7 +122,7 @@ def extract_metadata_flac(file_path):
         file_size=os.path.getsize(file_path),
         type="audio/flac",
         title=(
-        str(audio_file["TITLE"][0])
+            str(audio_file["TITLE"][0])
             if "TITLE" in audio_file.tags
             else Path(file_path).stem
         ),
@@ -131,15 +135,13 @@ def extract_metadata_flac(file_path):
             audio_file["ALBUMARTIST"][0] if "ALBUMARTIST" in audio_file.tags else None
         ),
         album=(
-        str(audio_file["ALBUM"][0])
+            str(audio_file["ALBUM"][0])
             if "ALBUM" in audio_file.tags
             else "Неизвестный альбом"
         ),
-        genres=(
-            audio_file["GENRE"] if "GENRE" in audio_file.tags else []
-        ),
+        genres=(audio_file["GENRE"] if "GENRE" in audio_file.tags else []),
         track_number=(
-        int(str(audio_file["TRACKNUMBER"][0]))
+            int(str(audio_file["TRACKNUMBER"][0]))
             if "TRACKNUMBER" in audio_file.tags
             else None
         ),
@@ -195,7 +197,9 @@ def load_audio_data(audio: AudioInfo):
         album_artists = []
         album_artist_id: int | None = None
         if audio.album_artist is not None and audio.album_artist != "Various Artists":
-            album_artist = session.exec(select(db.Artist).where(db.Artist.name == audio.album_artist)).one_or_none()
+            album_artist = session.exec(
+                select(db.Artist).where(db.Artist.name == audio.album_artist)
+            ).one_or_none()
             if album_artist is None:
                 album_artist = db.Artist(name=audio.album_artist)
                 session.add(album_artist)
@@ -231,7 +235,9 @@ def load_audio_data(audio: AudioInfo):
 
         genres = []
         for name in audio.genres:
-            genre = session.exec(select(db.Genre).where(db.Genre.name == name)).one_or_none()
+            genre = session.exec(
+                select(db.Genre).where(db.Genre.name == name)
+            ).one_or_none()
             if genre is None:
                 genre = db.Genre(name=name)
                 session.add(genre)
