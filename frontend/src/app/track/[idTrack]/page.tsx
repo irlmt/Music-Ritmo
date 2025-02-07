@@ -157,7 +157,7 @@ export default function PlayedTrack() {
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [audioUrl] = useState<string>("");
+  const [audioUrl, setAudioUrl] = useState<string>("");
   const [trackData, setTrackData] = useState<TrackData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -174,6 +174,22 @@ export default function PlayedTrack() {
   }, [pathname]);
 
   useEffect(() => {
+    const fetchTrack = async (id: number) => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/stream?id=${id}`
+        );
+        if (!response.ok) {
+          throw new Error("Ошибка при получении трека");
+        }
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioUrl(audioUrl);
+      } catch (error) {
+        console.error("Ошибка при загрузке трека:", error);
+      }
+    };
+
     const fetchTrackData = async (id: number) => {
       setIsLoading(true);
       try {
@@ -184,6 +200,7 @@ export default function PlayedTrack() {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
+
         const track = data?.["subsonic-response"]?.song;
 
         if (track) {
@@ -194,7 +211,7 @@ export default function PlayedTrack() {
             artist: track.artist || "Неизвестный автор",
             artistId: track.artistId || "Неизвестный id автора",
             genre: track.genre || "Неизвестный жанр",
-            coverArt: track.coverArt,
+            coverArt: track.coverArt || null,
           });
 
           if (track.coverArt) {
@@ -238,6 +255,7 @@ export default function PlayedTrack() {
     };
 
     if (trackId) {
+      fetchTrack(trackId);
       fetchTrackData(trackId);
     }
   }, [trackId]);
