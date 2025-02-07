@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Union, Any
@@ -55,6 +56,7 @@ class AlbumService:
             "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
         }
         parse_val(res_album, "year", album.year)
+        parse_val(res_album, "created", "2999-31-12T11:06:57.000Z")
 
         if len(album.album_favourites) > 0:
             res_album["starred"] = min(a.added_at for a in album.album_favourites)
@@ -148,7 +150,7 @@ class TrackService:
             "size": track.file_size,
             "contentType": track.type,
             "suffix": "mp3",
-            "duration": track.duration,
+            "duration": int(track.duration),
             "bitRate": track.bit_rate,
             "bitDepth": track.bits_per_sample,
             "samplingRate": track.sample_rate,
@@ -162,7 +164,7 @@ class TrackService:
             "isVideo": False,
         }
         parse_val(res_song, "year", track.year)
-        parse_val(res_song, "created", track.year)
+        parse_val(res_song, "created", "2999-31-12T11:06:57.000Z")
         if len(track.track_favourites) > 0:
             res_song["starred"] = min(t.added_at for t in track.track_favourites)
         if with_genres:
