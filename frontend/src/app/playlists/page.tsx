@@ -92,11 +92,14 @@ export default function Playlists() {
         </div>
       </Container>
 
+      {playlists.length >= 30 && (
+        <div className={styles.message_more}>Слишком много плейлистов</div>
+      )}
       <div className={styles.playlists_button}>
         <Button
           type="normal"
           color="green"
-          disabled={false}
+          disabled={playlists.length >= 30}
           onClick={() => {
             router.push("/create-playlist");
           }}

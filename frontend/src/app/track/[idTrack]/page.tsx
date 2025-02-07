@@ -268,8 +268,22 @@ export default function PlayedTrack() {
     }
   };
 
-  const handleFavouriteToggle = () => {
-    setIsFavourite(!isFavourite);
+  const handleFavouriteToggle = async () => {
+    const action = isFavourite ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data["subsonic-response"].status === "ok") {
+        setIsFavourite(!isFavourite);
+      } else {
+        alert("Ошибка при изменении статуса избранного");
+      }
+    } catch (error) {
+      console.error("Ошибка при изменении статуса избранного:", error);
+      alert("Произошла ошибка при изменении статуса избранного");
+    }
   };
 
   const handleForward = () => {

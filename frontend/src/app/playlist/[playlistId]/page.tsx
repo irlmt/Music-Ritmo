@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Container } from "@/shared/container";
-import { Button } from "@/shared/button";
 import { useState, useEffect } from "react";
-import { Tracklist } from "@/widgets/track-list";
+import { Container } from "@/shared/container";
+import { Input } from "@/shared/input";
+import { Button } from "@/shared/button";
 import styles from "./playlist.module.css";
+import { Tracklist } from "@/widgets/track-list";
 import { useParams } from "next/navigation";
 
 interface Track {
@@ -24,26 +24,28 @@ interface Playlist {
 }
 
 export default function Playlist() {
-  const router = useRouter();
   const { playlistId } = useParams();
   const [playlistData, setPlaylistData] = useState<Playlist | null>(null);
+  const [isFavourite, setIsFavourite] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [playlistName, setPlaylistName] = useState<string>("");
+  const [existingPlaylists, setExistingPlaylists] = useState<string[]>([]);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [trackToRemove, setTrackToRemove] = useState<number | null>(null);
+  const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+  const [renameSuccess, setRenameSuccess] = useState(false);
 
   useEffect(() => {
-    if (!playlistId) return;
-
     const fetchPlaylistData = async () => {
+      if (!playlistId) return;
+
       try {
         const response = await fetch(
           `http://localhost:8000/rest/getPlaylist?id=${playlistId}`
         );
         const data = await response.json();
 
-        console.log("Ответ от бека:", data);
-
-        if (
-          data["subsonic-response"] &&
-          data["subsonic-response"].status === "ok"
-        ) {
+        if (data["subsonic-response"]?.status === "ok") {
           const playlist: Playlist = {
             id: data["subsonic-response"].playlist.id,
             name: data["subsonic-response"].playlist.name,
@@ -59,39 +61,135 @@ export default function Playlist() {
             ),
           };
           setPlaylistData(playlist);
-        } else {
-          console.error("Ошибка при получении данных о плейлисте", data);
+          setPlaylistName(playlist.name);
         }
       } catch (error) {
         console.error("Ошибка при запросе:", error);
       }
     };
 
+    const fetchPlaylists = async () => {
+      try {
+        const userLogin = "test_user";
+        const response = await fetch(
+          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+        );
+        const data = await response.json();
+
+        if (data["subsonic-response"].status === "ok") {
+          const fetchedPlaylists: Playlist[] =
+            data["subsonic-response"].playlists.playlist;
+          setExistingPlaylists(
+            fetchedPlaylists.map((playlist) => playlist.name)
+          );
+        }
+      } catch {
+        console.error("Произошла ошибка при загрузке существующих плейлистов");
+      }
+    };
+
     fetchPlaylistData();
+    fetchPlaylists();
   }, [playlistId]);
 
-  const handleRemove = (index: number) => {
-    setPlaylistData((prev: Playlist | null) => {
-      if (prev) {
-        const updatedEntries = prev.entry.filter((_, i) => i !== index);
-        return { ...prev, entry: updatedEntries };
+  const handleFavouriteToggle = async (trackId: string) => {
+    const action = isFavourite ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data["subsonic-response"].status === "ok") {
+        setIsFavourite(!isFavourite);
+      } else {
+        alert("Ошибка при изменении статуса избранного");
       }
-      return prev;
-    });
+    } catch (error) {
+      console.error("Ошибка при изменении статуса избранного:", error);
+      alert("Произошла ошибка при изменении статуса избранного");
+    }
   };
 
-  const handleFavouriteToggle = (index: number) => {
-    setPlaylistData((prev: Playlist | null) => {
-      if (prev) {
-        const updatedEntries = [...prev.entry];
-        updatedEntries[index] = {
-          ...updatedEntries[index],
-          favourite: !updatedEntries[index].favourite,
-        };
-        return { ...prev, entry: updatedEntries };
+  const openModal = () => setIsModalOpen(true);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setPlaylistName(newName);
+
+    if (newName.length < 5) {
+      setNameError("Длина названия должна быть не меньше 5 символов");
+    } else if (newName.length > 64) {
+      setNameError("Длина названия не может превышать 64 символа");
+    } else if (existingPlaylists.includes(newName)) {
+      setNameError("Плейлист с таким названием уже существует");
+    } else {
+      setNameError(null);
+    }
+  };
+
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  const handleSaveChanges = async () => {
+    if (nameError) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&name=${encodeURIComponent(
+          playlistName
+        )}`,
+        { method: "GET" }
+      );
+      const data = await response.json();
+
+      if (data["subsonic-response"].status === "ok") {
+        setRenameSuccess(true);
+      } else {
+        setRenameError("Ошибка при изменении названия плейлиста");
       }
-      return prev;
-    });
+    } catch (error) {
+      console.error("Ошибка при сохранении изменений:", error);
+      setRenameError("Произошла ошибка при изменении названия плейлиста");
+    }
+  };
+
+  const confirmRemoveTrack = async () => {
+    if (trackToRemove === null) return;
+
+    const trackToDelete = playlistData?.entry[trackToRemove];
+    if (!trackToDelete) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIndexToRemove=${trackToRemove}`,
+        { method: "GET" }
+      );
+      const data = await response.json();
+
+      if (data["subsonic-response"].status === "ok") {
+        setPlaylistData((prev) => {
+          if (prev) {
+            const updatedEntries = prev.entry.filter(
+              (track, index) => index !== trackToRemove
+            );
+            return { ...prev, entry: updatedEntries };
+          }
+          return prev;
+        });
+      } else {
+        alert("Ошибка при удалении трека");
+      }
+    } catch (error) {
+      console.error("Ошибка при удалении трека:", error);
+      alert("Произошла ошибка при удалении трека");
+    }
+
+    setIsRemoveModalOpen(false);
+    setTrackToRemove(null);
+  };
+
+  const handleRemoveTrack = (index: number) => {
+    setTrackToRemove(index);
+    setIsRemoveModalOpen(true);
   };
 
   if (!playlistData) {
@@ -109,22 +207,22 @@ export default function Playlist() {
         }}
         direction="column"
         arrow={true}
-        link_arrow="/"
+        link_arrow="/playlists"
       >
         <h1 className={styles.playlist__title}>{playlistData.name}</h1>
         <div className={styles.playlist}>
           {playlistData.entry.map((track, index) => (
             <Tracklist
-              key={index}
+              key={track.id}
               name={track.title}
               name_link={`/track/${track.id}`}
               artist={track.artist}
               artist_link={`/artist/${track.artistId}`}
-              favourite={true}
+              favourite={Boolean(track.favourite)}
               time={track.duration}
-              onRemove={() => handleRemove(index)}
               showRemoveButton={true}
-              onFavouriteToggle={() => handleFavouriteToggle(index)}
+              onRemove={() => handleRemoveTrack(index)}
+              onFavouriteToggle={() => handleFavouriteToggle(track.id)}
             />
           ))}
         </div>
@@ -135,13 +233,84 @@ export default function Playlist() {
           type="normal"
           color="green"
           disabled={false}
-          onClick={() => {
-            router.push("/rename-playlist");
-          }}
+          onClick={openModal}
         >
           редактировать
         </Button>
       </div>
+
+      {isRemoveModalOpen && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent}>
+            <button
+              className={styles.closeButton}
+              onClick={() => setIsRemoveModalOpen(false)}
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+
+            <h2 className={styles.create_playlists__title}>
+              Вы уверены, что хотите удалить этот трек из плейлиста?
+            </h2>
+            {renameError && <div className={styles.error}>{renameError}</div>}
+
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Button type="normal" color="green" onClick={confirmRemoveTrack}>
+                Да
+              </Button>
+              <Button
+                type="normal"
+                color="white"
+                onClick={() => setIsRemoveModalOpen(false)}
+              >
+                Нет
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent}>
+            <button
+              className={styles.closeButton}
+              onClick={() => {
+                setIsModalOpen(false);
+                window.location.reload();
+              }}
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+
+            <h1 className={styles.create_playlists__title}>
+              Изменение названия плейлиста
+            </h1>
+
+            <Input
+              placeholder="Название плейлиста"
+              value={playlistName}
+              onChange={handleNameChange}
+            />
+            {nameError && <div className={styles.error}>{nameError}</div>}
+
+            {renameSuccess && (
+              <div className={styles.success}>Название успешно сохранено</div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Button
+                type="normal"
+                color="green"
+                disabled={Boolean(nameError) || !playlistName}
+                onClick={handleSaveChanges}
+              >
+                сохранить название
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
