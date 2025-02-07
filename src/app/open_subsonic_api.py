@@ -441,3 +441,17 @@ def get_album_list2(
     rsp = SubsonicResponse()
     rsp.data["albumList2"] = albums
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getOpenSubsonicExtensions")
+def get_open_subsonic_extensions():
+    rsp = SubsonicResponse()
+    rsp.data["openSubsonicExtensions"] = []
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getMusicFolders")
+def get_music_folders():
+    rsp = SubsonicResponse()
+    rsp.data["musicFolders"] = {"musicFolder": [{"id": 1, "name": "tracks"}]}
+    return rsp.to_json_rsp()
