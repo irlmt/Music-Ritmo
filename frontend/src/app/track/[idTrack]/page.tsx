@@ -11,6 +11,7 @@ interface TrackData {
   artist: string;
   artistId: string;
   genre: string;
+  coverArt?: string;
 }
 
 interface PlaylistType {
@@ -141,6 +142,7 @@ const Modal = ({
 export default function PlayedTrack() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [trackId, setTrackId] = useState<number>(0);
+  const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
 
   const toggleModal = () => {
     setIsModalOpen((prev) => !prev);
@@ -155,8 +157,7 @@ export default function PlayedTrack() {
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [randomColor, setRandomColor] = useState<string>("");
-  const [audioUrl, setAudioUrl] = useState<string>("");
+  const [audioUrl] = useState<string>("");
   const [trackData, setTrackData] = useState<TrackData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -173,29 +174,6 @@ export default function PlayedTrack() {
   }, [pathname]);
 
   useEffect(() => {
-    const getRandomColor = (): string => {
-      const colors = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
-      const randomIndex = Math.floor(Math.random() * colors.length);
-      return colors[randomIndex];
-    };
-    setRandomColor(getRandomColor());
-
-    const fetchTrack = async (id: number) => {
-      try {
-        const response = await fetch(
-          `http://localhost:8000/rest/stream?id=${id}`
-        );
-        if (!response.ok) {
-          throw new Error("Ошибка при получении трека");
-        }
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setAudioUrl(audioUrl);
-      } catch (error) {
-        console.error("Ошибка при загрузке трека:", error);
-      }
-    };
-
     const fetchTrackData = async (id: number) => {
       setIsLoading(true);
       try {
@@ -206,14 +184,38 @@ export default function PlayedTrack() {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
-        if (data?.["subsonic-response"]?.song) {
-          const track = data["subsonic-response"].song;
+        const track = data?.["subsonic-response"]?.song;
+
+        if (track) {
+          console.log("CoverArt ID from getSong:", track.coverArt);
+
           setTrackData({
             title: track.title || "Неизвестное название",
             artist: track.artist || "Неизвестный автор",
             artistId: track.artistId || "Неизвестный id автора",
             genre: track.genre || "Неизвестный жанр",
+            coverArt: track.coverArt,
           });
+
+          if (track.coverArt) {
+            if (
+              typeof track.coverArt === "string" &&
+              track.coverArt.trim() !== ""
+            ) {
+              const coverArtResponse = await fetch(
+                `http://localhost:8000/rest/getCoverArt?id=${track.coverArt}`
+              );
+              if (coverArtResponse.ok) {
+                const imageBlob = await coverArtResponse.blob();
+                const imageUrl = URL.createObjectURL(imageBlob);
+                setCoverArtUrl(imageUrl);
+              } else {
+                console.error("Cover art not found for ID:", track.coverArt);
+              }
+            } else {
+              console.error("Invalid coverArt ID:", track.coverArt);
+            }
+          }
         } else {
           setTrackData({
             title: "Неизвестное название",
@@ -222,8 +224,8 @@ export default function PlayedTrack() {
             genre: "Неизвестный жанр",
           });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
+        console.error("Error fetching track data:", error);
         setTrackData({
           title: "Неизвестное название",
           artist: "Неизвестный автор",
@@ -236,7 +238,6 @@ export default function PlayedTrack() {
     };
 
     if (trackId) {
-      fetchTrack(trackId);
       fetchTrackData(trackId);
     }
   }, [trackId]);
@@ -414,7 +415,11 @@ export default function PlayedTrack() {
       >
         <div
           className={styles.track__avatar}
-          style={{ backgroundColor: randomColor }}
+          style={{
+            backgroundImage: coverArtUrl ? `url(${coverArtUrl})` : "none",
+            backgroundColor: coverArtUrl ? "transparent" : "gray",
+            backgroundSize: "cover",
+          }}
         ></div>
 
         <div className={styles.track__info}>
