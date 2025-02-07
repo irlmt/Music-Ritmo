@@ -25,3 +25,9 @@
   align-items: center;
   z-index: 10;
 }
+
+.message {
+  font-family: "SteticaMedium";
+  font-size: 16px;
+  color: #758934;
+}

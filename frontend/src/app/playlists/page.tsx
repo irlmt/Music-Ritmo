@@ -1,21 +1,63 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Playlist } from "@/entities/playlist";
 import { Button } from "@/shared/button";
 import styles from "./playlists.module.css";
 
+type PlaylistType = {
+  id: string;
+  name: string;
+  owner: string;
+  public: boolean;
+  created: string;
+  changed: string;
+  songCount: number;
+  duration: number;
+};
+
 export default function Playlists() {
   const router = useRouter();
+  const [playlists, setPlaylists] = useState<PlaylistType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const Playlists = [
-    { name: "Ммтао1", link: "/здфндшые1" },
-    { name: "Ммтао2", link: "/здфндшые2" },
-    { name: "Ммтао3", link: "/здфндшые3" },
-    { name: "Ммтао4", link: "/здфндшые4" },
-    { name: "Ммтао5", link: "/здфндшые5" },
-  ];
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      try {
+        const userLogin = "test_user";
+        const response = await fetch(
+          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+        );
+        const data = await response.json();
+
+        if (data["subsonic-response"].status === "ok") {
+          const fetchedPlaylists = data["subsonic-response"].playlists.playlist;
+
+          if (fetchedPlaylists.length === 0) {
+            setError("У вас нет плейлистов");
+          } else {
+            setPlaylists(fetchedPlaylists);
+            setError(null);
+          }
+        } else {
+          setError("Не удалось загрузить плейлисты");
+        }
+      } catch {
+        setError("Произошла ошибка при получении плейлистов");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlaylists();
+  }, []);
+
+  const handleDelete = (id: string) => {
+    setPlaylists(playlists.filter((playlist) => playlist.id !== id));
+  };
 
   return (
     <>
@@ -31,15 +73,22 @@ export default function Playlists() {
         link_arrow="/"
       >
         <h1 className={styles.playlists__title}>Ваши плейлисты</h1>
+        {error && <div className={styles.message}>{error}</div>}
+
         <div className={styles.playlists}>
-          {Playlists.map((playlist, index) => (
-            <Playlist
-              key={index}
-              name={playlist.name}
-              link={playlist.link}
-              showDelete={true}
-            />
-          ))}
+          {!loading &&
+            !error &&
+            playlists.length > 0 &&
+            playlists.map((playlist) => (
+              <Playlist
+                key={playlist.id}
+                name={playlist.name}
+                link={`/playlist/${playlist.id}`}
+                showDelete={true}
+                playlist_id={playlist.id}
+                onDelete={handleDelete}
+              />
+            ))}
         </div>
       </Container>
 
