@@ -50,22 +50,10 @@ export default function Settings() {
           link_arrow="/login"
         >
           <h2 className={styles.registration__content__title}>Смена логина</h2>
-          <Input type="text" placeholder="введите логин" maxLength={64} />
-          <Input
-            type="password"
-            placeholder="введите старый пароль"
-            maxLength={64}
-          />
-          <Input
-            type="password"
-            placeholder="введите новый пароль"
-            maxLength={64}
-          />
-          <Input
-            type="password"
-            placeholder="введите повторно новый пароль"
-            maxLength={64}
-          />
+          <Input type="text" placeholder="введите логин" />
+          <Input type="password" placeholder="введите старый пароль" />
+          <Input type="password" placeholder="введите новый пароль" />
+          <Input type="password" placeholder="введите повторно новый пароль" />
           <div className={styles.registration__content_button}>
             <Button
               type="normal"
