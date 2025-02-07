@@ -57,7 +57,7 @@ export default function Media() {
           setScanStatus(
             `Сканирование в процессе: найдено ${scanStatusData.count} элементов`
           );
-          setTimeout(checkScanStatus, 2000);
+          setTimeout(checkScanStatus, 50);
         } else {
           setScanStatus("Сканирование завершено успешно!");
           setScanning(false);
