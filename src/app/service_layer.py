@@ -49,9 +49,10 @@ class AlbumService:
                 else "Unknown Artist"
             ),
             "year": album.year,
-            "starred": "",
             "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
         }
+        if len(album.album_favourites) > 0:
+            res_album["starred"] = min(a.added_at for a in album.album_favourites)
         if with_songs:
             tracks = []
             for album_track in album.tracks:
@@ -143,7 +144,6 @@ class TrackService:
             "size": track.file_size,
             "contentType": track.type,
             "suffix": "mp3",
-            "starred": "",
             "duration": track.duration,
             "bitRate": track.bit_rate,
             "bitDepth": track.bits_per_sample,
@@ -158,6 +158,8 @@ class TrackService:
             "type": track.type,
             "isVideo": False,
         }
+        if len(track.track_favourites) > 0:
+            res_song["starred"] = min(t.added_at for t in track.track_favourites)
         if with_genres:
             genres = []
             for genre in track.genres:
@@ -262,8 +264,9 @@ class ArtistService:
             "name": artist.name,
             "coverArt": f"ar-{artist.id}",
             "albumCount": len(artist.albums),
-            "starred": None,
         }
+        if len(artist.artist_favourites) > 0:
+            min(a.added_at for a in artist.artist_favourites)
         if with_albums:
             albums = []
             for i in artist.albums:
