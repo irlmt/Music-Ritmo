@@ -191,7 +191,7 @@ def load_audio_data(audio: AudioInfo):
         if audio.album_artist is not None and audio.album_artist != "Various Artists":
             album_artist = session.exec(select(db.Artist).where(db.Artist.name == audio.album_artist)).one_or_none()
             if album_artist is None:
-                album_artist = db.Artist(name=album_artist)
+                album_artist = db.Artist(name=audio.album_artist)
                 session.add(album_artist)
                 session.commit()
                 session.refresh(album_artist)
