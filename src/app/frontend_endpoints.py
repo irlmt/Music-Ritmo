@@ -1,8 +1,8 @@
 import base64
-
 import python_avatars as pa  # type: ignore
 from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import Session
+from fastapi.responses import JSONResponse, Response
+from sqlmodel import Session, select
 
 from src.app.subsonic_response import SubsonicResponse
 
@@ -39,3 +39,12 @@ def get_sorted_artist_albums(
     rsp = SubsonicResponse()
     rsp.data["sortedAlbums"] = sortedAlbums
     return rsp.to_json_rsp()
+
+    
+@frontend_router.get("/getCoverArtPreview")
+def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+
+    return Response(content=track.cover, media_type=f"image/{track.cover_type}")

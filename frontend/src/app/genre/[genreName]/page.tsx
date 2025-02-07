@@ -19,6 +19,8 @@ interface Track {
 export default function TracksGenre() {
   const { genreName } = useParams();
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [isFavourite, setIsFavourite] = useState(false);
+  const [trackId] = useState<number>(0);
 
   const decodedGenreName =
     typeof genreName === "string" ? decodeURIComponent(genreName) : "";
@@ -66,12 +68,22 @@ export default function TracksGenre() {
     fetchTracks();
   }, [genreName]);
 
-  const handleFavouriteToggle = (index: number) => {
-    setTracks((prevTracks) =>
-      prevTracks.map((track, i) =>
-        i === index ? { ...track, favourite: !track.favourite } : track
-      )
-    );
+  const handleFavouriteToggle = async () => {
+    const action = isFavourite ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data["subsonic-response"].status === "ok") {
+        setIsFavourite(!isFavourite);
+      } else {
+        alert("Ошибка при изменении статуса избранного");
+      }
+    } catch (error) {
+      console.error("Ошибка при изменении статуса избранного:", error);
+      alert("Произошла ошибка при изменении статуса избранного");
+    }
   };
 
   return (
@@ -90,7 +102,7 @@ export default function TracksGenre() {
         <h1 className={styles.playlist__title}>{decodedGenreName}</h1>
         <div className={styles.playlist}>
           {tracks.length > 0 ? (
-            tracks.map((track, index) => (
+            tracks.map((track) => (
               <Tracklist
                 key={track.id}
                 name={track.title}
@@ -100,7 +112,7 @@ export default function TracksGenre() {
                 favourite={track.favourite}
                 time={track.duration}
                 showRemoveButton={false}
-                onFavouriteToggle={() => handleFavouriteToggle(index)}
+                onFavouriteToggle={handleFavouriteToggle}
               />
             ))
           ) : (

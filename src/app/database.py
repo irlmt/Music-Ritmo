@@ -112,10 +112,12 @@ class Track(SQLModel, table=True):
     type: str
     title: str = Field(index=True)
     album_id: int | None = Field(foreign_key="Albums.id")
+    album_artist_id: int | None
     album_position: int | None
     year: str | None
     plays_count: int
-    cover: bytes | None
+    cover: bytes
+    cover_type: str
 
     bit_rate: int
     bits_per_sample: int
@@ -146,11 +148,15 @@ class Artist(SQLModel, table=True):
     )
     artist_favourites: list["FavouriteArtist"] = Relationship(back_populates="artist")
 
+    def __hash__(self):
+        return hash(self.name)
+
 
 class Album(SQLModel, table=True):
     __tablename__ = "Albums"
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
+    album_artist_id: int | None
     total_tracks: int
     year: str | None
     cover: bytes | None

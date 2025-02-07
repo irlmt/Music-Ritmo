@@ -15,7 +15,6 @@ interface InputProps {
   className?: string;
   required?: boolean;
   error?: boolean;
-  maxLength?: number;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -30,7 +29,6 @@ export const Input: React.FC<InputProps> = ({
   className,
   required,
   error,
-  maxLength,
 }) => {
   const inputClassName = classNames(styles.input, className, {
     input_error: error,
@@ -48,7 +46,8 @@ export const Input: React.FC<InputProps> = ({
       onFocus={onFocus}
       disabled={disabled}
       required={required}
-      maxLength={maxLength}
+      maxLength={64}
+      minLength={5}
     />
   );
 };

@@ -25,6 +25,7 @@ interface Album {
 export default function Album() {
   const { albumId } = useParams();
   const [album, setAlbum] = useState<Album | null>(null);
+  const [isFavourite, setIsFavourite] = useState(false);
 
   useEffect(() => {
     if (albumId) {
@@ -84,16 +85,21 @@ export default function Album() {
     }
   }, [albumId]);
 
-  const handleFavouriteToggle = (index: number) => {
-    if (album) {
-      setAlbum((prevAlbum) => {
-        if (!prevAlbum) return null;
+  const handleFavouriteToggle = async (trackId: string) => {
+    const action = isFavourite ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
 
-        const updatedTracks = prevAlbum.tracks.map((track, i) =>
-          i === index ? { ...track, favourite: !track.favourite } : track
-        );
-        return { ...prevAlbum, tracks: updatedTracks };
-      });
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data["subsonic-response"].status === "ok") {
+        setIsFavourite(!isFavourite);
+      } else {
+        alert("Ошибка при изменении статуса избранного");
+      }
+    } catch (error) {
+      console.error("Ошибка при изменении статуса избранного:", error);
+      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 
@@ -117,7 +123,7 @@ export default function Album() {
         <h1 className={styles.playlist__title}>{album.name}</h1>
         <div className={styles.playlist}>
           {album.tracks.length > 0 ? (
-            album.tracks.map((track, index) => (
+            album.tracks.map((track) => (
               <Tracklist
                 key={track.id}
                 name={track.title}
@@ -127,7 +133,7 @@ export default function Album() {
                 favourite={track.favourite}
                 time={track.duration}
                 showRemoveButton={false}
-                onFavouriteToggle={() => handleFavouriteToggle(index)}
+                onFavouriteToggle={() => handleFavouriteToggle(track.id)}
               />
             ))
           ) : (
