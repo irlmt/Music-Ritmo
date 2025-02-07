@@ -27,14 +27,3 @@ scan_and_load()
 app.include_router(open_subsonic_router)
 
 app.include_router(frontend_router)
-
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    session: Session = db.get_session().__next__()
-    login = request.query_params.get("u")
-    password = request.query_params.get("p")
-    user = session.exec(select(db.User).where((db.User.login == login) & (db.User.password == password))).one_or_none()
-    if user is None:
-        return JSONResponse({"detail": "Invalid login or password"}, status_code=401)
-    response = await call_next(request)
-    return response

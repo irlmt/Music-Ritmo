@@ -1,7 +1,7 @@
 from typing import Optional, List
 import asyncio
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -42,6 +42,116 @@ class SubsonicTrack(BaseModel):
     suffix: str = Field(default_factory=str)
     contentType: str = "audio/mpeg"
     path: str = Field(default_factory=str)
+
+
+def authenticate_user(
+    u: str = Query(None),
+    p: str = Query(None),
+    session: Session = Depends(db.get_session),
+) -> db.User:
+    user = session.exec(select(db.User).where(db.User.login == u)).first()
+    if not user or user.password != p:
+        raise HTTPException(status_code=401, detail="Wrong username or password")
+    return user
+
+
+@open_subsonic_router.get("/createUser")
+async def create_user(
+    username: str = Query(...),
+    password: str = Query(...),
+    email: str = Query(default=""),
+    session: Session = Depends(db.get_session),
+):
+    login_exists = session.exec(
+        select(db.User).where(db.User.login == username)
+    ).one_or_none()
+    if login_exists:
+        return JSONResponse({"detail": "Login already exists"}, status_code=400)
+    session.add(db.User(login=username, password=password, avatar=""))
+    session.commit()
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/deleteUser")
+async def delete_user(
+    username: str = Query(...),
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if user:
+        session.delete(user)
+        session.commit()
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/updateUser")
+async def update_user(
+    username: str = Query(...),
+    password: str = "",
+    newUsername: str = "",
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if not user:
+        return JSONResponse({"detail": "User not found"}, status_code=404)
+    if newUsername:
+        user.login = newUsername
+    if password:
+        user.password = password
+    session.commit()
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/changePassword")
+async def change_password(
+    username: str = Query(...),
+    password: str = Query(...),
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if not user:
+        return JSONResponse({"detail": "User not found"}, status_code=404)
+    rsp = SubsonicResponse()
+    if user.login != current_user.login:
+        rsp.data["error"] = {"code": 50, "message": "The user can only change his password"}
+    else:
+        user.password = password
+        session.commit()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getUser")
+async def get_user(
+    username: str = Query(..., description="Имя пользователя"),
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if not user:
+        return JSONResponse({"detail": "User not found"}, status_code=404)
+    rsp = SubsonicResponse()
+    rsp.data["user"] = {"username": user.login, "folder": [1]}
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getUsers")
+async def get_users(
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    users = session.exec(select(db.User)).all()
+
+    rsp = SubsonicResponse()
+    rsp.data["users"] = {
+        "user": [{"username": user.login, "folder": [1]} for user in users]
+    }
+    return rsp.to_json_rsp()
 
 
 @open_subsonic_router.get("/ping")
