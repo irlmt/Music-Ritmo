@@ -5,8 +5,8 @@ import styles from "./track-list.module.css";
 interface TracklistProps {
   name: string;
   name_link: string;
-  author: string;
-  author_link: string;
+  artist: string;
+  artist_link: string;
   favourite: boolean;
   time: number;
   showRemoveButton: boolean;
@@ -17,8 +17,8 @@ interface TracklistProps {
 export const Tracklist = ({
   name,
   name_link,
-  author,
-  author_link,
+  artist,
+  artist_link,
   favourite,
   time,
   showRemoveButton,
@@ -61,8 +61,8 @@ export const Tracklist = ({
             <h2 className={styles.playlist__name}>{name}</h2>
           </Link>
 
-          <Link href={author_link}>
-            <p className={styles.playlist__author}>{author}</p>
+          <Link href={artist_link}>
+            <p className={styles.playlist__artist}>{artist}</p>
           </Link>
         </div>
 

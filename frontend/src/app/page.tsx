@@ -43,7 +43,6 @@ const GenreList = () => {
         }
 
         const data: GenresResponse = await response.json();
-        console.log("Ответ от сервера:", data);
         setResponseData(data);
       } catch (error) {
         setError(error instanceof Error ? error.message : "Неизвестная ошибка");

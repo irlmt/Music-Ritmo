@@ -1,4 +1,5 @@
 import random
+from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Union
 
@@ -6,6 +7,18 @@ from sqlmodel import Session
 
 from . import database as db
 from . import db_helpers
+
+
+class RequestType(Enum):
+    RANDOM = 1
+    NEWEST = 2
+    HIGHEST = 3
+    FREQUENT = 4
+    RECENT = 5
+    BY_NAME = 6
+    BY_ARTIST = 7
+    BY_YEAR = 8
+    BY_GENRE = 9
 
 
 class AlbumService:
@@ -57,15 +70,55 @@ class AlbumService:
 
     def get_album_list(
         self,
-        type,
-        size=10,
-        offset=10,
-        from_year=None,
-        to_year=None,
-        genre=None,
-        music_folder_id=None,
-    ):
-        pass
+        type: RequestType,
+        size: int = 10,
+        offset: int = 0,
+        from_year: Optional[str] = None,
+        to_year: Optional[str] = None,
+        genre: Optional[str] = None,
+        music_folder_id: Optional[str] = None,
+    ) -> Optional[dict[str, Optional[Union[str, int, List[dict]]]]]:
+        result = []
+        match type:
+            case RequestType.RANDOM:
+                albums = self.DBHelper.get_all_albums()
+                result = random.sample(albums, min(size, len(albums)))
+            case RequestType.BY_NAME:
+                result = list(self.DBHelper.get_albums_by_name(size, offset))
+            case RequestType.BY_ARTIST:
+                albums = list(self.DBHelper.get_all_albums())
+                albums.sort(key=lambda album: self.compare_albums_by_artist(album.id))
+                result = albums[offset : offset + size]
+            case RequestType.BY_YEAR if from_year is not None and to_year is not None:
+                albums = self.DBHelper.get_all_albums()
+                result = [
+                    album
+                    for album in albums
+                    if album.year
+                    and min(from_year, to_year) <= album.year <= max(from_year, to_year)
+                ][offset : size + offset]
+                if from_year > to_year:
+                    result.reverse()
+            case (
+                RequestType.NEWEST
+                | RequestType.HIGHEST
+                | RequestType.FREQUENT
+                | RequestType.RECENT
+                | RequestType.BY_GENRE
+            ):
+                raise NotImplementedError()
+            case _:  # validation error
+                return None
+
+        return {"album": [AlbumService.get_open_subsonic_format(a) for a in result]}
+
+    def compare_albums_by_artist(self, album_id: int) -> str:
+        artist: Optional[db.Artist] = self.DBHelper.get_album_artist(album_id)
+        return "" if artist is None else artist.name
+
+    def get_sorted_artist_albums(self, artistId: int, size: int = 10, offset: int = 0):
+        albums = self.DBHelper.get_sorted_artist_albums(artistId, size, offset)
+        return {"album": [AlbumService.get_open_subsonic_format(a) for a in albums]}
 
 
 class TrackService:
@@ -202,7 +255,7 @@ class ArtistService:
 
     @staticmethod
     def get_open_subsonic_format(
-        artist: db.Artist, with_albums: bool = False
+        artist: db.Artist, with_albums: bool = False, with_tracks: bool = False
     ) -> dict[str, Optional[Union[str, int, List[dict]]]]:
         res_artist: dict[str, Optional[Union[str, int, List[dict]]]] = {
             "id": artist.id,
@@ -216,12 +269,19 @@ class ArtistService:
             for i in artist.albums:
                 albums.append(AlbumService.get_open_subsonic_format(i))
             res_artist["album"] = albums
+        if with_tracks:
+            tracks = []
+            for i in artist.tracks:
+                tracks.append(TrackService.get_open_subsonic_format(i))
+            res_artist["song"] = tracks
         return res_artist
 
     def get_artist_by_id(self, id):
         artist = self.DBHelper.get_artist_by_id(id)
         if artist:
-            artist = self.__class__.get_open_subsonic_format(artist, with_albums=True)
+            artist = self.__class__.get_open_subsonic_format(
+                artist, with_albums=True, with_tracks=True
+            )
         return artist
 
     def get_artists(self, music_folder=None):
@@ -319,6 +379,48 @@ class SearchService:
         return self.__class__.get_open_subsonic_format(artists, albums, tracks)
 
 
+class StarService:
+    def __init__(self, session: Session):
+        self.DBHelper = db_helpers.FavouriteDBHelper(session)
+
+    def star(self, track_id, album_id, artist_id, playlist_id, user_id=0):
+        for id in track_id:
+            self.DBHelper.star_track(id, user_id)
+        for id in artist_id:
+            self.DBHelper.star_artist(id, user_id)
+        for id in album_id:
+            self.DBHelper.star_album(id, user_id)
+        for id in playlist_id:
+            self.DBHelper.star_playlist(id, user_id)
+
+    def unstar(self, track_id, album_id, artist_id, playlist_id, user_id=0):
+        for id in track_id:
+            self.DBHelper.unstar_track(id, user_id)
+        for id in artist_id:
+            self.DBHelper.unstar_artist(id, user_id)
+        for id in album_id:
+            self.DBHelper.unstar_album(id, user_id)
+        for id in playlist_id:
+            self.DBHelper.unstar_playlist(id, user_id)
+
+    def get_starred(self, user_id=0):
+        tracks = self.DBHelper.get_starred_tracks(user_id)
+        albums = self.DBHelper.get_starred_albums(user_id)
+        artists = self.DBHelper.get_starred_artists(user_id)
+        playlists = self.DBHelper.get_starred_playlists(user_id)
+
+        tracks = [TrackService.get_open_subsonic_format(t) for t in tracks]
+        albums = [AlbumService.get_open_subsonic_format(t) for t in albums]
+        artists = [ArtistService.get_open_subsonic_format(t) for t in artists]
+        playlists = [PlaylistService.get_open_subsonic_format(t) for t in playlists]
+        return {
+            "artist": artists,
+            "album": albums,
+            "song": tracks,
+            "playlist": playlists,
+        }
+
+
 class PlaylistService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.PlaylistDBHelper(session)
@@ -332,12 +434,16 @@ class PlaylistService:
             "owner": "user",
             "public": True,
             "created": playlist.create_date,
-            "changed": max([a.added_at for a in playlist_tracks], default=playlist.create_date),
+            "changed": max(
+                [a.added_at for a in playlist_tracks], default=playlist.create_date
+            ),
             "songCount": playlist.total_tracks,
             "duration": sum(t.track.duration for t in playlist_tracks),
         }
         if with_tracks:
-            tracks = [TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks]
+            tracks = [
+                TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks
+            ]
             res_playlist["entry"] = tracks
         return res_playlist
 

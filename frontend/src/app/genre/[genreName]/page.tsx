@@ -10,6 +10,7 @@ interface Track {
   id: string;
   title: string;
   artist: string;
+  artistId: string;
   duration: number;
   path: string;
   favourite: boolean;
@@ -39,12 +40,14 @@ export default function TracksGenre() {
               id: string;
               title: string;
               artist: string;
+              artistId: string;
               duration: number;
               path: string;
             }) => ({
               id: track.id,
               title: track.title,
               artist: track.artist,
+              artistId: track.artistId,
               duration: Math.floor(track.duration),
               path: track.path,
               favourite: false,
@@ -92,8 +95,8 @@ export default function TracksGenre() {
                 key={track.id}
                 name={track.title}
                 name_link={`/track/${track.id}`}
-                author={track.artist}
-                author_link={`/author/${track.artist}`}
+                artist={track.artist}
+                artist_link={`/artist/${track.artistId}`}
                 favourite={track.favourite}
                 time={track.duration}
                 showRemoveButton={false}
