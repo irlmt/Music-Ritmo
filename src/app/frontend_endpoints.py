@@ -9,7 +9,7 @@ from src.app.subsonic_response import SubsonicResponse
 from . import database as db
 from . import service_layer
 
-frontend_router = APIRouter(prefix='/specific')
+frontend_router = APIRouter(prefix="/specific")
 
 
 @frontend_router.get("/generate_avatar/")
@@ -40,7 +40,7 @@ def get_sorted_artist_albums(
     rsp.data["sortedAlbums"] = sortedAlbums
     return rsp.to_json_rsp()
 
-    
+
 @frontend_router.get("/getCoverArtPreview")
 def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()

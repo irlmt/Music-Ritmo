@@ -1,12 +1,17 @@
 import random
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 
 from sqlmodel import Session
 
 from . import database as db
 from . import db_helpers
+
+
+def parse_val(rsp: dict, attr: str, val: Any) -> None:
+    if val is not None and val != "":
+        rsp[attr] = val
 
 
 class RequestType(Enum):
@@ -39,7 +44,6 @@ class AlbumService:
             "isDir": True,
             "coverArt": f"al-{album.id}",
             "songCount": album.total_tracks,
-            "created": album.year,
             "duration": sum([int(t.duration) for t in album.tracks]),
             "playCount": min([t.plays_count for t in album.tracks]),
             "artistId": album.artists[0].id if album.artists[0] is not None else -1,
@@ -48,9 +52,10 @@ class AlbumService:
                 if album.artists[0] is not None
                 else "Unknown Artist"
             ),
-            "year": album.year,
             "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
         }
+        parse_val(res_album, "year", album.year)
+
         if len(album.album_favourites) > 0:
             res_album["starred"] = min(a.added_at for a in album.album_favourites)
         if with_songs:
@@ -139,7 +144,6 @@ class TrackService:
             "album": track.album.name,
             "artist": ArtistService.join_artists_names(track.artists),
             "track": 1,
-            "year": track.year,
             "coverArt": f"mf-{track.id}",
             "size": track.file_size,
             "contentType": track.type,
@@ -152,12 +156,13 @@ class TrackService:
             "path": track.file_path,
             "playCount": track.plays_count,
             "discNumber": 1,
-            "created": track.year,
             "albumId": track.album_id,
             "artistId": track.artists[0].id if len(track.artists) > 0 else -1,
             "type": track.type,
             "isVideo": False,
         }
+        parse_val(res_song, "year", track.year)
+        parse_val(res_song, "created", track.year)
         if len(track.track_favourites) > 0:
             res_song["starred"] = min(t.added_at for t in track.track_favourites)
         if with_genres:
