@@ -1,15 +1,20 @@
-"use client";
-
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/app/auth-context";
 import styles from "./user.module.css";
 
 export const User = () => {
+  const { user, logout } = useAuth();
   const [isMenuOpen, setMenuOpen] = useState(false);
 
   const toggleMenu = () => {
     setMenuOpen((prevState) => !prevState);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setMenuOpen(false);
   };
 
   return (
@@ -22,7 +27,7 @@ export const User = () => {
           height={40}
           className={styles.user__avatar__image}
         />
-        <span className={styles.user__avatar__name}>Иванов Иван</span>
+        <span className={styles.user__avatar__name}>{user}</span>
       </div>
 
       {isMenuOpen && (
@@ -34,9 +39,9 @@ export const User = () => {
               </Link>
             </li>
             <li>
-              <Link href="/login" className={styles.user__menu_item}>
+              <button className={styles.user__menu_item} onClick={handleLogout}>
                 Выйти
-              </Link>
+              </button>
             </li>
           </ul>
         </div>
