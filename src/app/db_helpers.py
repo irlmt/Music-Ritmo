@@ -357,3 +357,13 @@ class PlaylistDBHelper:
 
     def get_all_playlists(self):
         return self.session.exec(select(db.Playlist)).all()
+
+
+class UserDBHelper:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_user_by_username(self, username: str) -> Optional[db.User]:
+        return self.session.exec(
+            select(db.User).where(db.User.login == username)
+        ).one_or_none()

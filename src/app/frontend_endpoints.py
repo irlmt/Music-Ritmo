@@ -1,10 +1,9 @@
-import base64
-import python_avatars as pa  # type: ignore
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlmodel import Session, select
 
 from src.app.subsonic_response import SubsonicResponse
+from src.app.auth import authenticate_user
 
 from . import database as db
 from . import service_layer
@@ -12,18 +11,14 @@ from . import service_layer
 frontend_router = APIRouter(prefix="/specific")
 
 
-@frontend_router.get("/generate_avatar/")
-def generate_random_avatar():
-    try:
-        avatar = pa.Avatar.random()
-        svg_data = avatar.render()
-        base64_avatar = base64.b64encode(svg_data.encode("utf-8")).decode("utf-8")
+@frontend_router.get("/generateAvatar")
+def generate_random_avatar(
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session)):
 
-        return {"avatar_base64": base64_avatar}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating avatar: {str(e)}"
-        )
+    avatar = service_layer.generate_and_save_avatar(session, current_user)
+
+    return Response(content=avatar, media_type="image/png")
 
 
 @frontend_router.get("/getSortedArtistAlbums")

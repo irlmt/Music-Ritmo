@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from PIL import Image
 
 from src.app.subsonic_response import SubsonicResponse
-from PIL import Image
+from src.app.auth import authenticate_user
 
 from . import database as db
 from . import service_layer
@@ -45,17 +46,6 @@ class SubsonicTrack(BaseModel):
     suffix: str = Field(default_factory=str)
     contentType: str = "audio/mpeg"
     path: str = Field(default_factory=str)
-
-
-def authenticate_user(
-    u: str = Query(None),
-    p: str = Query(None),
-    session: Session = Depends(db.get_session),
-) -> db.User:
-    user = session.exec(select(db.User).where(db.User.login == u)).first()
-    if not user or user.password != p:
-        raise HTTPException(status_code=401, detail="Wrong username or password")
-    return user
 
 
 @open_subsonic_router.get("/createUser")
@@ -648,3 +638,17 @@ def get_cover_art(
         image_bytes = utils.image_to_bytes(image)
 
     return Response(content=image_bytes, media_type=f"image/{image.format.lower()}")
+
+
+@open_subsonic_router.get("/getAvatar")
+def get_avatar(
+    username: str,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = service_layer.get_user_by_username(session, username)
+    if not user:
+        return JSONResponse({"detail": "No such user"}, status_code=404)
+
+    avatar = service_layer.get_avatar(user)
+    return Response(content=avatar, media_type="image/png")

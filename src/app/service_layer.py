@@ -1,7 +1,8 @@
 import random
-from dataclasses import dataclass
+import py_avataaars as pa
 from enum import Enum
-from typing import List, Optional, Dict, Union, Any
+from dataclasses import dataclass
+from typing import List, Optional, Dict, Tuple, Union, Any
 
 from sqlmodel import Session
 
@@ -538,3 +539,50 @@ class IndexService:
                     tracks.append(TrackService.get_open_subsonic_format(t))
             res["child"] = tracks
         return res
+
+
+def random_enum_choice(e):
+    return random.choice(list(e))
+
+
+def random_avatar() -> Tuple[bytes, str]:
+    avatar = pa.PyAvataaar(
+        style=pa.AvatarStyle.CIRCLE,
+        skin_color=random_enum_choice(pa.SkinColor),
+        hair_color=random_enum_choice(pa.HairColor),
+        facial_hair_type=random_enum_choice(pa.FacialHairType),
+        facial_hair_color=random_enum_choice(pa.HairColor),
+        top_type=random_enum_choice(pa.TopType),
+        hat_color=random_enum_choice(pa.Color),
+        mouth_type=random_enum_choice(pa.MouthType),
+        eye_type=random_enum_choice(pa.EyesType),
+        eyebrow_type=random_enum_choice(pa.EyebrowType),
+        nose_type=random_enum_choice(pa.NoseType),
+        accessories_type=random_enum_choice(pa.AccessoriesType),
+        clothe_type=random_enum_choice(pa.ClotheType),
+        clothe_color=random_enum_choice(pa.Color),
+        clothe_graphic_type=random_enum_choice(pa.ClotheGraphicType),
+    )
+    png = avatar.render_png()
+    return (png, avatar.unique_id)
+
+
+def generate_and_save_avatar(session: Session, user: db.User) -> bytes:
+    avatar, avatar_uid = random_avatar()
+
+    user.avatar = avatar_uid
+    session.commit()
+    session.refresh(user)
+
+    return avatar
+
+
+def get_avatar(user: db.User) -> bytes:
+    avatar = pa.PyAvataaar()
+    avatar.unique_id = user.avatar
+    return avatar.render_png()
+
+
+def get_user_by_username(session: Session, username: str) -> Optional[db.User]:
+    user_helper = db_helpers.UserDBHelper(session)
+    return user_helper.get_user_by_username(username)
