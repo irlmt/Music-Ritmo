@@ -13,92 +13,42 @@ interface Tag {
 }
 
 export default function Tags() {
-  const { id } = useParams();
+  const { tagId } = useParams();
+  const decodedTagId =
+    typeof tagId === "string" ? decodeURIComponent(tagId) : "";
+
   const [tags, setTags] = useState<Tag[]>([]);
 
   useEffect(() => {
-    if (id) {
-      const fetchTags = async () => {
-        try {
-          const response = await fetch(
-            `http://localhost:8000/getTags?id=${id}`
+    if (!decodedTagId) return;
+
+    const fetchTags = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/specific/getTags?id=${decodedTagId}`
+        );
+        const data = await response.json();
+        console.log("Полученные данные:", data); // Выводим в консоль
+
+        // Проверяем, есть ли теги в ответе
+        if (data["subsonic-response"]?.tags) {
+          setTags(
+            data["subsonic-response"].tags.map((tag: any) => ({
+              id: tag.id,
+              tag: tag.name,
+              value: tag.value.toString(),
+            }))
           );
-          if (!response.ok) {
-            throw new Error("Ошибка при получении данных с сервера");
-          }
-          const data = await response.json();
-          console.log("Ответ от сервера:", data);
-
-          const tagsData: Tag[] = Object.entries(data).map(([key, value]) => ({
-            tag: key,
-            value: String(value),
-            id: tags.length + 1,
-          }));
-
-          setTags(tagsData);
-        } catch (error) {
-          console.error("Ошибка при получении данных с сервера:", error);
+        } else {
+          console.error("Теги не найдены в ответе сервера");
         }
-      };
-
-      fetchTags();
-    }
-  }, [id]);
-
-  const handleAddTag = () => {
-    const newTag: Tag = {
-      id: tags.length + 1,
-      tag: "Новый тег",
-      value: "0",
-    };
-    setTags([...tags, newTag]);
-  };
-
-  const handleTagChange = (
-    id: number,
-    field: "tag" | "value",
-    value: string
-  ) => {
-    setTags(
-      tags.map((tag) => (tag.id === id ? { ...tag, [field]: value } : tag))
-    );
-  };
-
-  const handleClearTags = () => {
-    setTags([]);
-  };
-
-  const handleDeleteTag = (id: number) => {
-    setTags(tags.filter((tag) => tag.id !== id));
-  };
-
-  const handleSaveTags = async () => {
-    const updatedTags = tags.reduce((acc, tag) => {
-      acc[tag.tag] = tag.value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8000/updateTags?id=${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedTags),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Ошибка при обновлении тегов");
+      } catch (error) {
+        console.error("Ошибка при загрузке тегов:", error);
       }
+    };
 
-      console.log("Теги успешно обновлены");
-    } catch (error) {
-      console.error("Ошибка при сохранении тегов:", error);
-    }
-  };
+    fetchTags();
+  }, [decodedTagId]);
 
   return (
     <>
@@ -114,69 +64,7 @@ export default function Tags() {
         link_arrow="/track"
       >
         <h1>Теги</h1>
-        <div className={styles.tags}>
-          <table className={styles.tags_table}>
-            <tbody>
-              {tags.map((tag) => (
-                <tr key={tag.id} className={styles.tagRow}>
-                  <td>
-                    <input
-                      type="text"
-                      value={tag.tag}
-                      onChange={(e) =>
-                        handleTagChange(tag.id, "tag", e.target.value)
-                      }
-                      className={styles.inputTag}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      value={tag.value}
-                      onChange={(e) =>
-                        handleTagChange(tag.id, "value", e.target.value)
-                      }
-                      className={styles.inputValue}
-                    />
-                  </td>
-                  <td
-                    className={styles.deleteIconWrapper}
-                    onClick={() => handleDeleteTag(tag.id)}
-                  >
-                    <i className={`fa-solid fa-xmark ${styles.deleteIcon}`}></i>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className={styles.tags_button}>
-          <Button
-            type="normal"
-            color="green"
-            disabled={false}
-            onClick={handleAddTag}
-          >
-            добавить тег
-          </Button>
-          <Button
-            type="normal"
-            color="white"
-            disabled={false}
-            onClick={handleClearTags}
-          >
-            очистить все
-          </Button>
-          <Button
-            type="normal"
-            color="green"
-            disabled={false}
-            onClick={handleSaveTags}
-          >
-            сохранить
-          </Button>
-        </div>
+        {decodedTagId && <p>Выбранный тег ID: {decodedTagId}</p>}
       </Container>
     </>
   );
