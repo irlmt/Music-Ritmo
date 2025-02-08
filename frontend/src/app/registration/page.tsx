@@ -68,17 +68,20 @@ export default function Registration() {
         }
       );
 
-      const data = await response.json();
-
-      if (data["subsonic-response"]?.status === "ok") {
-        setSuccessMessage("Вы успешно зарегистрированы!");
-        setTimeout(() => {
-          router.push("/");
-        }, 2000);
+      if (response.status === 400) {
+        setErrorMessage("Пользователь с таким логином уже существует.");
       } else {
-        setErrorMessage("Ошибка при регистрации. Попробуйте снова.");
+        const data = await response.json();
+
+        if (data["subsonic-response"]?.status === "ok") {
+          setSuccessMessage("Вы успешно зарегистрированы!");
+          setTimeout(() => {
+            router.push("/");
+          }, 2000);
+        } else {
+          setErrorMessage("Ошибка при регистрации. Попробуйте снова.");
+        }
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setErrorMessage("Ошибка сети. Пожалуйста, попробуйте позже.");
     } finally {

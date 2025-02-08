@@ -6,8 +6,8 @@ import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
 import { Logo } from "@/shared/logo";
-import { useAuth } from "@/app/auth-context";
 import styles from "./login.module.css";
+import { useAuth } from "@/app/auth-context";
 
 export default function Login() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export default function Login() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/rest/getUser?username=${username}&u=${username}&p=${password}&f=json`,
+        `http://localhost:8000/rest/getUser?username=${username}&u=${username}&p=${password}`,
         {
           method: "GET",
           headers: {
@@ -72,13 +72,14 @@ export default function Login() {
       );
 
       const data = await response.json();
+      console.log("Ответ от сервера:", data);
 
       if (
         response.status === 200 &&
         data["subsonic-response"]?.status === "ok" &&
         data["subsonic-response"]?.user
       ) {
-        login(username);
+        login(username, password);
         router.push("/");
       } else {
         setErrorMessage("Неверные данные для входа. Попробуйте снова.");
