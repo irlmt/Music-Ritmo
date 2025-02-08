@@ -100,14 +100,25 @@ class TrackDBHelper:
             .where(db.ArtistTrack.artist_id == artist_id)
         ).all()
 
-    def get_album_artist(self, trackId) -> Optional[db.Artist]:  # temporary optional
+    def get_album_artist(self, track_id) -> db.Artist:
+        track = self.get_track_by_id(track_id)
+        if track is None:
+            raise RuntimeError()
+
+        if track.album_artist_id is not None:
+            artist = self.session.exec(
+                select(db.Artist).where(db.Artist.id == track.album_artist_id).limit(1)
+            ).one_or_none()
+            if artist is not None:
+                return artist
+
         return self.session.exec(
             select(db.Artist)
             .join(db.ArtistTrack)
             .where(db.Artist.id == db.ArtistTrack.artist_id)
-            .where(db.ArtistTrack.track_id == trackId)
+            .where(db.ArtistTrack.track_id == track_id)
             .limit(1)
-        ).one_or_none()
+        ).first()
 
 
 class GenresDBHelper:
@@ -290,7 +301,7 @@ class PlaylistDBHelper:
         now = datetime.today()
         playlist = db.Playlist(
             name=name,
-            # user_id=user_id,
+            user_id=user_id,
             total_tracks=len(tracks),
             create_date=now,
         )
@@ -322,7 +333,6 @@ class PlaylistDBHelper:
                 ).one_or_none()
                 if playlist_track:
                     playlist.playlist_tracks.remove(playlist_track)
-                    # self.session.delete(playlist_track)
             for t in traks_to_add:
                 playlist_track = db.PlaylistTrack(
                     added_at=now, track_id=t, playlist_id=id
@@ -347,3 +357,13 @@ class PlaylistDBHelper:
 
     def get_all_playlists(self):
         return self.session.exec(select(db.Playlist)).all()
+
+
+class UserDBHelper:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_user_by_username(self, username: str) -> Optional[db.User]:
+        return self.session.exec(
+            select(db.User).where(db.User.login == username)
+        ).one_or_none()

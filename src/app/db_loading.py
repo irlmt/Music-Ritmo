@@ -9,13 +9,13 @@ from mutagen.mp3 import MP3
 from sqlmodel import Session, select
 
 from . import database as db
-from .utils import get_cover_from_mp3, get_cover_from_flac, get_cover_preview
+from .utils import create_default_user, get_cover_from_mp3, get_cover_from_flac, get_cover_preview
 
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-scanStatus = { "scanning": True, "count": 0 }
+scanStatus = {"scanning": True, "count": 0}
 
 
 class UnknownTag(StrEnum):
@@ -38,7 +38,8 @@ class AudioInfo:
         genres: list[str],
         track_number: int | None,
         year: int | None,
-        cover: bytes | None,
+        cover: bytes,
+        cover_type: str,
         bit_rate: int,
         bits_per_sample: int,
         sample_rate: int,
@@ -56,6 +57,7 @@ class AudioInfo:
         self.track_number = track_number
         self.year = year
         self.cover = cover
+        self.cover_type = cover_type
         self.bit_rate = bit_rate
         self.bits_per_sample = bits_per_sample
         self.sample_rate = sample_rate
@@ -65,15 +67,18 @@ class AudioInfo:
 
 def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
+    cover, cover_type = get_cover_preview(get_cover_from_mp3(audio_file))
     return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
         type="audio/mpeg",
         title=(
-            str(audio_file["TIT2"]) if "TIT2" in audio_file.tags else Path(file_path).stem
+            str(audio_file["TIT2"])
+            if "TIT2" in audio_file.tags
+            else Path(file_path).stem
         ),
         artists=(
-            str(audio_file["TPE1"]).split(", ")
+            re.split(r"[;,\\]\s*", str(audio_file["TPE1"]))
             if "TPE1" in audio_file.tags
             else ["Неизвестный исполнитель"]
         ),
@@ -83,10 +88,12 @@ def extract_metadata_mp3(file_path):
             else None
         ),
         album=(
-            str(audio_file["TALB"]) if "TALB" in audio_file.tags else "Неизвестный альбом"
+            str(audio_file["TALB"])
+            if "TALB" in audio_file.tags
+            else "Неизвестный альбом"
         ),
         genres=(
-            re.split(", |; |\\ ", audio_file["TCON"])
+            re.split(r"[;,\\]\s*", str(audio_file["TCON"]))
             if "TCON" in audio_file.tags
             else []
         ),
@@ -94,7 +101,8 @@ def extract_metadata_mp3(file_path):
             int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None
         ),
         year=int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
-        cover=get_cover_preview(get_cover_from_mp3(audio_file)),
+        cover=cover,
+        cover_type=cover_type,
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=int(
             audio_file.info.bitrate
@@ -108,12 +116,13 @@ def extract_metadata_mp3(file_path):
 
 def extract_metadata_flac(file_path):
     audio_file = FLAC(file_path)
+    cover, cover_type = get_cover_preview(get_cover_from_flac(audio_file))
     return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
         type="audio/flac",
         title=(
-        str(audio_file["TITLE"][0])
+            str(audio_file["TITLE"][0])
             if "TITLE" in audio_file.tags
             else Path(file_path).stem
         ),
@@ -126,20 +135,19 @@ def extract_metadata_flac(file_path):
             audio_file["ALBUMARTIST"][0] if "ALBUMARTIST" in audio_file.tags else None
         ),
         album=(
-        str(audio_file["ALBUM"][0])
+            str(audio_file["ALBUM"][0])
             if "ALBUM" in audio_file.tags
             else "Неизвестный альбом"
         ),
-        genres=(
-            audio_file["GENRE"] if "GENRE" in audio_file.tags else []
-        ),
+        genres=(audio_file["GENRE"] if "GENRE" in audio_file.tags else []),
         track_number=(
-        int(str(audio_file["TRACKNUMBER"][0]))
+            int(str(audio_file["TRACKNUMBER"][0]))
             if "TRACKNUMBER" in audio_file.tags
             else None
         ),
-        year=int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
-        cover=get_cover_preview(get_cover_from_flac(audio_file)),
+        year=int(str(audio_file["DATE"][0])) if "DATE" in audio_file.tags else None,
+        cover=cover,
+        cover_type=cover_type,
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=audio_file.info.bits_per_sample,
         sample_rate=audio_file.info.sample_rate,
@@ -189,7 +197,9 @@ def load_audio_data(audio: AudioInfo):
         album_artists = []
         album_artist_id: int | None = None
         if audio.album_artist is not None and audio.album_artist != "Various Artists":
-            album_artist = session.exec(select(db.Artist).where(db.Artist.name == audio.album_artist)).one_or_none()
+            album_artist = session.exec(
+                select(db.Artist).where(db.Artist.name == audio.album_artist)
+            ).one_or_none()
             if album_artist is None:
                 album_artist = db.Artist(name=audio.album_artist)
                 session.add(album_artist)
@@ -215,17 +225,19 @@ def load_audio_data(audio: AudioInfo):
             session.add(album)
             session.commit()
             session.refresh(album)
-        else:
-            album.total_tracks = album.total_tracks + 1
-            if album.album_artist_id is None:
-                if album_artist_id is not None:
-                    album.album_artist_id = album_artist_id
-                else:
-                    album.artists = list(set(album.artists).union(artists))
+        elif album.album_artist_id is None:
+            if album_artist_id is not None:
+                album.album_artist_id = album_artist_id
+            else:
+                album.artists = list(set(album.artists).union(artists))
+        elif album_artist_id is not None and album.album_artist_id != album_artist_id:
+            album.album_artist_id = album_artist_id
 
         genres = []
         for name in audio.genres:
-            genre = session.exec(select(db.Genre).where(db.Genre.name == name)).one_or_none()
+            genre = session.exec(
+                select(db.Genre).where(db.Genre.name == name)
+            ).one_or_none()
             if genre is None:
                 genre = db.Genre(name=name)
                 session.add(genre)
@@ -248,6 +260,7 @@ def load_audio_data(audio: AudioInfo):
                 year=audio.year,
                 plays_count=0,
                 cover=audio.cover,
+                cover_type=audio.cover_type,
                 bit_rate=audio.bit_rate,
                 bits_per_sample=audio.bits_per_sample,
                 sample_rate=audio.sample_rate,
@@ -256,9 +269,19 @@ def load_audio_data(audio: AudioInfo):
                 genres=genres,
                 artists=artists,
             )
-            session.add(track)
-            session.commit()
-            session.refresh(track)
+            album.total_tracks = album.total_tracks + 1
+        else:
+            track.title = audio.title
+            track.artists = artists
+            track.album_id = album.id
+            track.album_artist_id = album_artist_id
+            track.album_position = audio.track_number
+            track.year = audio.year
+            track.genres = genres
+
+        session.add(track)
+        session.commit()
+        session.refresh(track)
 
 
 def scan_and_load(directory_path: str = "./tracks/"):

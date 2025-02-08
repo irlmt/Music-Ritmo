@@ -1,15 +1,18 @@
 from typing import Optional, List
 import asyncio
 
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from PIL import Image
 
 from src.app.subsonic_response import SubsonicResponse
+from src.app.auth import authenticate_user
 
 from . import database as db
 from . import service_layer
+from . import db_helpers
 from . import db_loading
 from . import utils
 
@@ -43,6 +46,102 @@ class SubsonicTrack(BaseModel):
     suffix: str = Field(default_factory=str)
     contentType: str = "audio/mpeg"
     path: str = Field(default_factory=str)
+
+
+@open_subsonic_router.get("/createUser")
+async def create_user(
+    username: str = Query(...),
+    password: str = Query(...),
+    email: str = Query(default=""),
+    session: Session = Depends(db.get_session),
+):
+    _, err = service_layer.create_user(session, username, password)
+    if err:
+        return JSONResponse({"detail": err}, status_code=400)
+
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/deleteUser")
+async def delete_user(
+    username: str = Query(...),
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if user:
+        session.delete(user)
+        session.commit()
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/updateUser")
+async def update_user(
+    username: str = Query(...),
+    password: str = "",
+    newUsername: str = "",
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if not user:
+        return JSONResponse({"detail": "User not found"}, status_code=404)
+    if newUsername:
+        user.login = newUsername
+    if password:
+        user.password = password
+    session.commit()
+    rsp = SubsonicResponse()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/changePassword")
+async def change_password(
+    username: str = Query(...),
+    password: str = Query(...),
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if not user:
+        return JSONResponse({"detail": "User not found"}, status_code=404)
+    rsp = SubsonicResponse()
+    if user.login != current_user.login:
+        rsp.set_error(50, "The user can only change his password")
+    else:
+        user.password = password
+        session.commit()
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getUser")
+async def get_user(
+    username: str = Query(..., description="Имя пользователя"),
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if not user:
+        return JSONResponse({"detail": "User not found"}, status_code=404)
+    rsp = SubsonicResponse()
+    rsp.data["user"] = {"username": user.login, "folder": [1]}
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getUsers")
+async def get_users(
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    users = session.exec(select(db.User)).all()
+
+    rsp = SubsonicResponse()
+    rsp.data["users"] = {
+        "user": [{"username": user.login, "folder": [1]} for user in users]
+    }
+    return rsp.to_json_rsp()
 
 
 @open_subsonic_router.get("/ping")
@@ -224,17 +323,30 @@ def create_playlist(
     name: str,
     songId: List[int] = Query(default=[]),
     playlistId: int = 0,
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.PlaylistService(session)
-    playlist = service.create_playlist(name, songId)
+    playlist = service.create_playlist(name, songId, current_user.id)
     rsp = SubsonicResponse()
     rsp.data["playlist"] = playlist
     return rsp.to_json_rsp()
 
 
 @open_subsonic_router.get("/deletePlaylist")
-def delete_playlist(id: int, session: Session = Depends(db.get_session)):
+def delete_playlist(
+    id: int,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    if id not in [i.id for i in current_user.playlists]:
+        return JSONResponse(
+            {
+                "detail": f"""You do not have permission to perform this operation. 
+            {current_user.login} is not the owner of the playlist."""
+            },
+            status_code=403,
+        )
     service = service_layer.PlaylistService(session)
     service.delete_playlist(id)
     rsp = SubsonicResponse()
@@ -249,8 +361,17 @@ def update_playlist(
     songIdToRemove: List[int] = Query(default=[]),
     comment: str = "",
     public: str = "",
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
+    if playlistId not in [i.id for i in current_user.playlists]:
+        return JSONResponse(
+            {
+                "detail": f"""You do not have permission to perform this operation. 
+            {current_user.login} is not the owner of the playlist."""
+            },
+            status_code=403,
+        )
     service = service_layer.PlaylistService(session)
     playlist = service.update_playlist(playlistId, name, songIdToAdd, songIdToRemove)
     if playlist is None:
@@ -299,10 +420,11 @@ def star(
     albumId: List[int] = Query(default=[]),
     artistId: List[int] = Query(default=[]),
     playlistId: List[int] = Query(default=[]),
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.star(id, albumId, artistId, playlistId)
+    service.star(id, albumId, artistId, playlistId, current_user.id)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -313,10 +435,11 @@ def unstar(
     albumId: List[int] = Query(default=[]),
     artistId: List[int] = Query(default=[]),
     playlistId: List[int] = Query(default=[]),
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.unstar(id, albumId, artistId, playlistId)
+    service.unstar(id, albumId, artistId, playlistId, current_user.id)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -324,10 +447,11 @@ def unstar(
 @open_subsonic_router.get("/getStarred")
 def get_starred(
     musicFolderId: int = 0,
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    starred = service.get_starred()
+    starred = service.get_starred(current_user.id)
     rsp = SubsonicResponse()
     rsp.data["starred"] = starred
     return rsp.to_json_rsp()
@@ -336,10 +460,11 @@ def get_starred(
 @open_subsonic_router.get("/getStarred2")
 def get_starred2(
     musicFolderId: int = 0,
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    starred = service.get_starred()
+    starred = service.get_starred(current_user.id)
     rsp = SubsonicResponse()
     rsp.data["starred2"] = starred
     return rsp.to_json_rsp()
@@ -457,3 +582,71 @@ def get_music_folders():
     rsp = SubsonicResponse()
     rsp.data["musicFolders"] = {"musicFolder": [{"id": 1, "name": "tracks"}]}
     return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getCoverArt")
+def get_cover_art(
+    id: str, size: int | None = None, session: Session = Depends(db.get_session)
+):
+    image_bytes: bytes | None = None
+
+    prefix, parsed_id = id.split("-")
+    if prefix == "mf":
+        track = session.exec(
+            select(db.Track).where(db.Track.id == parsed_id)
+        ).one_or_none()
+        if track is None:
+            return JSONResponse({"detail": "No such track id"}, status_code=404)
+        image_bytes = utils.get_cover_art(track)
+
+    elif prefix == "al":
+        album = session.exec(
+            select(db.Album).where(db.Album.id == parsed_id)
+        ).one_or_none()
+        if album is None:
+            return JSONResponse({"detail": "No such album id"}, status_code=404)
+
+        album_helpers = db_helpers.AlbumDBHelper(session)
+        track = album_helpers.get_first_track(album.id)
+        if track is None:
+            return JSONResponse({"detail": "No such track id"}, status_code=404)
+        image_bytes = utils.get_cover_art(track)
+
+    elif prefix == "ar":
+        artist = session.exec(
+            select(db.Artist).where(db.Artist.id == parsed_id)
+        ).one_or_none()
+        if artist is None:
+            return JSONResponse({"detail": "No such artist id"}, status_code=404)
+
+    else:
+        return JSONResponse({"detail": "No such prefix"}, status_code=404)
+
+    image: Image.Image
+    if image_bytes is None:
+        image = utils.get_default_cover()
+        image_bytes = utils.image_to_bytes(image)
+    else:
+        image = utils.bytes_to_image(image_bytes)
+
+    if size is not None:
+        if size <= 0:
+            return JSONResponse({"detail": "Invalid size"}, status_code=400)
+        image.thumbnail((size, size))
+        image_bytes = utils.image_to_bytes(image)
+
+    return Response(content=image_bytes, media_type=f"image/{image.format.lower()}")
+
+
+@open_subsonic_router.get("/getAvatar")
+def get_avatar(
+    username: str,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+):
+    user = service_layer.get_user_by_username(session, username)
+    if not user:
+        return JSONResponse({"detail": "No such user"}, status_code=404)
+
+    avatar = service_layer.get_avatar(user)
+    return Response(content=avatar, media_type="image/png")

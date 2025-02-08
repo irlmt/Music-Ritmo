@@ -1,6 +1,7 @@
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from .open_subsonic_api import open_subsonic_router
 from .db_loading import scan_and_load
 from .frontend_endpoints import frontend_router
