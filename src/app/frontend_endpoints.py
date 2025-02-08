@@ -1,29 +1,26 @@
-import base64
-import python_avatars as pa  # type: ignore
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlmodel import Session, select
 
 from src.app.subsonic_response import SubsonicResponse
+from src.app.auth import authenticate_user
 
+from . import db_loading
 from . import database as db
 from . import service_layer
+from . import utils
 
 frontend_router = APIRouter(prefix="/specific")
 
 
-@frontend_router.get("/generate_avatar/")
-def generate_random_avatar():
-    try:
-        avatar = pa.Avatar.random()
-        svg_data = avatar.render()
-        base64_avatar = base64.b64encode(svg_data.encode("utf-8")).decode("utf-8")
+@frontend_router.get("/generateAvatar")
+def generate_random_avatar(
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session)):
 
-        return {"avatar_base64": base64_avatar}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating avatar: {str(e)}"
-        )
+    avatar = service_layer.generate_and_save_avatar(session, current_user)
+
+    return Response(content=avatar, media_type="image/png")
 
 
 @frontend_router.get("/getSortedArtistAlbums")
@@ -48,3 +45,45 @@ def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     return Response(content=track.cover, media_type=f"image/{track.cover_type}")
+
+
+@frontend_router.get("/getTags")
+def get_tags(id: int, session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+    
+    album_artist = ""
+    if track.album_artist_id is not None:
+        album_artist = session.exec(select(db.Artist).where(db.Artist.id == track.album_artist_id)).one_or_none().name
+
+    return JSONResponse({
+        "title": track.title,
+        "artists": ", ".join(artist.name for artist in track.artists),
+        "album_artist": album_artist,
+        "album": track.album.name,
+        "album_position": track.album_position,
+        "year": track.year,
+        "genres": ", ".join(genre.name for genre in track.genres),
+    })
+
+
+@frontend_router.put("/updateTags")
+def update_tags(id: int, data: dict = Body(...), session: Session = Depends(db.get_session)):
+    track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
+    if track is None:
+        return JSONResponse({"detail": "No such id"}, status_code=404)
+
+    audio, audio_type = utils.update_tags(track, data.items(), session)
+    audio.save()
+
+    audio_info: db_loading.AudioInfo
+    match audio_type:
+        case utils.AudioType.MP3:
+            audio_info = db_loading.extract_metadata_mp3(track.file_path)
+        case utils.AudioType.FLAC:
+            audio_info = db_loading.extract_metadata_flac(track.file_path)
+
+    db_loading.load_audio_data(audio_info)
+
+    return Response()

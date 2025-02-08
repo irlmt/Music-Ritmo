@@ -97,7 +97,7 @@ class User(SQLModel, table=True):
     password: str
     avatar: str
 
-    # playlists: list["Playlist"] = Relationship(back_populates="user")
+    playlists: list["Playlist"] = Relationship(back_populates="user")
     favourite_tracks: list["FavouriteTrack"] = Relationship(back_populates="user")
     favourite_albums: list["FavouriteAlbum"] = Relationship(back_populates="user")
     favourite_playlists: list["FavouritePlaylist"] = Relationship(back_populates="user")
@@ -172,11 +172,11 @@ class Playlist(SQLModel, table=True):
     __tablename__ = "Playlists"
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    # user_id: int = Field(foreign_key="Users.id")
+    user_id: int = Field(foreign_key="Users.id")
     total_tracks: int
     create_date: str
 
-    # user: "User" = Relationship(back_populates="playlists")
+    user: "User" = Relationship(back_populates="playlists")
     playlist_tracks: list["PlaylistTrack"] = Relationship(
         back_populates="playlist", cascade_delete=True
     )
@@ -191,6 +191,9 @@ class Genre(SQLModel, table=True):
     name: str = Field(index=True)
 
     tracks: list["Track"] = Relationship(back_populates="genres", link_model=GenreTrack)
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class Tag(SQLModel, table=True):

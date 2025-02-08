@@ -301,7 +301,7 @@ class PlaylistDBHelper:
         now = datetime.today()
         playlist = db.Playlist(
             name=name,
-            # user_id=user_id,
+            user_id=user_id,
             total_tracks=len(tracks),
             create_date=now,
         )
@@ -333,7 +333,6 @@ class PlaylistDBHelper:
                 ).one_or_none()
                 if playlist_track:
                     playlist.playlist_tracks.remove(playlist_track)
-                    # self.session.delete(playlist_track)
             for t in traks_to_add:
                 playlist_track = db.PlaylistTrack(
                     added_at=now, track_id=t, playlist_id=id
@@ -358,3 +357,13 @@ class PlaylistDBHelper:
 
     def get_all_playlists(self):
         return self.session.exec(select(db.Playlist)).all()
+
+
+class UserDBHelper:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_user_by_username(self, username: str) -> Optional[db.User]:
+        return self.session.exec(
+            select(db.User).where(db.User.login == username)
+        ).one_or_none()
