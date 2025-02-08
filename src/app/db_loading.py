@@ -78,7 +78,7 @@ def extract_metadata_mp3(file_path):
             else Path(file_path).stem
         ),
         artists=(
-            str(audio_file["TPE1"]).split(", ")
+            re.split(r"[;,\\]\s*", str(audio_file["TPE1"]))
             if "TPE1" in audio_file.tags
             else ["Неизвестный исполнитель"]
         ),
@@ -93,7 +93,7 @@ def extract_metadata_mp3(file_path):
             else "Неизвестный альбом"
         ),
         genres=(
-            re.split(", |; |\\ ", audio_file["TCON"])
+            re.split(r"[;,\\]\s*", str(audio_file["TCON"]))
             if "TCON" in audio_file.tags
             else []
         ),
@@ -145,7 +145,7 @@ def extract_metadata_flac(file_path):
             if "TRACKNUMBER" in audio_file.tags
             else None
         ),
-        year=int(str(audio_file["YEAR"][0])) if "YEAR" in audio_file.tags else None,
+        year=int(str(audio_file["DATE"][0])) if "DATE" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
         bit_rate=audio_file.info.bitrate,
@@ -269,9 +269,18 @@ def load_audio_data(audio: AudioInfo):
                 genres=genres,
                 artists=artists,
             )
-            session.add(track)
-            session.commit()
-            session.refresh(track)
+        else:
+            track.title = audio.title
+            track.artists = artists
+            track.album_id = album.id
+            track.album_artist_id = album_artist_id
+            track.album_position = audio.track_number
+            track.year = audio.year
+            track.genres = genres
+
+        session.add(track)
+        session.commit()
+        session.refresh(track)
 
 
 def scan_and_load(directory_path: str = "./tracks/"):

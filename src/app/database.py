@@ -192,6 +192,9 @@ class Genre(SQLModel, table=True):
 
     tracks: list["Track"] = Relationship(back_populates="genres", link_model=GenreTrack)
 
+    def __hash__(self):
+        return hash(self.name)
+
 
 class Tag(SQLModel, table=True):
     __tablename__ = "Tags"
