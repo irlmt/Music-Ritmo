@@ -430,7 +430,7 @@ export default function PlayedTrack() {
             </p>
           </Link>
 
-          <Link href="/track-info">
+          <Link href={`/tags/${trackId}`}>
             <i className={`fa-solid fa-info ${styles.track__infoIcon}`}></i>
           </Link>
         </div>

@@ -1,20 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Button } from "@/shared/button";
 import styles from "./tags.module.css";
 
+interface Tag {
+  id: number;
+  tag: string;
+  value: string;
+}
+
 export default function Tags() {
-  const [tags, setTags] = useState([
-    { id: 1, tag: "Музыка", value: "20" },
-    { id: 2, tag: "Спорт", value: "10" },
-    { id: 3, tag: "Кино", value: "15" },
-    { id: 4, tag: "Технологии", value: "30" },
-  ]);
+  const { id } = useParams();
+  const [tags, setTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    if (id) {
+      const fetchTags = async () => {
+        try {
+          const response = await fetch(
+            `http://localhost:8000/getTags?id=${id}`
+          );
+          if (!response.ok) {
+            throw new Error("Ошибка при получении данных с сервера");
+          }
+          const data = await response.json();
+          console.log("Ответ от сервера:", data);
+
+          const tagsData: Tag[] = Object.entries(data).map(([key, value]) => ({
+            tag: key,
+            value: String(value),
+            id: tags.length + 1,
+          }));
+
+          setTags(tagsData);
+        } catch (error) {
+          console.error("Ошибка при получении данных с сервера:", error);
+        }
+      };
+
+      fetchTags();
+    }
+  }, [id]);
 
   const handleAddTag = () => {
-    const newTag = {
+    const newTag: Tag = {
       id: tags.length + 1,
       tag: "Новый тег",
       value: "0",
@@ -22,7 +54,11 @@ export default function Tags() {
     setTags([...tags, newTag]);
   };
 
-  const handleTagChange = (id: number, field: string, value: string) => {
+  const handleTagChange = (
+    id: number,
+    field: "tag" | "value",
+    value: string
+  ) => {
     setTags(
       tags.map((tag) => (tag.id === id ? { ...tag, [field]: value } : tag))
     );
@@ -34,6 +70,34 @@ export default function Tags() {
 
   const handleDeleteTag = (id: number) => {
     setTags(tags.filter((tag) => tag.id !== id));
+  };
+
+  const handleSaveTags = async () => {
+    const updatedTags = tags.reduce((acc, tag) => {
+      acc[tag.tag] = tag.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/updateTags?id=${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedTags),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Ошибка при обновлении тегов");
+      }
+
+      console.log("Теги успешно обновлены");
+    } catch (error) {
+      console.error("Ошибка при сохранении тегов:", error);
+    }
   };
 
   return (
@@ -104,7 +168,12 @@ export default function Tags() {
           >
             очистить все
           </Button>
-          <Button type="normal" color="green" disabled={false}>
+          <Button
+            type="normal"
+            color="green"
+            disabled={false}
+            onClick={handleSaveTags}
+          >
             сохранить
           </Button>
         </div>
