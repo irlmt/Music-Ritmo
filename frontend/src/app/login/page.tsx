@@ -6,10 +6,12 @@ import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
 import { Logo } from "@/shared/logo";
+import { useAuth } from "@/app/auth-context";
 import styles from "./login.module.css";
 
 export default function Login() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,6 +78,7 @@ export default function Login() {
         data["subsonic-response"]?.status === "ok" &&
         data["subsonic-response"]?.user
       ) {
+        login(username);
         router.push("/");
       } else {
         setErrorMessage("Неверные данные для входа. Попробуйте снова.");
