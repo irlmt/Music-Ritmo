@@ -4,7 +4,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Tuple, Union, Any
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from . import database as db
 from . import db_helpers
@@ -586,3 +586,17 @@ def get_avatar(user: db.User) -> bytes:
 def get_user_by_username(session: Session, username: str) -> Optional[db.User]:
     user_helper = db_helpers.UserDBHelper(session)
     return user_helper.get_user_by_username(username)
+
+
+def create_user(session: Session, username: str, password: str) -> Tuple[None, Optional[str]]:
+    login_exists = session.exec(
+        select(db.User).where(db.User.login == username)
+    ).one_or_none()
+
+    if login_exists:
+        return (None, "Login already exists")
+
+    _, avatar_uid = random_avatar()
+    session.add(db.User(login=username, password=password, avatar=avatar_uid))
+    session.commit()
+    return (None, None)

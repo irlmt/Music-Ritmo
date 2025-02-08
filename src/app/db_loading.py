@@ -9,7 +9,7 @@ from mutagen.mp3 import MP3
 from sqlmodel import Session, select
 
 from . import database as db
-from .utils import get_cover_from_mp3, get_cover_from_flac, get_cover_preview
+from .utils import create_default_user, get_cover_from_mp3, get_cover_from_flac, get_cover_preview
 
 
 logger = logging.getLogger(__name__)
@@ -286,6 +286,7 @@ def load_audio_data(audio: AudioInfo):
 
 def scan_and_load(directory_path: str = "./tracks/"):
     db.init_db()
+    create_default_user()
 
     audio_files = scan_directory_for_audio_files(directory_path)
     for file in audio_files:

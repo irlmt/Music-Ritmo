@@ -7,6 +7,7 @@ from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from sqlmodel import Session, select
 
+from src.app import service_layer
 from . import database as db
 
 MAX_COVER_PREVIEW_SIZE = 128
@@ -145,3 +146,7 @@ def update_tags(track: db.Track, tags, session: Session) -> tuple[MP3 | FLAC, Au
                             audio["GENRE"] = genres
 
     return audio, audio_type
+
+
+def create_default_user():
+    service_layer.create_user(next(db.get_session()), "admin", "admin")

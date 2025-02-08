@@ -55,13 +55,10 @@ async def create_user(
     email: str = Query(default=""),
     session: Session = Depends(db.get_session),
 ):
-    login_exists = session.exec(
-        select(db.User).where(db.User.login == username)
-    ).one_or_none()
-    if login_exists:
-        return JSONResponse({"detail": "Login already exists"}, status_code=400)
-    session.add(db.User(login=username, password=password, avatar=""))
-    session.commit()
+    _, err = service_layer.create_user(session, username, password)
+    if err:
+        return JSONResponse({"detail": err}, status_code=400)
+
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
