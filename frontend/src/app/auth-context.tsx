@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       router.push("/login");
     }
-  }, []);
+  }, [router]);
 
   const login = (username: string, password: string) => {
     localStorage.setItem("username", username);

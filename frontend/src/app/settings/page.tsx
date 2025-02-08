@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
@@ -10,16 +9,15 @@ import Image from "next/image";
 import styles from "./settings.module.css";
 
 export default function Settings() {
-  const router = useRouter();
   const { user, password, login } = useAuth();
   const [newUsername, setNewUsername] = useState<string>(user || "");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [, setErrorMessage] = useState<string>("");
   const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
 
-  const checkUsernameUniqueness = async (username: string) => {
-    try {
+  const checkUsernameUniqueness = useCallback(
+    async (username: string) => {
       const response = await fetch(
         `http://localhost:8000/rest/getUsers?username=${user}&u=${user}&p=${password}`
       );
@@ -33,10 +31,9 @@ export default function Settings() {
       } else {
         setErrorMessage("Ошибка при проверке пользователей.");
       }
-    } catch (error) {
-      setErrorMessage("Ошибка сети при проверке пользователей.");
-    }
-  };
+    },
+    [user, password]
+  );
 
   const updateUsername = async () => {
     if (!newUsername) {
@@ -116,12 +113,11 @@ export default function Settings() {
       }
     }
   };
-
   useEffect(() => {
     if (newUsername) {
       checkUsernameUniqueness(newUsername);
     }
-  }, [newUsername]);
+  }, [newUsername, checkUsernameUniqueness]);
 
   return (
     <div className={styles.settings}>
@@ -150,7 +146,7 @@ export default function Settings() {
             onChange={(e) => setNewUsername(e.target.value)}
           />
           {!isUsernameUnique && (
-            <div className={styles.error}>Этот логин уже занят.</div>
+            <div className={styles.errorMessage}>Этот логин уже занят.</div>
           )}
           <Input
             type="password"
@@ -164,7 +160,14 @@ export default function Settings() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
-          {errorMessage && <div className={styles.error}>{errorMessage}</div>}
+          {newPassword !== confirmPassword && (
+            <div className={styles.errorMessage}>Пароли не совпадают.</div>
+          )}
+          {(!newUsername || !newPassword || !confirmPassword) && (
+            <div className={styles.errorMessage}>
+              Пожалуйста, заполните все поля.
+            </div>
+          )}
           <div className={styles.registration__content_button}>
             <Button
               type="normal"

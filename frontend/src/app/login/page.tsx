@@ -49,7 +49,7 @@ export default function Login() {
 
   useEffect(() => {
     validateFields();
-  }, []);
+  }, [validateFields]);
 
   const handleSubmit = async () => {
     if (usernameError || passwordError || !username || !password) {

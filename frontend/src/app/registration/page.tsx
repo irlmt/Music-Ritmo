@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
+import { useRouter } from "next/navigation";
 import { Logo } from "@/shared/logo";
 import styles from "./registration.module.css";
 
@@ -13,8 +13,8 @@ export default function Registration() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [, setErrorMessage] = useState("");
+  const [, setSuccessMessage] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
@@ -48,7 +48,7 @@ export default function Registration() {
 
   useEffect(() => {
     validateFields();
-  }, []);
+  }, [validateFields]);
 
   const handleSubmit = async () => {
     if (usernameError || passwordError || !username || !password) {
@@ -60,32 +60,26 @@ export default function Registration() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    try {
-      const response = await fetch(
-        `http://localhost:8000/rest/createUser?username=${username}&password=${password}&email=defemail@gmail.com}`,
-        {
-          method: "GET",
-        }
-      );
-
-      if (response.status === 400) {
-        setErrorMessage("Пользователь с таким логином уже существует.");
-      } else {
-        const data = await response.json();
-
-        if (data["subsonic-response"]?.status === "ok") {
-          setSuccessMessage("Вы успешно зарегистрированы!");
-          setTimeout(() => {
-            router.push("/");
-          }, 2000);
-        } else {
-          setErrorMessage("Ошибка при регистрации. Попробуйте снова.");
-        }
+    const response = await fetch(
+      `http://localhost:8000/rest/createUser?username=${username}&password=${password}&email=defemail@gmail.com}`,
+      {
+        method: "GET",
       }
-    } catch (error) {
-      setErrorMessage("Ошибка сети. Пожалуйста, попробуйте позже.");
-    } finally {
-      setLoading(false);
+    );
+
+    if (response.status === 400) {
+      setErrorMessage("Пользователь с таким логином уже существует.");
+    } else {
+      const data = await response.json();
+
+      if (data["subsonic-response"]?.status === "ok") {
+        setSuccessMessage("Вы успешно зарегистрированы!");
+        setTimeout(() => {
+          router.push("/");
+        }, 2000);
+      } else {
+        setErrorMessage("Ошибка при регистрации. Попробуйте снова.");
+      }
     }
   };
 
@@ -125,9 +119,11 @@ export default function Registration() {
             }}
           />
           {passwordError && <div className={styles.error}>{passwordError}</div>}
-          {errorMessage && <div className={styles.error}>{errorMessage}</div>}
-          {successMessage && (
-            <div className={styles.success}>{successMessage}</div>
+
+          {(usernameError || passwordError || !username || !password) && (
+            <div className={styles.errorMessage}>
+              Пожалуйста, исправьте все ошибки.
+            </div>
           )}
 
           <div className={styles.registration__content_button}>
