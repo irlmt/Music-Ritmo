@@ -444,7 +444,7 @@ class PlaylistService:
         res_playlist: dict[str, Optional[Union[str, int, List[dict]]]] = {
             "id": playlist.id,
             "name": playlist.name,
-            "owner": "user",
+            "owner": playlist.user.login,
             "public": True,
             "created": playlist.create_date,
             "changed": max(
@@ -460,8 +460,8 @@ class PlaylistService:
             res_playlist["entry"] = tracks
         return res_playlist
 
-    def create_playlist(self, name, tracks):
-        playlist_id = self.DBHelper.create_playlist(name, tracks)
+    def create_playlist(self, name, tracks, user_id):
+        playlist_id = self.DBHelper.create_playlist(name, tracks, user_id)
         return self.get_playlist(playlist_id)
 
     def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
