@@ -8,6 +8,7 @@ interface PlaylistProps {
   showDelete: boolean;
   playlist_id?: string;
   onDelete?: (id: string) => void;
+  coverArt?: string;
 }
 
 export const Playlist = ({
@@ -16,11 +17,13 @@ export const Playlist = ({
   showDelete,
   playlist_id,
   onDelete,
+  coverArt,
 }: PlaylistProps) => {
   const colorOptions = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
   const [randomColor, setRandomColor] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
   const [, setDeleteStatus] = useState<string>("");
+  const [image, setImage] = useState<string | null>(null);
 
   useEffect(() => {
     const getRandomColor = (colors: string[]): string => {
@@ -29,7 +32,19 @@ export const Playlist = ({
     };
 
     setRandomColor(getRandomColor(colorOptions));
-  }, []);
+
+    if (coverArt) {
+      fetch(`http://localhost:8000/rest/getCoverArt?id=${coverArt}`)
+        .then((response) => response.blob())
+        .then((imageBlob) => {
+          const imageUrl = URL.createObjectURL(imageBlob);
+          setImage(imageUrl);
+        })
+        .catch((error) =>
+          console.error("Ошибка при загрузке изображения:", error)
+        );
+    }
+  }, [coverArt]);
 
   const handleDeleteClick = () => {
     setShowModal(true);
@@ -71,6 +86,13 @@ export const Playlist = ({
   return (
     <div>
       <div className={styles.playlist} style={{ backgroundColor: randomColor }}>
+        {image && (
+          <img
+            src={image}
+            alt={`${name} cover`}
+            className={styles.playlist__cover}
+          />
+        )}
         {showDelete && (
           <i
             className={`fa-regular fa-trash-can ${styles.deleteIcon}`}

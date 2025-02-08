@@ -4,11 +4,13 @@ import styles from "./artist.module.css";
 interface PlaylistProps {
   name: string;
   link: string;
+  coverArt?: string;
 }
 
-export const Artist = ({ name, link }: PlaylistProps) => {
+export const Artist = ({ name, link, coverArt }: PlaylistProps) => {
   const colorOptions = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
   const [randomColor, setRandomColor] = useState<string>("");
+  const [image, setImage] = useState<string | null>(null);
 
   useEffect(() => {
     const getRandomColor = (colors: string[]): string => {
@@ -17,14 +19,32 @@ export const Artist = ({ name, link }: PlaylistProps) => {
     };
 
     setRandomColor(getRandomColor(colorOptions));
-  }, []);
 
+    if (coverArt) {
+      fetch(`http://localhost:8000/rest/getCoverArt?id=${coverArt}`)
+        .then((response) => response.blob())
+        .then((imageBlob) => {
+          const imageUrl = URL.createObjectURL(imageBlob);
+          setImage(imageUrl);
+        })
+        .catch((error) =>
+          console.error("Ошибка при загрузке изображения:", error)
+        );
+    }
+  }, [coverArt]);
   return (
     <a
       href={link}
       className={styles.playlist}
       style={{ backgroundColor: randomColor }}
     >
+      {image && (
+        <img
+          src={image}
+          alt={`${name} cover`}
+          className={styles.playlist__cover}
+        />
+      )}
       <div className={styles.playlist__name}>{name}</div>
     </a>
   );

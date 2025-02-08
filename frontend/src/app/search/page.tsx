@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Container } from "@/shared/container";
-import { useState, useEffect } from "react";
 import { Tracklist } from "@/widgets/track-list";
 import { Playlist } from "@/entities/playlist";
 import { Artist } from "@/entities/artist";
@@ -22,11 +21,13 @@ interface Album {
   id: string;
   title: string;
   artist: string;
+  coverArt?: string;
 }
 
 interface Artist {
   id: string;
-  artist: string;
+  name: string;
+  coverArt?: string;
 }
 
 interface SearchResult {
@@ -41,6 +42,7 @@ interface SearchResult {
 function SearchResultsPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [query, setQuery] = useState<string>("");
+  const [coverArts, setCoverArts] = useState<{ [key: string]: string }>({});
 
   const searchParams = useSearchParams();
   const queryParam = searchParams.get("query");
@@ -81,6 +83,33 @@ function SearchResultsPage() {
                   })
                 ),
               ];
+
+              const coverArtsToFetch: { [key: string]: string } = {};
+
+              console.log(
+                "Данные с сервера:",
+                data["subsonic-response"].searchResult3
+              );
+
+              data["subsonic-response"].searchResult3.album.forEach(
+                (album: Album) => {
+                  if (album.coverArt) {
+                    coverArtsToFetch[album.id] = album.coverArt;
+                  }
+                }
+              );
+
+              data["subsonic-response"].searchResult3.artist.forEach(
+                (artist: Artist) => {
+                  if (artist.coverArt) {
+                    coverArtsToFetch[artist.id] = artist.coverArt;
+                  }
+                }
+              );
+
+              console.log("Обложки для альбомов и артистов:", coverArtsToFetch);
+
+              setCoverArts(coverArtsToFetch);
               setResults(searchResult);
             } else {
               setResults([]);
@@ -118,14 +147,21 @@ function SearchResultsPage() {
         <div className={styles.album_playlists}>
           {albums.length > 0 && (
             <div className={styles.album_playlists}>
-              {albums.map((album, index) => (
-                <Playlist
-                  key={index}
-                  name={album.title}
-                  link={`/album/${album.id}`}
-                  showDelete={false}
-                />
-              ))}
+              {albums.map((album, index) => {
+                console.log(
+                  `Обложка для альбома ${album.title}:`,
+                  coverArts[album.id] || ""
+                );
+                return (
+                  <Playlist
+                    key={index}
+                    name={album.title}
+                    link={`/album/${album.id}`}
+                    showDelete={false}
+                    coverArt={coverArts[album.id] || ""}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -133,13 +169,20 @@ function SearchResultsPage() {
         <div className={styles.album_playlists}>
           {artist.length > 0 && (
             <div className={styles.album_playlists}>
-              {artist.map((artist, index) => (
-                <Artist
-                  key={index}
-                  name={artist.name}
-                  link={`/artist/${artist.id}`}
-                />
-              ))}
+              {artist.map((artist, index) => {
+                console.log(
+                  `Обложка для артиста ${artist.name}:`,
+                  coverArts[artist.id] || ""
+                );
+                return (
+                  <Artist
+                    key={index}
+                    name={artist.name}
+                    link={`/artist/${artist.id}`}
+                    coverArt={coverArts[artist.id] || ""}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

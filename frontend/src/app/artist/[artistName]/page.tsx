@@ -6,20 +6,12 @@ import { Container } from "@/shared/container";
 import { Playlist } from "@/entities/playlist";
 import styles from "./artist.module.css";
 
-interface Playlist {
-  name: string;
-  name_link: string;
-  artist: string;
-  artist_link: string;
-  favourite: boolean;
-  time: number;
-}
-
 interface Album {
   album: string;
   id: string;
   genre: string;
   year: string;
+  coverArt: string;
 }
 
 interface Artist {
@@ -73,6 +65,7 @@ export default function Artist() {
                 key={index}
                 name={album.album}
                 link={`/album/${album.id}`}
+                coverArt={album.coverArt}
                 showDelete={false}
               />
             ))}
