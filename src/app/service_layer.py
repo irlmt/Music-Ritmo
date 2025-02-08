@@ -1,7 +1,8 @@
 import random
+import py_avataaars as pa
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Union, Any
+from typing import List, Optional, Dict, Tuple, Union, Any
 
 from sqlmodel import Session
 
@@ -59,6 +60,7 @@ class AlbumService:
             "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
         }
         parse_val(res_album, "year", album.year)
+        parse_val(res_album, "created", "2999-31-12T11:06:57.000Z")
 
         if len(album.album_favourites) > 0:
             res_album["starred"] = min(a.added_at for a in album.album_favourites)
@@ -152,7 +154,7 @@ class TrackService:
             "size": track.file_size,
             "contentType": track.type,
             "suffix": "mp3",
-            "duration": track.duration,
+            "duration": int(track.duration),
             "bitRate": track.bit_rate,
             "bitDepth": track.bits_per_sample,
             "samplingRate": track.sample_rate,
@@ -166,7 +168,7 @@ class TrackService:
             "isVideo": False,
         }
         parse_val(res_song, "year", track.year)
-        parse_val(res_song, "created", track.year)
+        parse_val(res_song, "created", "2999-31-12T11:06:57.000Z")
         if len(track.track_favourites) > 0:
             res_song["starred"] = min(t.added_at for t in track.track_favourites)
         if with_genres:
@@ -443,7 +445,7 @@ class PlaylistService:
         res_playlist: dict[str, Optional[Union[str, int, List[dict]]]] = {
             "id": playlist.id,
             "name": playlist.name,
-            "owner": "user",
+            "owner": playlist.user.login,
             "public": True,
             "created": playlist.create_date,
             "changed": max(
@@ -459,8 +461,8 @@ class PlaylistService:
             res_playlist["entry"] = tracks
         return res_playlist
 
-    def create_playlist(self, name, tracks):
-        playlist_id = self.DBHelper.create_playlist(name, tracks)
+    def create_playlist(self, name, tracks, user_id):
+        playlist_id = self.DBHelper.create_playlist(name, tracks, user_id)
         return self.get_playlist(playlist_id)
 
     def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
@@ -537,3 +539,50 @@ class IndexService:
                     tracks.append(TrackService.get_open_subsonic_format(t))
             res["child"] = tracks
         return res
+
+
+def random_enum_choice(e):
+    return random.choice(list(e))
+
+
+def random_avatar() -> Tuple[bytes, str]:
+    avatar = pa.PyAvataaar(
+        style=pa.AvatarStyle.CIRCLE,
+        skin_color=random_enum_choice(pa.SkinColor),
+        hair_color=random_enum_choice(pa.HairColor),
+        facial_hair_type=random_enum_choice(pa.FacialHairType),
+        facial_hair_color=random_enum_choice(pa.HairColor),
+        top_type=random_enum_choice(pa.TopType),
+        hat_color=random_enum_choice(pa.Color),
+        mouth_type=random_enum_choice(pa.MouthType),
+        eye_type=random_enum_choice(pa.EyesType),
+        eyebrow_type=random_enum_choice(pa.EyebrowType),
+        nose_type=random_enum_choice(pa.NoseType),
+        accessories_type=random_enum_choice(pa.AccessoriesType),
+        clothe_type=random_enum_choice(pa.ClotheType),
+        clothe_color=random_enum_choice(pa.Color),
+        clothe_graphic_type=random_enum_choice(pa.ClotheGraphicType),
+    )
+    png = avatar.render_png()
+    return (png, avatar.unique_id)
+
+
+def generate_and_save_avatar(session: Session, user: db.User) -> bytes:
+    avatar, avatar_uid = random_avatar()
+
+    user.avatar = avatar_uid
+    session.commit()
+    session.refresh(user)
+
+    return avatar
+
+
+def get_avatar(user: db.User) -> bytes:
+    avatar = pa.PyAvataaar()
+    avatar.unique_id = user.avatar
+    return avatar.render_png()
+
+
+def get_user_by_username(session: Session, username: str) -> Optional[db.User]:
+    user_helper = db_helpers.UserDBHelper(session)
+    return user_helper.get_user_by_username(username)
