@@ -4,6 +4,9 @@ from io import BytesIO
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 
+from sqlmodel import Session, delete
+from . import database as db
+
 MAX_COVER_PREVIEW_SIZE = 128
 
 
@@ -41,3 +44,17 @@ def get_cover_from_flac(audio_file_flac: FLAC) -> bytes | None:
     return (
         audio_file_flac.pictures[0].data if len(audio_file_flac.pictures) > 0 else None
     )
+
+
+def clear_media(session: Session):
+    session.exec(delete(db.Artist))
+    session.exec(delete(db.Album))
+    session.exec(delete(db.Playlist))
+    session.exec(delete(db.Genre))
+    session.exec(delete(db.Track))
+
+    session.exec(delete(db.GenreTrack))
+    session.exec(delete(db.ArtistTrack))
+    session.exec(delete(db.ArtistAlbum))
+    session.exec(delete(db.PlaylistTrack))
+    session.commit()

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .open_subsonic_api import open_subsonic_router
 from .db_loading import scan_and_load
 from .frontend_endpoints import frontend_router
+from .database import init_db
 
 app = FastAPI()
 
@@ -19,6 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+init_db()
 scan_and_load()
 
 app.include_router(open_subsonic_router)
