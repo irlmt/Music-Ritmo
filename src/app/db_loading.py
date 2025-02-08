@@ -225,13 +225,13 @@ def load_audio_data(audio: AudioInfo):
             session.add(album)
             session.commit()
             session.refresh(album)
-        else:
-            album.total_tracks = album.total_tracks + 1
-            if album.album_artist_id is None:
-                if album_artist_id is not None:
-                    album.album_artist_id = album_artist_id
-                else:
-                    album.artists = list(set(album.artists).union(artists))
+        elif album.album_artist_id is None:
+            if album_artist_id is not None:
+                album.album_artist_id = album_artist_id
+            else:
+                album.artists = list(set(album.artists).union(artists))
+        elif album_artist_id is not None and album.album_artist_id != album_artist_id:
+            album.album_artist_id = album_artist_id
 
         genres = []
         for name in audio.genres:
@@ -269,6 +269,7 @@ def load_audio_data(audio: AudioInfo):
                 genres=genres,
                 artists=artists,
             )
+            album.total_tracks = album.total_tracks + 1
         else:
             track.title = audio.title
             track.artists = artists
