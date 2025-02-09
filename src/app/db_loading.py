@@ -285,9 +285,6 @@ def load_audio_data(audio: AudioInfo):
 
 
 def scan_and_load(directory_path: str = "./tracks/"):
-    db.init_db()
-    create_default_user()
-
     audio_files = scan_directory_for_audio_files(directory_path)
     for file in audio_files:
         load_audio_data(file)

@@ -5,8 +5,7 @@ from enum import Enum
 from mutagen.id3 import TextFrame, TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
-from sqlmodel import Session, select
-
+from sqlmodel import Session, select, delete
 from src.app import service_layer
 from . import database as db
 
@@ -150,3 +149,17 @@ def update_tags(track: db.Track, tags, session: Session) -> tuple[MP3 | FLAC, Au
 
 def create_default_user():
     service_layer.create_user(next(db.get_session()), "admin", "admin")
+
+
+def clear_media(session: Session):
+    session.exec(delete(db.Artist))
+    session.exec(delete(db.Album))
+    session.exec(delete(db.Playlist))
+    session.exec(delete(db.Genre))
+    session.exec(delete(db.Track))
+
+    session.exec(delete(db.GenreTrack))
+    session.exec(delete(db.ArtistTrack))
+    session.exec(delete(db.ArtistAlbum))
+    session.exec(delete(db.PlaylistTrack))
+    session.commit()

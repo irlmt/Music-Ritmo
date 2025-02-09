@@ -471,10 +471,11 @@ def get_starred2(
 
 
 @open_subsonic_router.get("/startScan")
-async def start_scan():
+async def start_scan(session: Session = Depends(db.get_session)):
     db_loading.scanStatus["scanning"] = True
     db_loading.scanStatus["count"] = 0
 
+    utils.clear_media(session)
     asyncio.get_running_loop().run_in_executor(None, db_loading.scan_and_load)
 
     rsp = SubsonicResponse()
