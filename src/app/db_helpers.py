@@ -88,7 +88,7 @@ class TrackDBHelper:
             ).all()
         return self.session.exec(select(db.Track)).all()
 
-    def get_track_by_id(self, id):
+    def get_track_by_id(self, id: int) -> Optional[db.Track]:
         return self.session.exec(
             select(db.Track).where(db.Track.id == id)
         ).one_or_none()
@@ -119,6 +119,23 @@ class TrackDBHelper:
             .where(db.ArtistTrack.track_id == track_id)
             .limit(1)
         ).first()
+
+    def get_tracks_by_genre_name(
+        self, genre_name: str, size: int | None = None, offset: int | None = None
+    ) -> Sequence[db.Track]:
+        query = (
+            select(db.Track)
+            .join(db.GenreTrack)
+            .where(db.GenreTrack.track_id == db.Track.id)
+            .join(db.Genre)
+            .where(db.GenreTrack.genre_id == db.Genre.id)
+            .where(db.Genre.name == genre_name)
+        )
+        if size:
+            query.limit(size)
+        if offset:
+            query.offset(offset)
+        return self.session.exec(query).all()
 
 
 class GenresDBHelper:

@@ -21,35 +21,6 @@ from . import utils
 open_subsonic_router = APIRouter(prefix="/rest")
 
 
-class SubsonicTrack(BaseModel):
-    id: str = Field(default_factory=str)
-    parent: str = Field(default_factory=str)
-    title: str = Field(default_factory=str)
-    isDir: bool = False
-    isVideo: bool = False
-    type: str = "music"
-    albumId: str = Field(default_factory=str)
-    album: str = ""
-    artistId: str = Field(default_factory=str)
-    artist: str = ""
-    coverArt: Optional[str] = None
-    duration: float = 0
-    bitRate: int = 0
-    bitDepth: int = 16
-    samplingRate: int = 44100
-    channelCount: int = 2
-    userRating: int = 0
-    averageRating: float = 0.0
-    track: int = 1
-    year: str = ""
-    genre: str = ""
-    size: int = 0
-    discNumber: int = 1
-    suffix: str = Field(default_factory=str)
-    contentType: str = "audio/mpeg"
-    path: str = Field(default_factory=str)
-
-
 @open_subsonic_router.get("/createUser")
 async def create_user(
     username: str = Query(...),
@@ -259,12 +230,12 @@ async def get_genres(session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getSong")
 def get_song(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.TrackService(session)
-    track = service.get_song_by_id(id)
+    track: Optional[dto.Track] = service.get_song_by_id(id)
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["song"] = track
+    rsp.data["song"] = OpenSubsonicFormatter.format_track(track)
     return rsp.to_json_rsp()
 
 
@@ -282,7 +253,7 @@ def get_random_songs(
         return JSONResponse({"detail": "No page found"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["randomSongs"] = {"song": tracks}
+    rsp.data["randomSongs"] = OpenSubsonicFormatter.format_tracks(tracks)
     return rsp.to_json_rsp()
 
 

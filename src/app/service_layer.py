@@ -2,6 +2,8 @@ import random
 import py_avataaars as pa
 from enum import Enum
 from dataclasses import dataclass
+from datetime import datetime
+from functools import partial
 from typing import List, Optional, Dict, Sequence, Tuple, Union, Any
 
 from sqlmodel import Session, select
@@ -29,7 +31,7 @@ class RequestType(Enum):
     BY_GENRE = 9
 
 
-def get_album_artist_id(track: db.Track) -> int:
+def get_album_artist_id_by_track(track: db.Track) -> int:
     if track.album_artist_id:
         return track.album_artist_id
     if len(track.artists) > 0:
@@ -135,10 +137,99 @@ class AlbumService:
         return {"album": [AlbumService.get_open_subsonic_format(a) for a in albums]}
 
 
+def join_artist_names(artists: Sequence[db.Artist]) -> Optional[str]:
+    if len(artists) == 0:
+        return None
+    return ", ".join(a.name for a in artists)
+
+
+def join_genre_names(genres: Sequence[db.Genre]) -> Optional[str]:
+    if len(genres) == 0:
+        return None
+    return ", ".join(g.name for g in genres)
+
+
+def get_album_artist(db_track: db.Track) -> Optional[db.Artist]:
+    # TODO MUS-206 Use db_track.album_artist
+    if len(db_track.album.artists) > 0:
+        return db_track.album.artists[0]
+    return None
+
+
+def get_album_artist_id_by_artist(db_artist: Optional[db.Artist]) -> Optional[int]:
+    if db_artist:
+        return db_artist.id
+    return None
+
+
+def fill_artist_item(artist: db.Artist) -> dto.ArtistItem:
+    return dto.ArtistItem(
+        id=artist.id,
+        name=artist.name,
+    )
+
+
+def fill_artist_items(artists: Sequence[db.Artist]) -> List[dto.ArtistItem]:
+    return list(map(fill_artist_item, artists))
+
+
+def fill_genre_item(genre: db.Genre) -> dto.GenreItem:
+    return dto.GenreItem(
+        name=genre.name,
+    )
+
+
+def fill_genre_items(genres: Sequence[db.Genre]) -> List[dto.GenreItem]:
+    return list(map(fill_genre_item, genres))
+
+
+def extract_year(str_year: str | None) -> int | None:
+    if str_year and len(str_year) == 4 and str_year.isnumeric():
+        return int(str_year)
+    return None
+
+
+def fill_track(db_track: db.Track, db_user: db.User | None) -> dto.Track:
+    return dto.Track(
+        id=db_track.id,
+        title=db_track.title,
+        album=db_track.album.name,
+        album_id=db_track.album_id,
+        artist=join_artist_names(db_track.artists),
+        artist_id=get_album_artist_id_by_artist(get_album_artist(db_track)),
+        track_number=db_track.album_position,
+        disc_number=None,
+        year=extract_year(db_track.year),
+        genre=join_genre_names(db_track.genres),
+        cover_art_id=db_track.id,
+        file_size=db_track.file_size,
+        content_type=db_track.type,
+        duration=int(db_track.duration),
+        bit_rate=db_track.bit_rate,
+        sampling_rate=db_track.sample_rate,
+        bit_depth=db_track.bits_per_sample,
+        channel_count=db_track.channels,
+        path=db_track.file_path,
+        play_count=db_track.plays_count,
+        created=datetime.now(),
+        starred=None,  # TODO
+        bpm=None,
+        comment=None,
+        artists=fill_artist_items(db_track.artists),
+        genres=fill_genre_items(db_track.genres),
+    )
+
+
+def fill_tracks(
+    db_tracks: Sequence[db.Track], db_user: db.User | None
+) -> List[dto.Track]:
+    return list(map(partial(fill_track, db_user=db_user), db_tracks))
+
+
 class TrackService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.TrackDBHelper(session)
-        self.genre_helper = db_helpers.GenresDBHelper(session)
+        self.track_db_helper = db_helpers.TrackDBHelper(session)
+        self.genre_db_helper = db_helpers.GenresDBHelper(session)
 
     @staticmethod
     def get_open_subsonic_format(
@@ -165,7 +256,7 @@ class TrackService:
             "playCount": track.plays_count,
             "discNumber": 1,
             "albumId": track.album_id,
-            "artistId": get_album_artist_id(track),
+            "artistId": get_album_artist_id_by_track(track),
             "type": track.type,
             "isVideo": False,
         }
@@ -185,39 +276,35 @@ class TrackService:
             res_song["artists"] = artists
         return res_song
 
-    def get_song_by_id(self, id):
-        track = self.DBHelper.get_track_by_id(id)
-        if track:
-            track = self.__class__.get_open_subsonic_format(
-                track, with_genres=True, with_artists=True
-            )
-        return track
+    def get_song_by_id(self, id: int) -> Optional[dto.Track]:
+        db_track = self.track_db_helper.get_track_by_id(id)
+        if db_track:
+            return fill_track(db_track, None)
+        return None
 
-    def _get_tracks_by_genre_without_subsonic(
-        self, genre, count=10, offset=0, music_folder=None
-    ):
-        genre = self.genre_helper.get_genres_by_name(filter_name=genre)
-        return [] if not genre else genre[-1].tracks[offset : offset + count]
-
-    def get_songs_by_genre(self, genre, count=10, offset=0, music_folder=None):
-        return [
-            self.get_open_subsonic_format(track, with_genres=False)
-            for track in self._get_tracks_by_genre_without_subsonic(
-                genre, count, offset, music_folder
-            )
-        ]
+    def get_songs_by_genre(
+        self,
+        genre: str,
+        count: int = 10,
+        offset: int = 0,
+        music_folder: str | None = None,
+    ) -> List[dto.Track]:
+        return fill_tracks(
+            self.track_db_helper.get_tracks_by_genre_name(genre, count, offset),
+            None,
+        )
 
     def get_random_songs(
         self,
-        size=10,
+        size: int = 10,
         genre: Optional[str] = None,
         from_year: Optional[str] = None,
         to_year: Optional[str] = None,
         music_folder_id: Optional[str] = None,
-    ):
-        tracks = self.DBHelper.get_all_tracks()
+    ) -> List[dto.Track]:
+        tracks = self.track_db_helper.get_all_tracks()
         if genre:
-            tracks = self._get_tracks_by_genre_without_subsonic(genre)
+            tracks = self.track_db_helper.get_tracks_by_genre_name(genre)
         if from_year:
             tracks = list(
                 filter(lambda track: track.year and track.year >= from_year, tracks)
@@ -227,10 +314,7 @@ class TrackService:
                 filter(lambda track: track.year and track.year <= to_year, tracks)
             )
         random_tracks = random.sample(tracks, min(size, len(tracks)))
-        return [
-            self.get_open_subsonic_format(track, with_genres=False, with_artists=False)
-            for track in random_tracks
-        ]
+        return fill_tracks(random_tracks, None)
 
 
 def fill_genre(db_genre: db.Genre) -> dto.Genre:
