@@ -132,13 +132,7 @@ class GenresDBHelper:
             ).all()
         return self.session.exec(select(db.Genre)).all()
 
-    def get_all_genres(self, filter_name=None):
-        if filter_name:
-            return self.session.exec(
-                select(db.Genre).where(
-                    func.lower(db.Genre.name).like(f"%{filter_name.lower()}%")
-                )
-            ).all()
+    def get_all_genres(self) -> Sequence[db.Genre]:
         return self.session.exec(select(db.Genre)).all()
 
     def get_track_by_name(self, name):

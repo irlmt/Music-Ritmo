@@ -2,9 +2,11 @@ import random
 import py_avataaars as pa
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Tuple, Union, Any
+from typing import List, Optional, Dict, Sequence, Tuple, Union, Any
 
 from sqlmodel import Session, select
+
+from src.app import dto
 
 from . import database as db
 from . import db_helpers
@@ -174,9 +176,7 @@ class TrackService:
         if with_genres:
             genres = []
             for genre in track.genres:
-                genres.append(
-                    GenreService.get_open_subsonic_format(genre, item_genre=True)
-                )
+                genres.append({"name": genre.name})
             res_song["genres"] = genres
         if with_artists:
             artists = []
@@ -233,28 +233,23 @@ class TrackService:
         ]
 
 
+def fill_genre(db_genre: db.Genre) -> dto.Genre:
+    albumCount = len(set([t.album_id for t in db_genre.tracks]))
+    songCount = len(db_genre.tracks)
+    return dto.Genre(albumCount=albumCount, songCount=songCount, name=db_genre.name)
+
+
+def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
+    return list(map(fill_genre, db_genres))
+
+
 class GenreService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.GenresDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(genre: db.Genre, item_genre=False):
-        if item_genre:
-            return {"name": genre.name}
-        res_genre = {
-            "songCount": len(genre.tracks),
-            "AlbumCount": len(set([a.album.name for a in genre.tracks])),
-            "value": genre.name,
-        }
-
-        return res_genre
-
-    def get_genres(self):
-        genres = self.DBHelper.get_all_genres()
-        if genres:
-            genres = {
-                "genre:": [self.__class__.get_open_subsonic_format(g) for g in genres]
-            }
+    def get_genres(self) -> List[dto.Genre]:
+        db_genres = self.DBHelper.get_all_genres()
+        genres = fill_genres(db_genres)
         return genres
 
 
@@ -588,7 +583,9 @@ def get_user_by_username(session: Session, username: str) -> Optional[db.User]:
     return user_helper.get_user_by_username(username)
 
 
-def create_user(session: Session, username: str, password: str) -> Tuple[None, Optional[str]]:
+def create_user(
+    session: Session, username: str, password: str
+) -> Tuple[None, Optional[str]]:
     login_exists = session.exec(
         select(db.User).where(db.User.login == username)
     ).one_or_none()
