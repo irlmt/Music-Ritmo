@@ -15,6 +15,7 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [, setErrorMessage] = useState<string>("");
   const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   const checkUsernameUniqueness = useCallback(
     async (username: string) => {
@@ -119,24 +120,83 @@ export default function Settings() {
     }
   }, [newUsername, checkUsernameUniqueness]);
 
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/getAvatar?username=${user}&u=${user}&p=${password}`
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get("Content-Type");
+
+          if (contentType && contentType.includes("image")) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            setAvatar(url);
+          } else {
+            const data = await response.json();
+            console.log("Полученный ответ с бека:", data);
+            setAvatar(data.avatarUrl);
+          }
+        } else {
+          console.error("Не удалось загрузить аватар");
+        }
+      } catch (error) {
+        console.error("Ошибка при получении аватара:", error);
+      }
+    };
+
+    fetchAvatar();
+  }, [user, password]);
+
   return (
     <div className={styles.settings}>
       <div className={styles.settings__avatar}>
         <h1 className={styles.settings__avatar__name}>{user}</h1>
-        <Image
-          src="/images/logo.svg"
-          alt="User Avatar"
-          width={300}
-          height={300}
-          className={styles.settings__avatar__image}
-        />
+
+        {avatar ? (
+          <Image
+            src={avatar}
+            alt="User Avatar"
+            width={300}
+            height={300}
+            className={styles.settings__avatar__image}
+          />
+        ) : (
+          <Image
+            src="/images/logo.svg"
+            alt="User Avatar"
+            width={300}
+            height={300}
+            className={styles.settings__avatar__image}
+          />
+        )}
+
+        <Button
+          type="normal"
+          color="white"
+          disabled={false}
+          onClick={updateUsername}
+        >
+          Cменить аватар
+        </Button>
+
+        <Button
+          type="normal"
+          color="green"
+          disabled={false}
+          onClick={updateUsername}
+        >
+          Сохранить аватар
+        </Button>
       </div>
       <div className={styles.settings__content}>
         <Container
           style={{ height: "45vh", width: "30vw" }}
           direction="column"
           arrow={true}
-          link_arrow="/login"
+          link_arrow="/"
         >
           <h2 className={styles.registration__content__title}>Смена логина</h2>
           <Input
