@@ -21,6 +21,10 @@ interface ServerResponse {
   year: string;
 }
 
+interface RequestData extends ServerResponse {
+  [key: string]: string | number;
+}
+
 export default function Tags() {
   const { tagId } = useParams();
   const decodedTagId =
@@ -90,21 +94,40 @@ export default function Tags() {
     };
     setTags([...tags, newTag]);
   };
-
   const handleSaveTags = async () => {
     try {
-      const requestData = {
+      const requestData: RequestData = {
         album: tags.find((tag) => tag.tag === "Album")?.value || "",
         album_artist:
           tags.find((tag) => tag.tag === "Album Artist")?.value || "",
         album_position:
-          tags.find((tag) => tag.tag === "Album Position")?.value?.toString() ||
-          "",
+          parseInt(
+            tags.find((tag) => tag.tag === "Album Position")?.value || "0",
+            10
+          ) || 0,
         artists: tags.find((tag) => tag.tag === "Artists")?.value || "",
         genres: tags.find((tag) => tag.tag === "Genres")?.value || "",
         title: tags.find((tag) => tag.tag === "Title")?.value || "",
         year: tags.find((tag) => tag.tag === "Year")?.value || "",
       };
+
+      tags.forEach((tag) => {
+        if (
+          ![
+            "Album",
+            "Album Artist",
+            "Album Position",
+            "Artists",
+            "Genres",
+            "Title",
+            "Year",
+          ].includes(tag.tag)
+        ) {
+          requestData[tag.tag] = tag.value;
+        }
+      });
+
+      console.log("Отправляемые данные на бэкенд:", requestData);
 
       const response = await fetch(
         `http://localhost:8000/specific/updateTags?id=${decodedTagId}`,
@@ -117,14 +140,16 @@ export default function Tags() {
         }
       );
 
+      console.log("Response status:", response.status);
+
       if (response.ok) {
         console.log("Теги успешно сохранены!");
       } else {
-        console.log("Ошибка при сохранении тегов.");
+        const errorData = await response.json();
+        console.log("Ошибка при сохранении тегов:", errorData);
       }
     } catch (error) {
       console.error("Ошибка при сохранении тегов:", error);
-      console.log("Ошибка при сохранении тегов.");
     }
   };
 
