@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
@@ -14,27 +14,8 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [, setErrorMessage] = useState<string>("");
-  const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
+  const [isUsernameUnique] = useState<boolean>(true);
   const [avatar, setAvatar] = useState<string | null>(null);
-
-  const checkUsernameUniqueness = useCallback(
-    async (username: string) => {
-      const response = await fetch(
-        `http://localhost:8000/rest/getUsers?username=${user}&u=${user}&p=${password}`
-      );
-      const data = await response.json();
-
-      if (data["subsonic-response"]?.status === "ok") {
-        const existingUsernames = data["subsonic-response"].users.user.map(
-          (user: { username: string }) => user.username
-        );
-        setIsUsernameUnique(!existingUsernames.includes(username));
-      } else {
-        setErrorMessage("Ошибка при проверке пользователей.");
-      }
-    },
-    [user, password]
-  );
 
   const updateUsername = async () => {
     if (!newUsername) {
@@ -114,39 +95,61 @@ export default function Settings() {
       }
     }
   };
-  useEffect(() => {
-    if (newUsername) {
-      checkUsernameUniqueness(newUsername);
-    }
-  }, [newUsername, checkUsernameUniqueness]);
 
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:8000/rest/getAvatar?username=${user}&u=${user}&p=${password}`
-        );
+  const fetchAvatar = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/rest/getAvatar?username=${user}&u=${user}&p=${password}`
+      );
 
-        if (response.ok) {
-          const contentType = response.headers.get("Content-Type");
+      if (response.ok) {
+        const contentType = response.headers.get("Content-Type");
 
-          if (contentType && contentType.includes("image")) {
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            setAvatar(url);
-          } else {
-            const data = await response.json();
-            console.log("Полученный ответ с бека:", data);
-            setAvatar(data.avatarUrl);
-          }
+        if (contentType && contentType.includes("image")) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setAvatar(url);
         } else {
-          console.error("Не удалось загрузить аватар");
+          const data = await response.json();
+          setAvatar(data.avatarUrl);
         }
-      } catch (error) {
-        console.error("Ошибка при получении аватара:", error);
+      } else {
+        console.error("Не удалось загрузить аватар");
       }
-    };
+    } catch (error) {
+      console.error("Ошибка при получении аватара:", error);
+    }
+  };
 
+  const generateAvatar = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/specific/generateAvatar?u=${user}&p=${password}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (response.ok) {
+        const contentType = response.headers.get("Content-Type");
+
+        if (contentType && contentType.includes("image")) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setAvatar(url);
+        } else {
+          const data = await response.json();
+          setAvatar(data.avatarUrl);
+        }
+      } else {
+        console.error("Не удалось сгенерировать новый аватар");
+      }
+    } catch (error) {
+      console.error("Ошибка при генерации аватара:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchAvatar();
   }, [user, password]);
 
@@ -177,18 +180,9 @@ export default function Settings() {
           type="normal"
           color="white"
           disabled={false}
-          onClick={updateUsername}
+          onClick={generateAvatar}
         >
-          Cменить аватар
-        </Button>
-
-        <Button
-          type="normal"
-          color="green"
-          disabled={false}
-          onClick={updateUsername}
-        >
-          Сохранить аватар
+          Сменить аватар
         </Button>
       </div>
       <div className={styles.settings__content}>
