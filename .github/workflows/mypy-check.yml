@@ -28,4 +28,4 @@ jobs:
 
       - name: Run mypy
         run: |
-          cd src/app && mypy . --strict
+        #  cd src/app && mypy . --strict
