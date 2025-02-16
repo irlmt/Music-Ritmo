@@ -588,7 +588,9 @@ def get_user_by_username(session: Session, username: str) -> Optional[db.User]:
     return user_helper.get_user_by_username(username)
 
 
-def create_user(session: Session, username: str, password: str) -> Tuple[None, Optional[str]]:
+def create_user(
+    session: Session, username: str, password: str
+) -> Tuple[None, Optional[str]]:
     login_exists = session.exec(
         select(db.User).where(db.User.login == username)
     ).one_or_none()

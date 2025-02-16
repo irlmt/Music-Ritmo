@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 
 from . import database as db
 
+
 def authenticate_user(
     u: str = Query(None),
     p: str = Query(None),
