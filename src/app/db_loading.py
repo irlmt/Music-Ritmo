@@ -9,7 +9,7 @@ from mutagen.mp3 import MP3
 from sqlmodel import Session, select
 
 from . import database as db
-from .utils import create_default_user, get_cover_from_mp3, get_cover_from_flac, get_cover_preview
+from . import utils
 
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ class AudioInfo:
         year: int | None,
         cover: bytes,
         cover_type: str,
+        custom_tags: list[(str, str)],
         bit_rate: int,
         bits_per_sample: int,
         sample_rate: int,
@@ -58,6 +59,7 @@ class AudioInfo:
         self.year = year
         self.cover = cover
         self.cover_type = cover_type
+        self.custom_tags = custom_tags
         self.bit_rate = bit_rate
         self.bits_per_sample = bits_per_sample
         self.sample_rate = sample_rate
@@ -67,7 +69,7 @@ class AudioInfo:
 
 def extract_metadata_mp3(file_path):
     audio_file = MP3(file_path)
-    cover, cover_type = get_cover_preview(get_cover_from_mp3(audio_file))
+    cover, cover_type = utils.get_cover_preview(utils.get_cover_from_mp3(audio_file))
     return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
@@ -103,6 +105,7 @@ def extract_metadata_mp3(file_path):
         year=int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
+        custom_tags=utils.get_custom_tags_mp3(audio_file),
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=int(
             audio_file.info.bitrate
@@ -116,7 +119,7 @@ def extract_metadata_mp3(file_path):
 
 def extract_metadata_flac(file_path):
     audio_file = FLAC(file_path)
-    cover, cover_type = get_cover_preview(get_cover_from_flac(audio_file))
+    cover, cover_type = utils.get_cover_preview(utils.get_cover_from_flac(audio_file))
     return AudioInfo(
         file_path=file_path,
         file_size=os.path.getsize(file_path),
@@ -148,6 +151,7 @@ def extract_metadata_flac(file_path):
         year=int(str(audio_file["DATE"][0])) if "DATE" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
+        custom_tags=utils.get_custom_tags_flac(audio_file),
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=audio_file.info.bits_per_sample,
         sample_rate=audio_file.info.sample_rate,
@@ -245,6 +249,13 @@ def load_audio_data(audio: AudioInfo):
                 session.refresh(genre)
             genres.append(genre)
 
+        custom_tags: list[db.Tag] = []
+        for name, value in audio.custom_tags:
+            tag = session.exec(select(db.Tag).where(db.Tag.name == name).where(db.Tag.value == value)).one_or_none()
+            if tag == None:
+                tag = db.Tag(name=name, value=value, updated=False)
+            custom_tags.append(tag)
+
         track = session.exec(
             select(db.Track).where(db.Track.file_path == audio.file_path)
         ).one_or_none()
@@ -268,6 +279,7 @@ def load_audio_data(audio: AudioInfo):
                 duration=audio.duration,
                 genres=genres,
                 artists=artists,
+                tags=custom_tags
             )
             album.total_tracks = album.total_tracks + 1
         else:
@@ -278,6 +290,7 @@ def load_audio_data(audio: AudioInfo):
             track.album_position = audio.track_number
             track.year = audio.year
             track.genres = genres
+            track.tags = custom_tags
 
         session.add(track)
         session.commit()

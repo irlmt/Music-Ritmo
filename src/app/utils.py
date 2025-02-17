@@ -2,7 +2,7 @@ from PIL import Image
 from io import BytesIO
 
 from enum import Enum
-from mutagen.id3 import TextFrame, TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC
+from mutagen.id3 import TXXX, TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from sqlmodel import Session, select, delete
@@ -144,6 +144,25 @@ def update_tags(track: db.Track, tags, session: Session) -> tuple[MP3 | FLAC, Au
                         case AudioType.FLAC:
                             audio["GENRE"] = genres
 
+            case _:
+                found = False
+                should_update = False
+                for tag in track.tags:
+                    if tag.name == key:
+                        found = True
+                        tag.updated = True
+                        if tag.value != value:
+                            should_update = True
+                            break
+                
+                if not found or should_update:
+                    match audio_type:
+                        case AudioType.MP3:
+                            audio["TXXX:" + key] = TXXX(desc=key, text=value)
+                        case AudioType.FLAC:
+                            audio["TXXX:" + key] = value
+
+    audio.save()
     return audio, audio_type
 
 
@@ -156,6 +175,7 @@ def clear_media(session: Session):
     session.exec(delete(db.Album))
     session.exec(delete(db.Playlist))
     session.exec(delete(db.Genre))
+    session.exec(delete(db.Tag))
     session.exec(delete(db.Track))
 
     session.exec(delete(db.GenreTrack))
@@ -163,3 +183,49 @@ def clear_media(session: Session):
     session.exec(delete(db.ArtistAlbum))
     session.exec(delete(db.PlaylistTrack))
     session.commit()
+
+
+def get_custom_tags_mp3(audio_file: MP3):
+    custom_tags: list[(str, str)] = []
+    for tag in audio_file.tags:
+        if (tag.startswith("TXXX:")):
+            custom_tags.append((audio_file[tag].desc, audio_file[tag].text[0]))
+    return custom_tags
+
+
+def get_custom_tags_flac(audio_file: FLAC):
+    custom_tags: list[(str, str)] = []
+    for key, value in audio_file.tags:
+        if (key.startswith("TXXX:")):
+            custom_tags.append((key.split(":")[-1], value))
+    return custom_tags
+
+
+def clear_outdated_tags(track: db.Track, audio: MP3 | FLAC):
+    for tag in track.tags:
+        if tag.updated == False:
+            audio.pop("TXXX:" + tag.name)
+    audio.save()
+
+
+def get_base_tags(track: db.Track, session: Session):
+    album_artist = ""
+    if track.album_artist_id is not None:
+        album_artist = session.exec(select(db.Artist).where(db.Artist.id == track.album_artist_id)).one_or_none().name
+
+    return {
+        "title": track.title,
+        "artists": ", ".join(artist.name for artist in track.artists),
+        "album_artist": album_artist,
+        "album": track.album.name,
+        "album_position": track.album_position,
+        "year": track.year,
+        "genres": ", ".join(genre.name for genre in track.genres),
+    }
+
+
+def get_custom_tags(track: db.Track):
+    custom_tags = {}
+    for tag in track.tags:
+        custom_tags[tag.name] = tag.value
+    return custom_tags

@@ -200,5 +200,7 @@ class Tag(SQLModel, table=True):
     __tablename__ = "Tags"
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
+    value: str
+    updated: bool
 
     tracks: list["Track"] = Relationship(back_populates="tags", link_model=TagTrack)
