@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
@@ -9,13 +9,32 @@ import Image from "next/image";
 import styles from "./settings.module.css";
 
 export default function Settings() {
-  const { user, password, login } = useAuth();
+  const { user, password, updateUser } = useAuth();
   const [newUsername, setNewUsername] = useState<string>(user || "");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [, setErrorMessage] = useState<string>("");
-  const [isUsernameUnique] = useState<boolean>(true);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
+
+  const checkUsernameUniqueness = useCallback(
+    async (username: string) => {
+      const response = await fetch(
+        `http://localhost:8000/rest/getUsers?username=${user}&u=${user}&p=${password}`
+      );
+      const data = await response.json();
+
+      if (data["subsonic-response"]?.status === "ok") {
+        const existingUsernames = data["subsonic-response"].users.user.map(
+          (user: { username: string }) => user.username
+        );
+        setIsUsernameUnique(!existingUsernames.includes(username));
+      } else {
+        setErrorMessage("Ошибка при проверке пользователей.");
+      }
+    },
+    [user, password]
+  );
 
   const updateUsername = async () => {
     if (!newUsername) {
@@ -25,11 +44,6 @@ export default function Settings() {
 
     if (!isUsernameUnique) {
       setErrorMessage("Этот логин уже занят.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setErrorMessage("Пароли не совпадают.");
       return;
     }
 
@@ -44,10 +58,7 @@ export default function Settings() {
       const data = await response.json();
       if (data["subsonic-response"]?.status === "ok") {
         setErrorMessage("");
-        setNewPassword("");
-        setConfirmPassword("");
-
-        login(newUsername, newPassword);
+        updateUser(newUsername, password || "");
       } else {
         setErrorMessage("Ошибка при изменении логина.");
       }
@@ -82,8 +93,7 @@ export default function Settings() {
       const data = await response.json();
       if (data["subsonic-response"]?.status === "ok") {
         setErrorMessage("");
-        setNewPassword("");
-        setConfirmPassword("");
+        updateUser(user || "", newPassword);
       } else {
         setErrorMessage("Ошибка при изменении пароля.");
       }
@@ -96,62 +106,55 @@ export default function Settings() {
     }
   };
 
-  const fetchAvatar = async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:8000/rest/getAvatar?username=${user}&u=${user}&p=${password}`
-      );
+  const handleSaveChanges = async () => {
+    setErrorMessage("");
 
-      if (response.ok) {
-        const contentType = response.headers.get("Content-Type");
-
-        if (contentType && contentType.includes("image")) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          setAvatar(url);
-        } else {
-          const data = await response.json();
-          setAvatar(data.avatarUrl);
-        }
-      } else {
-        console.error("Не удалось загрузить аватар");
-      }
-    } catch (error) {
-      console.error("Ошибка при получении аватара:", error);
+    if (newUsername !== user) {
+      await updateUsername();
     }
-  };
 
-  const generateAvatar = async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:8000/specific/generateAvatar?u=${user}&p=${password}`,
-        {
-          method: "GET",
-        }
-      );
-
-      if (response.ok) {
-        const contentType = response.headers.get("Content-Type");
-
-        if (contentType && contentType.includes("image")) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          setAvatar(url);
-        } else {
-          const data = await response.json();
-          setAvatar(data.avatarUrl);
-        }
-      } else {
-        console.error("Не удалось сгенерировать новый аватар");
-      }
-    } catch (error) {
-      console.error("Ошибка при генерации аватара:", error);
+    if (newPassword && newPassword === confirmPassword) {
+      await changePassword();
     }
   };
 
   useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/getAvatar?username=${user}&u=${user}&p=${password}`
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get("Content-Type");
+
+          if (contentType && contentType.includes("image")) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            setAvatar(url);
+          } else {
+            const data = await response.json();
+            setAvatar(data.avatarUrl);
+          }
+        } else {
+          console.error("Не удалось загрузить аватар");
+        }
+      } catch (error) {
+        console.error("Ошибка при получении аватара:", error);
+      }
+    };
+
     fetchAvatar();
   }, [user, password]);
+
+  useEffect(() => {
+    if (newUsername) {
+      checkUsernameUniqueness(newUsername);
+    }
+  }, [newUsername, checkUsernameUniqueness]);
+
+  const isSaveButtonDisabled =
+    !newUsername || (newUsername === user && !newPassword);
 
   return (
     <div className={styles.settings}>
@@ -175,16 +178,8 @@ export default function Settings() {
             className={styles.settings__avatar__image}
           />
         )}
-
-        <Button
-          type="normal"
-          color="white"
-          disabled={false}
-          onClick={generateAvatar}
-        >
-          Сменить аватар
-        </Button>
       </div>
+
       <div className={styles.settings__content}>
         <Container
           style={{ height: "45vh", width: "30vw" }}
@@ -192,7 +187,9 @@ export default function Settings() {
           arrow={true}
           link_arrow="/"
         >
-          <h2 className={styles.registration__content__title}>Смена логина</h2>
+          <h2 className={styles.registration__content__title}>
+            Смена логина и пароля
+          </h2>
           <Input
             type="text"
             placeholder="введите новый логин"
@@ -217,27 +214,15 @@ export default function Settings() {
           {newPassword !== confirmPassword && (
             <div className={styles.errorMessage}>Пароли не совпадают.</div>
           )}
-          {(!newUsername || !newPassword || !confirmPassword) && (
-            <div className={styles.errorMessage}>
-              Пожалуйста, заполните все поля.
-            </div>
-          )}
+
           <div className={styles.registration__content_button}>
             <Button
               type="normal"
               color="green"
-              disabled={false}
-              onClick={updateUsername}
+              disabled={isSaveButtonDisabled}
+              onClick={handleSaveChanges}
             >
-              Сохранить изменения логина
-            </Button>
-            <Button
-              type="normal"
-              color="green"
-              disabled={false}
-              onClick={changePassword}
-            >
-              Сохранить изменения пароля
+              Сохранить изменения
             </Button>
           </div>
         </Container>

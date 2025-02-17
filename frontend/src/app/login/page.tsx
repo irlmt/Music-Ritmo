@@ -72,7 +72,6 @@ export default function Login() {
       );
 
       const data = await response.json();
-      console.log("Ответ от сервера:", data);
 
       if (
         response.status === 200 &&
