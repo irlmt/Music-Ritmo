@@ -147,6 +147,34 @@ export default function Settings() {
     fetchAvatar();
   }, [user, password]);
 
+  const generateAvatar = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/specific/generateAvatar?u=${user}&p=${password}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (response.ok) {
+        const contentType = response.headers.get("Content-Type");
+
+        if (contentType && contentType.includes("image")) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setAvatar(url);
+        } else {
+          const data = await response.json();
+          setAvatar(data.avatarUrl);
+        }
+      } else {
+        console.error("Не удалось сгенерировать новый аватар");
+      }
+    } catch (error) {
+      console.error("Ошибка при генерации аватара:", error);
+    }
+  };
+
   useEffect(() => {
     if (newUsername) {
       checkUsernameUniqueness(newUsername);
@@ -178,6 +206,9 @@ export default function Settings() {
             className={styles.settings__avatar__image}
           />
         )}
+        <Button type="normal" color="green" onClick={generateAvatar}>
+          Сменить аватар
+        </Button>
       </div>
 
       <div className={styles.settings__content}>
