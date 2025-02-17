@@ -21,61 +21,61 @@ interface Track {
 export default function FavouriteTrack() {
   const [starredTracks, setStarredTracks] = useState<Track[]>([]);
   const { user, password } = useAuth();
-
-  const fetchStarredTracks = async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:8000/rest/getStarred2?username=${user}&u=${user}&p=${password}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Ошибка при запросе: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data["subsonic-response"]?.status === "ok") {
-        const { song } = data["subsonic-response"]["starred2"];
-
-        const starred = song?.filter(
-          (track: Track) => track.starred === "true"
-        );
-        setStarredTracks(starred || []);
-      } else {
-        console.error("Ошибка получения данных");
-      }
-    } catch (error) {
-      console.error("Ошибка при запросе данных:", error);
-    }
-  };
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
+    if (user && password) {
+      setIsAuthReady(true);
+    }
+  }, [user, password]);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    const fetchStarredTracks = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/getStarred2?username=${user}&u=${user}&p=${password}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Ошибка при запросе: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data["subsonic-response"]?.status === "ok") {
+          const { song } = data["subsonic-response"]["starred2"];
+          setStarredTracks(song?.filter((track: Track) => track.starred) || []);
+        } else {
+          console.error("Ошибка получения данных");
+        }
+      } catch (error) {
+        console.error("Ошибка при запросе данных:", error);
+      }
+    };
+
     fetchStarredTracks();
-  }, []);
+  }, [isAuthReady]);
 
   const handleFavouriteToggle = async (
     trackId: string,
     currentStatus: string
   ) => {
+    if (!user || !password) return;
+
     const action = currentStatus ? "unstar" : "star";
-    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}&username=${user}&u=${user}&p=${password}`;
 
     try {
       const response = await fetch(url);
       const data = await response.json();
+
       if (data["subsonic-response"].status === "ok") {
         setStarredTracks((prevTracks) =>
-          prevTracks
-            .map((track) =>
-              track.id === trackId
-                ? {
-                    ...track,
-                    starred: currentStatus ? "" : "true",
-                  }
-                : track
-            )
-            .filter((track) => track.starred === "true")
+          prevTracks.filter((track) => track.id !== trackId)
         );
+        window.location.reload();
       } else {
         alert("Ошибка при изменении статуса избранного");
       }
@@ -86,21 +86,21 @@ export default function FavouriteTrack() {
   };
 
   return (
-    <>
-      <Container
-        style={{
-          height: "65vh",
-          width: "85vw",
-          margin: "auto",
-          marginTop: "50px",
-        }}
-        direction="column"
-        arrow={true}
-        link_arrow="/"
-      >
-        <h1 className={styles.playlist__title}>Избранные треки</h1>
-        <div className={styles.playlist}>
-          {starredTracks.length > 0 ? (
+    <Container
+      style={{
+        height: "65vh",
+        width: "85vw",
+        margin: "auto",
+        marginTop: "50px",
+      }}
+      direction="column"
+      arrow={true}
+      link_arrow="/"
+    >
+      <h1 className={styles.playlist__title}>Избранные треки</h1>
+      <div className={styles.playlist}>
+        {isAuthReady ? (
+          starredTracks.length > 0 ? (
             starredTracks.map((track) => (
               <Tracklist
                 key={track.id}
@@ -108,7 +108,7 @@ export default function FavouriteTrack() {
                 name_link={`/track/${track.id}`}
                 artist={track.artist}
                 artist_link={`/artist/${track.artistId}`}
-                favourite={track.starred === "true"}
+                favourite={track.starred}
                 time={track.duration}
                 showRemoveButton={false}
                 onFavouriteToggle={() =>
@@ -118,9 +118,11 @@ export default function FavouriteTrack() {
             ))
           ) : (
             <p>Нет избранных треков</p>
-          )}
-        </div>
-      </Container>
-    </>
+          )
+        ) : (
+          <p>Загрузка...</p>
+        )}
+      </div>
+    </Container>
   );
 }

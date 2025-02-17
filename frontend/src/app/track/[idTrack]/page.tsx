@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Container } from "@/shared/container";
+import { useAuth } from "@/app/auth-context";
 import Link from "next/link";
 import styles from "./track.module.css";
 
@@ -12,6 +13,7 @@ interface TrackData {
   artistId: string;
   genre: string;
   coverArt?: string;
+  starred: string;
 }
 
 interface PlaylistType {
@@ -36,6 +38,7 @@ const Modal = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { user, password } = useAuth();
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -73,7 +76,7 @@ const Modal = ({
   ) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIdToAdd=${trackId}`,
+        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIdToAdd=${trackId}&username=${user}&u=${user}&p=${password}`,
         {
           method: "GET",
           headers: {
@@ -143,6 +146,7 @@ export default function PlayedTrack() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [trackId, setTrackId] = useState<number>(0);
   const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
+  const { user, password } = useAuth();
 
   const toggleModal = () => {
     setIsModalOpen((prev) => !prev);
@@ -204,33 +208,25 @@ export default function PlayedTrack() {
         const track = data?.["subsonic-response"]?.song;
 
         if (track) {
-          console.log("CoverArt ID from getSong:", track.coverArt);
-
           setTrackData({
             title: track.title || "Неизвестное название",
             artist: track.artist || "Неизвестный автор",
             artistId: track.artistId || "Неизвестный id автора",
             genre: track.genre || "Неизвестный жанр",
             coverArt: track.coverArt || null,
+            starred: track.starred || "",
           });
 
+          setIsFavourite(!!track.starred);
+
           if (track.coverArt) {
-            if (
-              typeof track.coverArt === "string" &&
-              track.coverArt.trim() !== ""
-            ) {
-              const coverArtResponse = await fetch(
-                `http://localhost:8000/rest/getCoverArt?id=${track.coverArt}`
-              );
-              if (coverArtResponse.ok) {
-                const imageBlob = await coverArtResponse.blob();
-                const imageUrl = URL.createObjectURL(imageBlob);
-                setCoverArtUrl(imageUrl);
-              } else {
-                console.error("Cover art not found for ID:", track.coverArt);
-              }
-            } else {
-              console.error("Invalid coverArt ID:", track.coverArt);
+            const coverArtResponse = await fetch(
+              `http://localhost:8000/rest/getCoverArt?id=${track.coverArt}`
+            );
+            if (coverArtResponse.ok) {
+              const imageBlob = await coverArtResponse.blob();
+              const imageUrl = URL.createObjectURL(imageBlob);
+              setCoverArtUrl(imageUrl);
             }
           }
         } else {
@@ -239,7 +235,9 @@ export default function PlayedTrack() {
             artist: "Неизвестный автор",
             artistId: "Неизвестный id автора",
             genre: "Неизвестный жанр",
+            starred: "",
           });
+          setIsFavourite(false);
         }
       } catch (error) {
         console.error("Error fetching track data:", error);
@@ -248,7 +246,9 @@ export default function PlayedTrack() {
           artist: "Неизвестный автор",
           artistId: "Неизвестный id автора",
           genre: "Неизвестный жанр",
+          starred: "",
         });
+        setIsFavourite(false);
       } finally {
         setIsLoading(false);
       }
@@ -289,13 +289,19 @@ export default function PlayedTrack() {
 
   const handleFavouriteToggle = async () => {
     const action = isFavourite ? "unstar" : "star";
-    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}&username=${user}&u=${user}&p=${password}`;
 
     try {
       const response = await fetch(url);
       const data = await response.json();
+
       if (data["subsonic-response"].status === "ok") {
         setIsFavourite(!isFavourite);
+        setTrackData((prev) =>
+          prev
+            ? { ...prev, starred: !isFavourite ? new Date().toISOString() : "" }
+            : null
+        );
       } else {
         alert("Ошибка при изменении статуса избранного");
       }
@@ -428,7 +434,7 @@ export default function PlayedTrack() {
           marginTop: "70px",
         }}
         arrow={true}
-        link_arrow={`/genre/${trackData?.genre}`}
+        link_arrow={"/"}
         direction="column"
       >
         <div
