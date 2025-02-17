@@ -16,6 +16,8 @@ export default function Settings() {
   const [, setErrorMessage] = useState<string>("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const checkUsernameUniqueness = useCallback(
     async (username: string) => {
@@ -147,6 +149,26 @@ export default function Settings() {
     fetchAvatar();
   }, [user, password]);
 
+  const validateUsername = (value: string) => {
+    if (!value) {
+      setUsernameError("Пожалуйста, введите логин.");
+    } else if (value.length < 5 || value.length > 64) {
+      setUsernameError("Логин должен быть от 5 до 64 символов.");
+    } else {
+      setUsernameError("");
+    }
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError("Пожалуйста, введите пароль.");
+    } else if (value.length < 5 || value.length > 64) {
+      setPasswordError("Пароль должен быть от 5 до 64 символов.");
+    } else {
+      setPasswordError("");
+    }
+  };
+
   const generateAvatar = async () => {
     try {
       const response = await fetch(
@@ -181,8 +203,13 @@ export default function Settings() {
     }
   }, [newUsername, checkUsernameUniqueness]);
 
-  const isSaveButtonDisabled =
-    !newUsername || (newUsername === user && !newPassword);
+  const isSaveButtonDisabled = Boolean(
+    !newUsername ||
+      (newUsername === user && !newPassword) ||
+      newPassword !== confirmPassword ||
+      usernameError ||
+      passwordError
+  );
 
   return (
     <div className={styles.settings}>
@@ -225,17 +252,25 @@ export default function Settings() {
             type="text"
             placeholder="введите новый логин"
             value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
+            onChange={(e) => {
+              setNewUsername(e.target.value);
+              validateUsername(e.target.value);
+            }}
           />
           {!isUsernameUnique && (
             <div className={styles.errorMessage}>Этот логин уже занят.</div>
           )}
+          {usernameError && <div className={styles.error}>{usernameError}</div>}
           <Input
             type="password"
             placeholder="введите новый пароль"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              validatePassword(e.target.value);
+            }}
           />
+          {passwordError && <div className={styles.error}>{passwordError}</div>}
           <Input
             type="password"
             placeholder="подтвердите новый пароль"
@@ -245,7 +280,6 @@ export default function Settings() {
           {newPassword !== confirmPassword && (
             <div className={styles.errorMessage}>Пароли не совпадают.</div>
           )}
-
           <div className={styles.registration__content_button}>
             <Button
               type="normal"
