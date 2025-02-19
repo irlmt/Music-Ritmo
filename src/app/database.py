@@ -112,7 +112,7 @@ class Track(SQLModel, table=True):
     type: str
     title: str = Field(index=True)
     album_id: int | None = Field(foreign_key="Albums.id")
-    album_artist_id: int | None
+    album_artist_id: int | None  = Field(foreign_key="Artists.id")
     album_position: int | None
     year: str | None
     plays_count: int
@@ -156,7 +156,7 @@ class Album(SQLModel, table=True):
     __tablename__ = "Albums"
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    album_artist_id: int | None
+    album_artist_id: int | None = Field(foreign_key="Artists.id")
     total_tracks: int
     year: str | None
     cover: bytes | None
