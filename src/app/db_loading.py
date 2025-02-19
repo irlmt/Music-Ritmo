@@ -37,10 +37,10 @@ class AudioInfo:
         album: str,
         genres: list[str],
         track_number: int | None,
-        year: int | None,
+        year: str | None,
         cover: bytes,
         cover_type: str,
-        custom_tags: list[(str, str)],
+        custom_tags: list,
         bit_rate: int,
         bits_per_sample: int,
         sample_rate: int,
@@ -102,7 +102,7 @@ def extract_metadata_mp3(file_path):
         track_number=(
             int(str(audio_file["TRCK"])) if "TRCK" in audio_file.tags else None
         ),
-        year=int(str(audio_file["TDRC"])) if "TDRC" in audio_file.tags else None,
+        year=str(audio_file["TDRC"]) if "TDRC" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
         custom_tags=utils.get_custom_tags_mp3(audio_file),
@@ -148,7 +148,7 @@ def extract_metadata_flac(file_path):
             if "TRACKNUMBER" in audio_file.tags
             else None
         ),
-        year=int(str(audio_file["DATE"][0])) if "DATE" in audio_file.tags else None,
+        year=str(audio_file["DATE"][0]) if "DATE" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
         custom_tags=utils.get_custom_tags_flac(audio_file),
@@ -251,9 +251,14 @@ def load_audio_data(audio: AudioInfo):
 
         custom_tags: list[db.Tag] = []
         for name, value in audio.custom_tags:
-            tag = session.exec(select(db.Tag).where(db.Tag.name == name).where(db.Tag.value == value)).one_or_none()
-            if tag == None:
+            tag = session.exec(
+                select(db.Tag).where(db.Tag.name == name).where(db.Tag.value == value)
+            ).one_or_none()
+            if tag is None:
                 tag = db.Tag(name=name, value=value, updated=False)
+                session.add(tag)
+                session.commit()
+                session.refresh(tag)
             custom_tags.append(tag)
 
         track = session.exec(
@@ -279,7 +284,7 @@ def load_audio_data(audio: AudioInfo):
                 duration=audio.duration,
                 genres=genres,
                 artists=artists,
-                tags=custom_tags
+                tags=custom_tags,
             )
             album.total_tracks = album.total_tracks + 1
         else:
