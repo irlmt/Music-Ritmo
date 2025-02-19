@@ -16,7 +16,8 @@ frontend_router = APIRouter(prefix="/specific")
 @frontend_router.get("/generateAvatar")
 def generate_random_avatar(
     current_user: db.User = Depends(authenticate_user),
-    session: Session = Depends(db.get_session)):
+    session: Session = Depends(db.get_session),
+):
 
     avatar = service_layer.generate_and_save_avatar(session, current_user)
 
@@ -57,7 +58,9 @@ def get_tags(id: int, session: Session = Depends(db.get_session)):
 
 
 @frontend_router.put("/updateTags")
-def update_tags(id: int, data: dict = Body(...), session: Session = Depends(db.get_session)):
+def update_tags(
+    id: int, data: dict = Body(...), session: Session = Depends(db.get_session)
+):
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Tracklist } from "@/widgets/track-list";
+import { useAuth } from "@/app/auth-context";
 import styles from "./album.module.css";
 
 interface Track {
@@ -13,7 +14,7 @@ interface Track {
   artistId: string;
   duration: number;
   path: string;
-  favourite: boolean;
+  starred: string;
 }
 
 interface Album {
@@ -25,7 +26,8 @@ interface Album {
 export default function Album() {
   const { albumId } = useParams();
   const [album, setAlbum] = useState<Album | null>(null);
-  const [isFavourite, setIsFavourite] = useState(false);
+  const [, setStarredTracks] = useState<Track[]>([]);
+  const { user, password } = useAuth();
 
   useEffect(() => {
     if (albumId) {
@@ -46,25 +48,13 @@ export default function Album() {
           const data = await response.json();
           const albumData = data["subsonic-response"]?.album;
 
+          console.log(albumData);
+
           if (albumData) {
-            const tracks = albumData.song.map(
-              (track: {
-                id: string;
-                title: string;
-                artist: string;
-                artistId: string;
-                duration: number;
-                path: string;
-              }) => ({
-                id: track.id,
-                title: track.title,
-                artist: track.artist,
-                artistId: track.artistId,
-                duration: track.duration,
-                path: track.path,
-                favourite: false,
-              })
-            );
+            const tracks = albumData.song.map((track: Track) => ({
+              ...track,
+              starred: track.starred || "",
+            }));
 
             setAlbum({
               id: albumData.id || "",
@@ -72,7 +62,7 @@ export default function Album() {
               tracks,
             });
           } else {
-            console.error("Данные о альбоме не найдены");
+            console.error("Данные об альбоме не найдены");
           }
         } catch (error) {
           console.error("Ошибка при загрузке данных альбома:", error);
@@ -85,15 +75,24 @@ export default function Album() {
     }
   }, [albumId]);
 
-  const handleFavouriteToggle = async (trackId: string) => {
-    const action = isFavourite ? "unstar" : "star";
-    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+  const handleFavouriteToggle = async (
+    trackId: string,
+    currentStatus: string
+  ) => {
+    if (!user || !password) return;
+
+    const action = currentStatus ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}&username=${user}&u=${user}&p=${password}`;
 
     try {
       const response = await fetch(url);
       const data = await response.json();
+
       if (data["subsonic-response"].status === "ok") {
-        setIsFavourite(!isFavourite);
+        setStarredTracks((prevTracks) =>
+          prevTracks.filter((track) => track.id !== trackId)
+        );
+        window.location.reload();
       } else {
         alert("Ошибка при изменении статуса избранного");
       }
@@ -108,39 +107,39 @@ export default function Album() {
   }
 
   return (
-    <>
-      <Container
-        style={{
-          height: "65vh",
-          width: "85vw",
-          margin: "auto",
-          marginTop: "50px",
-        }}
-        direction="column"
-        arrow={true}
-        link_arrow="/"
-      >
-        <h1 className={styles.playlist__title}>{album.name}</h1>
-        <div className={styles.playlist}>
-          {album.tracks.length > 0 ? (
-            album.tracks.map((track) => (
-              <Tracklist
-                key={track.id}
-                name={track.title}
-                name_link={`/track/${track.id}`}
-                artist={track.artist}
-                artist_link={`/artist/${track.artistId}`}
-                favourite={track.favourite}
-                time={track.duration}
-                showRemoveButton={false}
-                onFavouriteToggle={() => handleFavouriteToggle(track.id)}
-              />
-            ))
-          ) : (
-            <p>Треки не найдены.</p>
-          )}
-        </div>
-      </Container>
-    </>
+    <Container
+      style={{
+        height: "65vh",
+        width: "85vw",
+        margin: "auto",
+        marginTop: "50px",
+      }}
+      direction="column"
+      arrow={true}
+      link_arrow="/"
+    >
+      <h1 className={styles.playlist__title}>{album.name}</h1>
+      <div className={styles.playlist}>
+        {album.tracks.length > 0 ? (
+          album.tracks.map((track) => (
+            <Tracklist
+              key={track.id}
+              name={track.title}
+              name_link={`/track/${track.id}`}
+              artist={track.artist}
+              artist_link={`/artist/${track.artistId}`}
+              favourite={track.starred}
+              time={track.duration}
+              showRemoveButton={false}
+              onFavouriteToggle={() =>
+                handleFavouriteToggle(track.id, track.starred)
+              }
+            />
+          ))
+        ) : (
+          <p>Треки не найдены.</p>
+        )}
+      </div>
+    </Container>
   );
 }

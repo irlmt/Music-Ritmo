@@ -15,8 +15,8 @@ DEFAULT_COVER_PATH = "./resources/default_cover.jpg"
 
 
 class AudioType(Enum):
-    MP3 = 1,
-    FLAC = 2,
+    MP3 = (1,)
+    FLAC = (2,)
 
 
 def bytes_to_image(image_bytes: bytes) -> Image.Image:
@@ -67,7 +67,7 @@ def get_cover_art(track: db.Track) -> bytes | None:
         return get_cover_from_flac(FLAC(track.file_path))
     else:
         return None
-    
+
 
 def get_audio_object(track: db.Track) -> tuple[MP3 | FLAC, AudioType]:
     match track.type:
@@ -75,9 +75,11 @@ def get_audio_object(track: db.Track) -> tuple[MP3 | FLAC, AudioType]:
             return MP3(track.file_path), AudioType.MP3
         case "audio/flac":
             return FLAC(track.file_path), AudioType.FLAC
-        
 
-def update_tags(track: db.Track, tags, session: Session) -> tuple[MP3 | FLAC, AudioType]:
+
+def update_tags(
+    track: db.Track, tags, session: Session
+) -> tuple[MP3 | FLAC, AudioType]:
     audio, audio_type = get_audio_object(track)
 
     for key, value in tags:
@@ -102,7 +104,15 @@ def update_tags(track: db.Track, tags, session: Session) -> tuple[MP3 | FLAC, Au
             case "album_artist":
                 album_artist = ""
                 if track.album_artist_id is not None:
-                    album_artist = session.exec(select(db.Artist).where(db.Artist.id == track.album_artist_id)).one_or_none().name
+                    album_artist = (
+                        session.exec(
+                            select(db.Artist).where(
+                                db.Artist.id == track.album_artist_id
+                            )
+                        )
+                        .one_or_none()
+                        .name
+                    )
 
                 if value != album_artist:
                     match audio_type:

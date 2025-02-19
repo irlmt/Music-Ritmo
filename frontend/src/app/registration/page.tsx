@@ -1,25 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/shared/button";
 import { Input } from "@/shared/input";
 import { Container } from "@/shared/container";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/shared/logo";
+import { useAuth } from "@/app/auth-context";
 import styles from "./registration.module.css";
 
 export default function Registration() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const { login } = useAuth();
+  const [user, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [, setErrorMessage] = useState("");
   const [, setSuccessMessage] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
+
+  const checkUsernameUniqueness = useCallback(
+    async (username: string) => {
+      const response = await fetch(
+        `http://localhost:8000/rest/getUsers?username=admin&u=admin&p=admin`
+      );
+      const data = await response.json();
+
+      if (data["subsonic-response"]?.status === "ok") {
+        const existingUsernames = data["subsonic-response"].users.user.map(
+          (user: { username: string }) => user.username
+        );
+        setIsUsernameUnique(!existingUsernames.includes(username));
+      } else {
+        setErrorMessage("Ошибка при проверке пользователей.");
+      }
+    },
+    [user, password]
+  );
 
   const validateFields = () => {
-    if (!username || !password) {
+    if (!user || !password) {
       setErrorMessage("Пожалуйста, заполните все поля.");
     } else {
       setErrorMessage("");
@@ -51,37 +73,37 @@ export default function Registration() {
   }, [validateFields]);
 
   const handleSubmit = async () => {
-    if (usernameError || passwordError || !username || !password) {
-      setErrorMessage("Пожалуйста, исправьте все ошибки.");
-      return;
-    }
-
     setLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     const response = await fetch(
-      `http://localhost:8000/rest/createUser?username=${username}&password=${password}&email=defemail@gmail.com}`,
+      `http://localhost:8000/rest/createUser?username=${user}&password=${password}&email=defemail@gmail.com}`,
       {
         method: "GET",
       }
     );
 
-    if (response.status === 400) {
-      setErrorMessage("Пользователь с таким логином уже существует.");
-    } else {
-      const data = await response.json();
+    const data = await response.json();
 
-      if (data["subsonic-response"]?.status === "ok") {
-        setSuccessMessage("Вы успешно зарегистрированы!");
-        setTimeout(() => {
-          router.push("/");
-        }, 2000);
-      } else {
-        setErrorMessage("Ошибка при регистрации. Попробуйте снова.");
-      }
+    if (data["subsonic-response"]?.status === "ok") {
+      setSuccessMessage("Вы успешно зарегистрированы!");
+
+      login(user, password);
+
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+    } else {
+      setErrorMessage("Ошибка при регистрации. Попробуйте снова.");
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      checkUsernameUniqueness(user);
+    }
+  }, [user, checkUsernameUniqueness]);
 
   return (
     <div className={styles.registration}>
@@ -96,16 +118,20 @@ export default function Registration() {
           link_arrow="/login"
         >
           <h2 className={styles.registration__content__title}>Регистрация</h2>
+
           <Input
             type="text"
             placeholder="введите логин"
-            value={username}
+            value={user}
             onChange={(e) => {
               setUsername(e.target.value);
               validateUsername(e.target.value);
               validateFields();
             }}
           />
+          {!isUsernameUnique && (
+            <div className={styles.errorMessage}>Этот логин уже занят.</div>
+          )}
           {usernameError && <div className={styles.error}>{usernameError}</div>}
 
           <Input
@@ -120,22 +146,12 @@ export default function Registration() {
           />
           {passwordError && <div className={styles.error}>{passwordError}</div>}
 
-          {(usernameError || passwordError || !username || !password) && (
-            <div className={styles.errorMessage}>
-              Пожалуйста, исправьте все ошибки.
-            </div>
-          )}
-
           <div className={styles.registration__content_button}>
             <Button
               type="normal"
               color="green"
               disabled={Boolean(
-                loading ||
-                  usernameError ||
-                  passwordError ||
-                  !username ||
-                  !password
+                loading || usernameError || passwordError || !user || !password
               )}
               onClick={handleSubmit}
             >
