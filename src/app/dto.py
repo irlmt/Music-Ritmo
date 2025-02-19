@@ -52,3 +52,22 @@ class Track:
     comment: str | None = None
     artists: List[ArtistItem] = field(default_factory=list)
     genres: List[GenreItem] = field(default_factory=list)
+
+
+@dataclass
+class Album:
+    id: int
+    name: str
+    song_count: int
+    duration: int
+    created: datetime
+    artist: str | None = None
+    artist_id: int | None = None
+    cover_art_id: int | None = None
+    play_count: int | None = None
+    starred: datetime | None = None
+    year: int | None = None
+    genre: str | None = None
+    artists: List[ArtistItem] = field(default_factory=list)
+    genres: List[GenreItem] = field(default_factory=list)
+    tracks: List[Track] = field(default_factory=list)

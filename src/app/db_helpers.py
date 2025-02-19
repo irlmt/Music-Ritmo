@@ -38,7 +38,7 @@ class AlbumDBHelper:
             ).all()
         return self.session.exec(select(db.Album)).all()
 
-    def get_album_by_id(self, id):
+    def get_album_by_id(self, id: int) -> Optional[db.Album]:
         return self.session.exec(
             select(db.Album).where(db.Album.id == id)
         ).one_or_none()

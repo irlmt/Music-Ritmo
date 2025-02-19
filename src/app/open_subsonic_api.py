@@ -152,7 +152,7 @@ def get_songs_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
     service = service_layer.TrackService(session)
     tracks = service.get_songs_by_genre(genre)
-    rsp.data["songsByGenre"] = {"song": tracks}
+    rsp.data["songsByGenre"] = OpenSubsonicFormatter.format_tracks(tracks)
     return rsp.to_json_rsp()
 
 
@@ -277,7 +277,7 @@ def get_album(id: int, session: Session = Depends(db.get_session)):
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["album"] = album
+    rsp.data["album"] = OpenSubsonicFormatter.format_album(album)
     return rsp.to_json_rsp()
 
 
@@ -500,7 +500,7 @@ def get_album_list(
         return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
 
     rsp = SubsonicResponse()
-    rsp.data["albumList"] = albums
+    rsp.data["albumList"] = OpenSubsonicFormatter.format_albums(albums)
     return rsp.to_json_rsp()
 
 
@@ -540,7 +540,7 @@ def get_album_list2(
         return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
 
     rsp = SubsonicResponse()
-    rsp.data["albumList2"] = albums
+    rsp.data["albumList2"] = OpenSubsonicFormatter.format_albums(albums)
     return rsp.to_json_rsp()
 
 

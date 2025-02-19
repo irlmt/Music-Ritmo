@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlmodel import Session, select
 
+from src.app.open_subsonic_formatter import OpenSubsonicFormatter
 from src.app.subsonic_response import SubsonicResponse
 from src.app.auth import authenticate_user
 
@@ -34,7 +35,7 @@ def get_sorted_artist_albums(
     sortedAlbums = album_service.get_sorted_artist_albums(id, size, offset)
 
     rsp = SubsonicResponse()
-    rsp.data["sortedAlbums"] = sortedAlbums
+    rsp.data["sortedAlbums"] = OpenSubsonicFormatter.format_albums(sortedAlbums)
     return rsp.to_json_rsp()
 
 

@@ -122,3 +122,46 @@ class OpenSubsonicFormatter:
     @staticmethod
     def format_tracks(tracks: Sequence[Track]) -> dict[str, Any]:
         return {"song": list(map(OpenSubsonicFormatter.format_track, tracks))}
+
+    @staticmethod
+    def format_album(album: Album) -> dict[str, Any]:
+        result = {
+            "id": album.id,
+            "name": album.name,
+            "songCount": album.song_count,
+            "duration": album.duration,
+        }
+
+        add_datetime_if_not_none(result, "created", album.created)
+
+        add_if_not_none(result, "artist", album.artist)
+        add_if_not_none(result, "artistId", album.artist_id)
+
+        add_if_not_none(
+            result,
+            "coverArt",
+            f"al-{album.cover_art_id}" if album.cover_art_id else None,
+        )
+
+        add_if_not_none(result, "playCount", album.play_count)
+
+        add_datetime_if_not_none(result, "starred", album.starred)
+
+        add_if_not_none(result, "year", album.year)
+
+        result["artists"] = list(
+            map(OpenSubsonicFormatter.format_artist_item, album.artists)
+        )
+        result["genres"] = list(
+            map(OpenSubsonicFormatter.format_genre_item, album.genres)
+        )
+
+        add_list_if_not_empty(
+            result, "song", list(map(OpenSubsonicFormatter.format_track, album.tracks))
+        )
+
+        return result
+
+    @staticmethod
+    def format_albums(albums: Sequence[Album]) -> dict[str, Any]:
+        return {"album": list(map(OpenSubsonicFormatter.format_album, albums))}

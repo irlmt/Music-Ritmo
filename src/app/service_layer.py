@@ -4,7 +4,7 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
-from typing import List, Optional, Dict, Sequence, Tuple, Union, Any
+from typing import List, Optional, Dict, Sequence, Set, Tuple, Union, Any
 
 from sqlmodel import Session, select
 
@@ -39,9 +39,71 @@ def get_album_artist_id_by_track(track: db.Track) -> int:
     return -1
 
 
+def get_album_artist_id_by_album(album: db.Album) -> int:
+    if album.album_artist_id:
+        return album.album_artist_id
+    if len(album.artists) > 0:
+        return album.artists[0].id
+    return -1
+
+
+def get_album_duration(db_album: db.Album) -> int:
+    if len(db_album.tracks) == 0:
+        return 0
+    return int(sum([t.duration for t in db_album.tracks]))
+
+
+def get_album_genre(db_album: db.Album) -> Optional[str]:
+    if len(db_album.tracks) == 0:
+        return None
+    return join_genre_names(db_album.tracks[0].genres)
+
+
+def get_album_genres(db_album: db.Album) -> Set[db.Genre]:
+    genres: Set[db.Genre] = set()
+    if len(db_album.tracks) == 0:
+        return genres
+    for track in db_album.tracks:
+        genres.update(track.genres)
+    return genres
+
+
+def fill_album(
+    db_album: db.Album, db_user: db.User | None, with_songs: bool = False
+) -> dto.Album:
+    album_genres: List[db.Genre] = list(get_album_genres(db_album))
+    album = dto.Album(
+        id=db_album.id,
+        name=db_album.name,
+        song_count=db_album.total_tracks,
+        duration=get_album_duration(db_album),
+        created=datetime.now(),
+        artist=join_artist_names(db_album.artists),
+        artist_id=get_album_artist_id_by_album(db_album),
+        cover_art_id=db_album.id,
+        play_count=None,
+        starred=None,
+        year=None,
+        genre=join_genre_names(album_genres),
+        artists=fill_artist_items(db_album.artists),
+        genres=fill_genre_items(album_genres),
+    )
+    if with_songs:
+        album.tracks = fill_tracks(db_album.tracks, None)
+    return album
+
+
+def fill_albums(
+    db_albums: Sequence[db.Album], db_user: db.User | None, with_songs: bool
+) -> List[dto.Album]:
+    return list(
+        map(partial(fill_album, db_user=db_user, with_songs=with_songs), db_albums)
+    )
+
+
 class AlbumService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.AlbumDBHelper(session)
+        self.album_db_helper = db_helpers.AlbumDBHelper(session)
 
     @staticmethod
     def get_open_subsonic_format(
@@ -75,11 +137,11 @@ class AlbumService:
             res_album["song"] = tracks
         return res_album
 
-    def get_album_by_id(self, id):
-        album = self.DBHelper.get_album_by_id(id)
-        if album:
-            album = self.__class__.get_open_subsonic_format(album, with_songs=True)
-        return album
+    def get_album_by_id(self, id: int) -> Optional[dto.Album]:
+        db_album = self.album_db_helper.get_album_by_id(id)
+        if db_album:
+            return fill_album(db_album, None, with_songs=True)
+        return None
 
     def get_album_info2(self, id):
         pass
@@ -93,20 +155,20 @@ class AlbumService:
         to_year: Optional[str] = None,
         genre: Optional[str] = None,
         music_folder_id: Optional[str] = None,
-    ) -> Optional[dict[str, Optional[Union[str, int, List[dict]]]]]:
+    ) -> Optional[List[dto.Album]]:
         result = []
         match type:
             case RequestType.RANDOM:
-                albums = self.DBHelper.get_all_albums()
+                albums = self.album_db_helper.get_all_albums()
                 result = random.sample(albums, min(size, len(albums)))
             case RequestType.BY_NAME:
-                result = list(self.DBHelper.get_albums_by_name(size, offset))
+                result = list(self.album_db_helper.get_albums_by_name(size, offset))
             case RequestType.BY_ARTIST:
-                albums = list(self.DBHelper.get_all_albums())
+                albums = list(self.album_db_helper.get_all_albums())
                 albums.sort(key=lambda album: self.compare_albums_by_artist(album.id))
                 result = albums[offset : offset + size]
             case RequestType.BY_YEAR if from_year is not None and to_year is not None:
-                albums = self.DBHelper.get_all_albums()
+                albums = self.album_db_helper.get_all_albums()
                 result = [
                     album
                     for album in albums
@@ -126,15 +188,17 @@ class AlbumService:
             case _:  # validation error
                 return None
 
-        return {"album": [AlbumService.get_open_subsonic_format(a) for a in result]}
+        return fill_albums(result, None, with_songs=False)
 
     def compare_albums_by_artist(self, album_id: int) -> str:
-        artist: Optional[db.Artist] = self.DBHelper.get_album_artist(album_id)
+        artist: Optional[db.Artist] = self.album_db_helper.get_album_artist(album_id)
         return "" if artist is None else artist.name
 
-    def get_sorted_artist_albums(self, artistId: int, size: int = 10, offset: int = 0):
-        albums = self.DBHelper.get_sorted_artist_albums(artistId, size, offset)
-        return {"album": [AlbumService.get_open_subsonic_format(a) for a in albums]}
+    def get_sorted_artist_albums(
+        self, artistId: int, size: int = 10, offset: int = 0
+    ) -> List[dto.Album]:
+        albums = self.album_db_helper.get_sorted_artist_albums(artistId, size, offset)
+        return fill_albums(albums, None, with_songs=False)
 
 
 def join_artist_names(artists: Sequence[db.Artist]) -> Optional[str]:
