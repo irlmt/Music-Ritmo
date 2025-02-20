@@ -165,3 +165,26 @@ class OpenSubsonicFormatter:
     @staticmethod
     def format_albums(albums: Sequence[Album]) -> dict[str, Any]:
         return {"album": list(map(OpenSubsonicFormatter.format_album, albums))}
+
+    @staticmethod
+    def format_artist(artist: Artist) -> dict[str, Any]:
+        result = {
+            "id": artist.id,
+            "name": artist.name,
+        }
+
+        add_if_not_none(result, "artistImageUrl", artist.artist_image_url)
+
+        add_datetime_if_not_none(result, "starred", artist.starred)
+
+        add_list_if_not_empty(
+            result,
+            "album",
+            list(map(OpenSubsonicFormatter.format_album, artist.albums)),
+        )
+
+        return result
+
+    @staticmethod
+    def format_artists(artists: Sequence[Artist]) -> dict[str, Any]:
+        return {"artist": list(map(OpenSubsonicFormatter.format_artist, artists))}

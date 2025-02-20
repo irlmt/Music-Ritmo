@@ -401,12 +401,48 @@ class GenreService:
         return genres
 
 
+def fill_artist(
+    db_artist: db.Artist,
+    db_user: db.User | None,
+    with_albums: bool = True,
+    with_songs: bool = False,
+) -> dto.Artist:
+    result = dto.Artist(
+        id=db_artist.id,
+        name=db_artist.name,
+        artist_image_url=None,
+        starred=None,
+    )
+    if with_albums:
+        result.albums = fill_albums(db_artist.albums, None, with_songs=with_songs)
+    return result
+
+
+def fill_artists(
+    db_artists: Sequence[db.Artist],
+    db_user: db.User | None,
+    with_albums: bool = True,
+    with_songs: bool = False,
+) -> List[dto.Artist]:
+    return list(
+        map(
+            partial(
+                fill_artist,
+                db_user=db_user,
+                with_albums=with_albums,
+                with_songs=with_songs,
+            ),
+            db_artists,
+        )
+    )
+
+
 class ArtistService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.ArtistDBHelper(session)
+        self.artist_db_helper = db_helpers.ArtistDBHelper(session)
 
     @staticmethod
-    def join_artists_names(artists: List[db.Artist]):
+    def join_artists_names(artists: List[db.Artist]) -> str:
         return ", ".join(a.name for a in artists)
 
     @staticmethod
@@ -433,16 +469,11 @@ class ArtistService:
             res_artist["song"] = tracks
         return res_artist
 
-    def get_artist_by_id(self, id):
-        artist = self.DBHelper.get_artist_by_id(id)
-        if artist:
-            artist = self.__class__.get_open_subsonic_format(
-                artist, with_albums=True, with_tracks=True
-            )
-        return artist
-
-    def get_artists(self, music_folder=None):
-        pass
+    def get_artist_by_id(self, id: int) -> Optional[dto.Artist]:
+        db_artist = self.artist_db_helper.get_artist_by_id(id)
+        if db_artist:
+            return fill_artist(db_artist, None, with_albums=True, with_songs=True)
+        return None
 
     def get_artist_info2(self, id, count=20, include_not_present=False):
         pass

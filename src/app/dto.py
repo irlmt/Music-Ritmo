@@ -71,3 +71,12 @@ class Album:
     artists: List[ArtistItem] = field(default_factory=list)
     genres: List[GenreItem] = field(default_factory=list)
     tracks: List[Track] = field(default_factory=list)
+
+
+@dataclass
+class Artist:
+    id: int
+    name: str
+    artist_image_url: str | None = None
+    starred: datetime | None = None
+    albums: List[Album] = field(default_factory=list)

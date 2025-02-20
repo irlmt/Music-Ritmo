@@ -260,12 +260,12 @@ def get_random_songs(
 @open_subsonic_router.get("/getArtist")
 def get_artist(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.ArtistService(session)
-    artist = service.get_artist_by_id(id)
+    artist: Optional[dto.Artist] = service.get_artist_by_id(id)
     if artist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["artist"] = artist
+    rsp.data["artist"] = OpenSubsonicFormatter.format_artist(artist)
     return rsp.to_json_rsp()
 
 
