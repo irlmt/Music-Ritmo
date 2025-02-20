@@ -186,11 +186,11 @@ async def search2(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.SearchService(session)
-    result = service.search2(
+    artists, albums, tracks = service.search2(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult2"] = result
+    rsp.data["searchResult2"] = OpenSubsonicFormatter.format_combination(artists, albums, tracks)
 
     return rsp.to_json_rsp()
 
@@ -207,11 +207,11 @@ async def search3(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.SearchService(session)
-    result = service.search3(
+    artists, albums, tracks = service.search3(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult3"] = result
+    rsp.data["searchResult3"] = OpenSubsonicFormatter.format_combination(artists, albums, tracks)
 
     return rsp.to_json_rsp()
 

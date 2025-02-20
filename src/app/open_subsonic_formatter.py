@@ -188,3 +188,29 @@ class OpenSubsonicFormatter:
     @staticmethod
     def format_artists(artists: Sequence[Artist]) -> dict[str, Any]:
         return {"artist": list(map(OpenSubsonicFormatter.format_artist, artists))}
+
+    @staticmethod
+    def format_combination(
+        artists: Sequence[Artist], albums: Sequence[Album], tracks: Sequence[Track]
+    ) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+
+        add_list_if_not_empty(
+            result,
+            "artist",
+            list(map(OpenSubsonicFormatter.format_artist, artists)),
+        )
+
+        add_list_if_not_empty(
+            result,
+            "album",
+            list(map(OpenSubsonicFormatter.format_album, albums)),
+        )
+
+        add_list_if_not_empty(
+            result,
+            "song",
+            list(map(OpenSubsonicFormatter.format_track, tracks)),
+        )
+
+        return result

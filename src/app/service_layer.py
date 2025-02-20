@@ -481,76 +481,47 @@ class ArtistService:
 
 class SearchService:
     def __init__(self, session: Session):
-        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
-        self.AlbumDBHelper = db_helpers.AlbumDBHelper(session)
-        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
-
-    @staticmethod
-    def get_open_subsonic_format(
-        artists: List[db.Artist], albums: List[db.Album], tracks: List[db.Track]
-    ):
-
-        res_search = {
-            "artist": [ArtistService.get_open_subsonic_format(a) for a in artists],
-            "album": [AlbumService.get_open_subsonic_format(a) for a in albums],
-            "song": [TrackService.get_open_subsonic_format(a) for a in tracks],
-        }
-
-        return res_search
+        self.artist_db_helper = db_helpers.ArtistDBHelper(session)
+        self.album_db_helper = db_helpers.AlbumDBHelper(session)
+        self.track_db_helper = db_helpers.TrackDBHelper(session)
 
     def search2(
         self,
-        query,
-        artist_count,
-        artist_offset,
-        album_count,
-        album_offset,
-        song_count,
-        song_offset,
-    ):
-        artists = self.ArtistDBHelper.get_all_artists(filter_name=query)
-        if artist_count * artist_offset >= len(artists):
-            artists = []
-        else:
-            artists = artists[
-                artist_count
-                * artist_offset : min(
-                    len(artists), artist_count * artist_offset + artist_count
-                )
-            ]
+        query: str,
+        artist_count: int,
+        artist_offset: int,
+        album_count: int,
+        album_offset: int,
+        song_count: int,
+        song_offset: int,
+    ) -> Tuple[Sequence[dto.Artist], Sequence[dto.Album], Sequence[dto.Track]]:
 
-        albums = self.AlbumDBHelper.get_all_albums(filter_name=query)
-        if album_count * album_offset >= len(albums):
-            albums = []
-        else:
-            albums = albums[
-                album_count
-                * album_offset : min(
-                    len(albums), album_count * album_offset + album_count
-                )
-            ]
+        db_artists = self.artist_db_helper.get_artists(
+            artist_count, artist_offset, filter_name=query
+        )
+        db_albums = self.album_db_helper.get_albums(
+            album_count, album_offset, filter_name=query
+        )
+        db_tracks = self.track_db_helper.get_tracks(
+            song_count, song_offset, filter_title=query
+        )
 
-        tracks = self.TrackDBHelper.get_all_tracks(filter_title=query)
-        if song_count * song_offset >= len(tracks):
-            tracks = []
-        else:
-            tracks = tracks[
-                song_count
-                * song_offset : min(len(tracks), song_count * song_offset + song_count)
-            ]
-
-        return self.__class__.get_open_subsonic_format(artists, albums, tracks)
+        return (
+            fill_artists(db_artists, None, with_albums=False, with_songs=False),
+            fill_albums(db_albums, None, with_songs=False),
+            fill_tracks(db_tracks, None),
+        )
 
     def search3(
         self,
-        query,
-        artist_count,
-        artist_offset,
-        album_count,
-        album_offset,
-        song_count,
-        song_offset,
-    ):
+        query: str,
+        artist_count: int,
+        artist_offset: int,
+        album_count: int,
+        album_offset: int,
+        song_count: int,
+        song_offset: int,
+    ) -> Tuple[Sequence[dto.Artist], Sequence[dto.Album], Sequence[dto.Track]]:
         if query != "":
             return self.search2(
                 query,
@@ -561,10 +532,15 @@ class SearchService:
                 song_count,
                 song_offset,
             )
-        artists = self.ArtistDBHelper.get_all_artists()
-        albums = self.AlbumDBHelper.get_all_albums()
-        tracks = self.TrackDBHelper.get_all_tracks()
-        return self.__class__.get_open_subsonic_format(artists, albums, tracks)
+        db_artists = self.artist_db_helper.get_all_artists()
+        db_albums = self.album_db_helper.get_all_albums()
+        db_tracks = self.track_db_helper.get_all_tracks()
+
+        return (
+            fill_artists(db_artists, None, with_albums=False, with_songs=False),
+            fill_albums(db_albums, None, with_songs=False),
+            fill_tracks(db_tracks, None),
+        )
 
 
 class StarService:
