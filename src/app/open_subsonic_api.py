@@ -636,7 +636,7 @@ def get_cover_art(
         image_bytes = utils.image_to_bytes(image)
 
     return Response(
-        content=image_bytes, media_type=f"image/{(image.format or "").lower()}"
+        content=image_bytes, media_type=f"image/{str(image.format).lower()}"
     )
 
 

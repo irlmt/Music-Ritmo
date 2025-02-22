@@ -37,15 +37,15 @@ def get_default_cover() -> Image.Image:
 def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes, str]:
     if image_bytes is None:
         default_image = Image.open(DEFAULT_COVER_PREVIEW_PATH)
-        return image_to_bytes(default_image), (default_image.format or "").lower()
+        return image_to_bytes(default_image), str(default_image.format).lower()
 
     image = bytes_to_image(image_bytes)
     width, height = image.size
     if width <= MAX_COVER_PREVIEW_SIZE and height <= MAX_COVER_PREVIEW_SIZE:
-        return image_bytes, (image.format or "").lower()
+        return image_bytes, str(image.format).lower()
 
     image.thumbnail((MAX_COVER_PREVIEW_SIZE, MAX_COVER_PREVIEW_SIZE))
-    return image_to_bytes(image), (image.format or "").lower()
+    return image_to_bytes(image), str(image.format).lower()
 
 
 def get_cover_from_mp3(audio_file_mp3: MP3) -> bytes | None:
