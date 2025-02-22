@@ -4,7 +4,7 @@ DATABASE_URL = "sqlite:///database.db"
 engine = create_engine(DATABASE_URL, echo=False)
 
 
-def init_db():
+def init_db() -> None:
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
 
@@ -148,7 +148,7 @@ class Artist(SQLModel, table=True):
     )
     artist_favourites: list["FavouriteArtist"] = Relationship(back_populates="artist")
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
 
@@ -192,7 +192,7 @@ class Genre(SQLModel, table=True):
 
     tracks: list["Track"] = Relationship(back_populates="genres", link_model=GenreTrack)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
 
