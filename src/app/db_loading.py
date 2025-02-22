@@ -40,7 +40,6 @@ class AudioInfo:
         year: str | None,
         cover: bytes,
         cover_type: str,
-        lyrics: str | None,
         custom_tags: list,
         bit_rate: int,
         bits_per_sample: int,
@@ -60,7 +59,6 @@ class AudioInfo:
         self.year = year
         self.cover = cover
         self.cover_type = cover_type
-        self.lyrics = lyrics
         self.custom_tags = custom_tags
         self.bit_rate = bit_rate
         self.bits_per_sample = bits_per_sample
@@ -107,7 +105,6 @@ def extract_metadata_mp3(file_path):
         year=str(audio_file["TDRC"]) if "TDRC" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
-        lyrics=None,
         custom_tags=utils.get_custom_tags_mp3(audio_file),
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=int(
@@ -154,7 +151,6 @@ def extract_metadata_flac(file_path):
         year=str(audio_file["DATE"][0]) if "DATE" in audio_file.tags else None,
         cover=cover,
         cover_type=cover_type,
-        lyrics=str(audio_file["LYRICS"][0]) if "LYRICS" in audio_file.tags else None,
         custom_tags=utils.get_custom_tags_flac(audio_file),
         bit_rate=audio_file.info.bitrate,
         bits_per_sample=audio_file.info.bits_per_sample,
@@ -281,7 +277,6 @@ def load_audio_data(audio: AudioInfo):
                 plays_count=0,
                 cover=audio.cover,
                 cover_type=audio.cover_type,
-                lyrics=audio.lyrics,
                 bit_rate=audio.bit_rate,
                 bits_per_sample=audio.bits_per_sample,
                 sample_rate=audio.sample_rate,
