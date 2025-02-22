@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from PIL import Image
 
-from src.app.subsonic_response import SubsonicResponse
-from src.app.auth import authenticate_user
+from .subsonic_response import SubsonicResponse
+from .auth import authenticate_user
 
 from . import database as db
 from . import service_layer

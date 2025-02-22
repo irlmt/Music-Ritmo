@@ -67,7 +67,7 @@ class AudioInfo:
         self.duration = duration
 
 
-def extract_metadata_mp3(file_path):
+def extract_metadata_mp3(file_path) -> AudioInfo:
     audio_file = MP3(file_path)
     cover, cover_type = utils.get_cover_preview(utils.get_cover_from_mp3(audio_file))
     return AudioInfo(
@@ -117,7 +117,7 @@ def extract_metadata_mp3(file_path):
     )
 
 
-def extract_metadata_flac(file_path):
+def extract_metadata_flac(file_path) -> AudioInfo:
     audio_file = FLAC(file_path)
     cover, cover_type = utils.get_cover_preview(utils.get_cover_from_flac(audio_file))
     return AudioInfo(
@@ -184,7 +184,7 @@ def scan_directory_for_audio_files(dir) -> list[AudioInfo]:
     return data
 
 
-def load_audio_data(audio: AudioInfo):
+def load_audio_data(audio: AudioInfo) -> None:
     with Session(db.engine) as session:
         artists = []
         for name in audio.artists:
@@ -302,7 +302,7 @@ def load_audio_data(audio: AudioInfo):
         session.refresh(track)
 
 
-def scan_and_load(directory_path: str = "./tracks/"):
+def scan_and_load(directory_path: str = "./tracks/") -> None:
     audio_files = scan_directory_for_audio_files(directory_path)
     for file in audio_files:
         load_audio_data(file)

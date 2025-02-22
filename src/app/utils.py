@@ -6,8 +6,8 @@ from enum import Enum
 from mutagen.id3 import TXXX, TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
-from sqlmodel import Session, select, delete
-from src.app import service_layer
+from sqlmodel import Session, select
+from . import service_layer
 from . import database as db
 
 MAX_COVER_PREVIEW_SIZE = 128
@@ -30,8 +30,8 @@ def image_to_bytes(image: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def get_default_cover():
-    return Image.open(DEFAULT_COVER_PATH)
+def get_default_cover() -> Image.Image:
+    return cast(Image.Image, Image.open(DEFAULT_COVER_PATH))
 
 
 def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes, str]:
@@ -179,16 +179,16 @@ def update_tags(
     return audio, audio_type
 
 
-def create_default_user():
+def create_default_user() -> None:
     service_layer.create_user(next(db.get_session()), "admin", "admin")
 
 
-def clear_table(table, session: Session):
+def clear_table(table, session: Session) -> None:
     for row in session.exec(select(table)).all():
         session.delete(row)
 
 
-def clear_media(session: Session):
+def clear_media(session: Session) -> None:
     clear_table(db.Album, session)
     clear_table(db.Playlist, session)
     clear_table(db.Genre, session)
@@ -202,7 +202,7 @@ def clear_media(session: Session):
     session.commit()
 
 
-def get_custom_tags_mp3(audio_file: MP3):
+def get_custom_tags_mp3(audio_file: MP3) -> list[tuple]:
     custom_tags: list[tuple] = []
     if audio_file.tags:
         for tag in audio_file.tags:
@@ -211,7 +211,7 @@ def get_custom_tags_mp3(audio_file: MP3):
     return custom_tags
 
 
-def get_custom_tags_flac(audio_file: FLAC):
+def get_custom_tags_flac(audio_file: FLAC) -> list[tuple]:
     custom_tags: list[tuple] = []
     if audio_file.tags:
         for key, value in audio_file.tags:
@@ -220,14 +220,15 @@ def get_custom_tags_flac(audio_file: FLAC):
     return custom_tags
 
 
-def clear_outdated_tags(track: db.Track, audio: MP3 | FLAC):
+def clear_outdated_tags(track: db.Track, audio: MP3 | FLAC) -> None:
     for tag in track.tags:
         if tag.updated == False:
             audio.pop("TXXX:" + tag.name)
+        tag.updated = False
     audio.save()
 
 
-def get_base_tags(track: db.Track, session: Session):
+def get_base_tags(track: db.Track, session: Session) -> dict:
     album_artist = ""
     if track.album_artist_id is not None:
         album_artist = (
@@ -247,7 +248,7 @@ def get_base_tags(track: db.Track, session: Session):
     }
 
 
-def get_custom_tags(track: db.Track):
+def get_custom_tags(track: db.Track) -> dict:
     custom_tags = {}
     for tag in track.tags:
         custom_tags[tag.name] = tag.value

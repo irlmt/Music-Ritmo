@@ -2,8 +2,8 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlmodel import Session, select
 
-from src.app.subsonic_response import SubsonicResponse
-from src.app.auth import authenticate_user
+from .subsonic_response import SubsonicResponse
+from .auth import authenticate_user
 
 from . import db_loading
 from . import database as db
@@ -49,7 +49,7 @@ def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
 
 
 @frontend_router.get("/getTags")
-def get_tags(id: int, session: Session = Depends(db.get_session)):
+def get_tags(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
@@ -62,7 +62,7 @@ def get_tags(id: int, session: Session = Depends(db.get_session)):
 @frontend_router.put("/updateTags")
 def update_tags(
     id: int, data: dict = Body(...), session: Session = Depends(db.get_session)
-):
+) -> JSONResponse:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
@@ -79,4 +79,4 @@ def update_tags(
 
     db_loading.load_audio_data(audio_info)
 
-    return Response()
+    return JSONResponse({"detail": "success"})
