@@ -14,11 +14,6 @@ from . import database as db
 from . import db_helpers
 
 
-def parse_val(rsp: dict, attr: str, val: Any) -> None:
-    if val is not None and val != "":
-        rsp[attr] = val
-
-
 class RequestType(Enum):
     RANDOM = 1
     NEWEST = 2
@@ -105,46 +100,11 @@ class AlbumService:
     def __init__(self, session: Session):
         self.album_db_helper = db_helpers.AlbumDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(
-        album: db.Album, with_songs: bool = False
-    ) -> dict[str, Optional[Union[str, int, List[dict]]]]:
-        genres: List[List[db.Genre]] = [g.genres for g in album.tracks]
-        res_album: dict[str, Optional[Union[str, int, List[dict]]]] = {
-            "id": album.id,
-            "parent": album.artists[0].id if album.artists[0] is not None else -1,
-            "album": album.name,
-            "title": album.name,
-            "name": album.name,
-            "isDir": True,
-            "coverArt": f"al-{album.id}",
-            "songCount": album.total_tracks,
-            "duration": sum([int(t.duration) for t in album.tracks]),
-            "playCount": min([t.plays_count for t in album.tracks]),
-            "artistId": album.artists[0].id if album.artists[0] is not None else -1,
-            "artist": ArtistService.join_artists_names(album.artists),
-            "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
-        }
-        parse_val(res_album, "year", album.year)
-        parse_val(res_album, "created", "2999-31-12T11:06:57.000Z")
-
-        if len(album.album_favourites) > 0:
-            res_album["starred"] = min(a.added_at for a in album.album_favourites)
-        if with_songs:
-            tracks = []
-            for album_track in album.tracks:
-                tracks.append(TrackService.get_open_subsonic_format(album_track))
-            res_album["song"] = tracks
-        return res_album
-
     def get_album_by_id(self, id: int) -> Optional[dto.Album]:
         db_album = self.album_db_helper.get_album_by_id(id)
         if db_album:
             return fill_album(db_album, None, with_songs=True)
         return None
-
-    def get_album_info2(self, id):
-        pass
 
     def get_album_list(
         self,
@@ -295,51 +255,6 @@ class TrackService:
         self.track_db_helper = db_helpers.TrackDBHelper(session)
         self.genre_db_helper = db_helpers.GenresDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(
-        track: db.Track, with_genres=False, with_artists=False
-    ):
-        res_song = {
-            "id": track.id,
-            "parent": track.album_id,
-            "isDir": False,
-            "title": track.title,
-            "album": track.album.name,
-            "artist": ArtistService.join_artists_names(track.artists),
-            "track": 1,
-            "coverArt": f"mf-{track.id}",
-            "size": track.file_size,
-            "contentType": track.type,
-            "suffix": "mp3",
-            "duration": int(track.duration),
-            "bitRate": track.bit_rate,
-            "bitDepth": track.bits_per_sample,
-            "samplingRate": track.sample_rate,
-            "channelCount": track.channels,
-            "path": track.file_path,
-            "playCount": track.plays_count,
-            "discNumber": 1,
-            "albumId": track.album_id,
-            "artistId": get_album_artist_id_by_track(track),
-            "type": track.type,
-            "isVideo": False,
-        }
-        parse_val(res_song, "year", track.year)
-        parse_val(res_song, "created", "2999-31-12T11:06:57.000Z")
-        if len(track.track_favourites) > 0:
-            res_song["starred"] = min(t.added_at for t in track.track_favourites)
-        if with_genres:
-            genres = []
-            for genre in track.genres:
-                genres.append({"name": genre.name})
-            res_song["genres"] = genres
-        if with_artists:
-            artists = []
-            for artist in track.artists:
-                artists.append(ArtistService.get_open_subsonic_format(artist))
-            res_song["artists"] = artists
-        return res_song
-
     def get_song_by_id(self, id: int) -> Optional[dto.Track]:
         db_track = self.track_db_helper.get_track_by_id(id)
         if db_track:
@@ -445,38 +360,11 @@ class ArtistService:
     def join_artists_names(artists: List[db.Artist]) -> str:
         return ", ".join(a.name for a in artists)
 
-    @staticmethod
-    def get_open_subsonic_format(
-        artist: db.Artist, with_albums: bool = False, with_tracks: bool = False
-    ) -> dict[str, Optional[Union[str, int, List[dict]]]]:
-        res_artist: dict[str, Optional[Union[str, int, List[dict]]]] = {
-            "id": artist.id,
-            "name": artist.name,
-            "coverArt": f"ar-{artist.id}",
-            "albumCount": len(artist.albums),
-        }
-        if len(artist.artist_favourites) > 0:
-            min(a.added_at for a in artist.artist_favourites)
-        if with_albums:
-            albums = []
-            for i in artist.albums:
-                albums.append(AlbumService.get_open_subsonic_format(i))
-            res_artist["album"] = albums
-        if with_tracks:
-            tracks = []
-            for i in artist.tracks:
-                tracks.append(TrackService.get_open_subsonic_format(i))
-            res_artist["song"] = tracks
-        return res_artist
-
     def get_artist_by_id(self, id: int) -> Optional[dto.Artist]:
         db_artist = self.artist_db_helper.get_artist_by_id(id)
         if db_artist:
             return fill_artist(db_artist, None, with_albums=True, with_songs=True)
         return None
-
-    def get_artist_info2(self, id, count=20, include_not_present=False):
-        pass
 
 
 class SearchService:
@@ -640,28 +528,6 @@ def fill_playlists(
 class PlaylistService:
     def __init__(self, session: Session):
         self.playlist_db_helper = db_helpers.PlaylistDBHelper(session)
-
-    @staticmethod
-    def get_open_subsonic_format(playlist: db.Playlist, with_tracks=False):
-        playlist_tracks = playlist.playlist_tracks
-        res_playlist: dict[str, Optional[Union[str, int, List[dict]]]] = {
-            "id": playlist.id,
-            "name": playlist.name,
-            "owner": playlist.user.login,
-            "public": True,
-            "created": playlist.create_date,
-            "changed": max(
-                [a.added_at for a in playlist_tracks], default=playlist.create_date
-            ),
-            "songCount": playlist.total_tracks,
-            "duration": sum(t.track.duration for t in playlist_tracks),
-        }
-        if with_tracks:
-            tracks = [
-                TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks
-            ]
-            res_playlist["entry"] = tracks
-        return res_playlist
 
     def create_playlist(
         self, playlist_name: str, track_ids: Sequence[int], user: db.User
