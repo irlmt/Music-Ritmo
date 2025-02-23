@@ -644,51 +644,42 @@ class PlaylistService:
 
 class IndexService:
     def __init__(self, session: Session):
-        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
-        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
-
-    @dataclass
-    class ArtistIndex:
-        name: str
-        artist: List[db.Artist]
-
-        def get_open_subsonic_format(self):
-            return {
-                "name": self.name,
-                "artist": [
-                    ArtistService.get_open_subsonic_format(a) for a in self.artist
-                ],
-            }
+        self.artist_db_helper = db_helpers.ArtistDBHelper(session)
+        self.track_db_helper = db_helpers.TrackDBHelper(session)
 
     def get_indexes_artists(
         self,
         music_folder_id: str = "",
         if_modified_since_ms: int = 0,
         with_childs: bool = False,
-    ) -> Dict[str, List[Dict]]:
-        artists: List[db.Artist] = list(self.ArtistDBHelper.get_all_artists())
-        artists.sort(key=lambda a: a.name)
-        index: List[IndexService.ArtistIndex] = []
+    ) -> dto.Indexes:
+        indexes: dto.Indexes = dto.Indexes(last_modified=datetime.now()) #  TODO MUS-208 fill last_modified
+        artists: List[dto.Artist] = fill_artists(
+            self.artist_db_helper.get_all_artists(),
+            None,
+            with_albums=True,
+            with_songs=with_childs,
+        )
+        sorted_artists = sorted(artists, key=lambda a: a.name)
+
         letter: str = ""
-        letter_artists: List[db.Artist] = []
-        for a in artists:
+        letter_artists: List[dto.Artist] = []
+        for a in sorted_artists:
             if len(a.name) > 0 and a.name[0] != letter:
                 if len(letter_artists) > 0:
-                    index.append(IndexService.ArtistIndex(letter, letter_artists))
+                    indexes.artist_index.append(dto.ArtistIndex(letter, letter_artists))
                 letter = a.name[0]
                 letter_artists = []
             letter_artists.append(a)
-        res = {
-            "index": [indexArtist.get_open_subsonic_format() for indexArtist in index]
-        }
+
+        if len(letter_artists) > 0:
+            indexes.artist_index.append(dto.ArtistIndex(letter, letter_artists))
+
         if with_childs:
-            tracks: List[str] = []
-            for a in artists:
-                ts: List[db.Track] = self.TrackDBHelper.get_track_by_artist_id(a.id)
-                for t in ts:
-                    tracks.append(TrackService.get_open_subsonic_format(t))
-            res["child"] = tracks
-        return res
+            tracks: Sequence[dto.Track] = fill_tracks(self.track_db_helper.get_all_tracks(), None)
+            indexes.tracks.extend(tracks)
+
+        return indexes
 
 
 def random_enum_choice(e):

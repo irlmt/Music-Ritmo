@@ -190,7 +190,9 @@ async def search2(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult2"] = OpenSubsonicFormatter.format_combination(artists, albums, tracks)
+    rsp.data["searchResult2"] = OpenSubsonicFormatter.format_combination(
+        artists, albums, tracks
+    )
 
     return rsp.to_json_rsp()
 
@@ -211,7 +213,9 @@ async def search3(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult3"] = OpenSubsonicFormatter.format_combination(artists, albums, tracks)
+    rsp.data["searchResult3"] = OpenSubsonicFormatter.format_combination(
+        artists, albums, tracks
+    )
 
     return rsp.to_json_rsp()
 
@@ -362,14 +366,12 @@ def get_indexes(
 ):
     index_service = service_layer.IndexService(session)
 
-    indexes = index_service.get_indexes_artists(
+    indexes: dto.Indexes = index_service.get_indexes_artists(
         musicFolderId, ifModifiedSince, with_childs=True
     )
 
     rsp = SubsonicResponse()
-    rsp.data["indexes"] = indexes
-    rsp.data["indexes"]["ignoredArticles"] = ""
-    rsp.data["indexes"]["lastModified"] = 0
+    rsp.data["indexes"] = OpenSubsonicFormatter.format_indexes(indexes)
     return rsp.to_json_rsp()
 
 
@@ -380,11 +382,12 @@ def get_artists(
 ):
     index_service = service_layer.IndexService(session)
 
-    indexes = index_service.get_indexes_artists(musicFolderId)
+    indexes: dto.Indexes = index_service.get_indexes_artists(
+        musicFolderId, with_childs=False
+    )
 
     rsp = SubsonicResponse()
-    rsp.data["artists"] = indexes
-    rsp.data["artists"]["ignoredArticles"] = ""
+    rsp.data["artists"] = OpenSubsonicFormatter.format_indexes(indexes)
     return rsp.to_json_rsp()
 
 

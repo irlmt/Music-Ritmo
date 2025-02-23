@@ -80,3 +80,18 @@ class Artist:
     artist_image_url: str | None = None
     starred: datetime | None = None
     albums: List[Album] = field(default_factory=list)
+
+
+@dataclass
+class ArtistIndex:
+    name: str  # letter
+    artist: List[Artist]
+
+
+@dataclass
+class Indexes:
+    last_modified: datetime
+    ignored_articles: List[str] = field(default_factory=list)
+    artist_index: List[ArtistIndex] = field(default_factory=list)
+    shortcuts: List[Artist] = field(default_factory=list)
+    tracks: List[Track] = field(default_factory=list)

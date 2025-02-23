@@ -214,3 +214,46 @@ class OpenSubsonicFormatter:
         )
 
         return result
+
+    @staticmethod
+    def format_artist_index(artist_index: ArtistIndex) -> dict[str, Any]:
+        result = {"name": artist_index.name}
+
+        add_list_if_not_empty(
+            result,
+            "artist",
+            list(map(OpenSubsonicFormatter.format_artist, artist_index.artist)),
+        )
+
+        return result
+
+    @staticmethod
+    def format_artist_indexes(indexes: Sequence[ArtistIndex]) -> dict[str, Any]:
+        return {"index": list(map(OpenSubsonicFormatter.format_artist_index, indexes))}
+
+    @staticmethod
+    def format_indexes(indexes: Indexes) -> dict[str, Any]:
+        result = {
+            "ignoredArticles": " ".join(indexes.ignored_articles),
+            "lastModified": indexes.last_modified.timestamp() * 1000,
+        }
+
+        add_list_if_not_empty(
+            result,
+            "shortcut",
+            list(map(OpenSubsonicFormatter.format_artist, indexes.shortcuts)),
+        )
+
+        add_list_if_not_empty(
+            result,
+            "child",
+            list(map(OpenSubsonicFormatter.format_track, indexes.tracks)),
+        )
+
+        add_list_if_not_empty(
+            result,
+            "index",
+            list(map(OpenSubsonicFormatter.format_artist_index, indexes.artist_index)),
+        )
+
+        return result
