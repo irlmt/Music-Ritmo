@@ -47,10 +47,10 @@ def get_album_artist_id_by_album(album: db.Album) -> int:
     return -1
 
 
-def get_album_duration(db_album: db.Album) -> int:
-    if len(db_album.tracks) == 0:
+def get_tracklist_duration(db_tracks: Sequence[db.Track]) -> int:
+    if len(db_tracks) == 0:
         return 0
-    return int(sum([t.duration for t in db_album.tracks]))
+    return int(sum([t.duration for t in db_tracks]))
 
 
 def get_album_genre(db_album: db.Album) -> Optional[str]:
@@ -76,7 +76,7 @@ def fill_album(
         id=db_album.id,
         name=db_album.name,
         song_count=db_album.total_tracks,
-        duration=get_album_duration(db_album),
+        duration=get_tracklist_duration(db_album.tracks),
         created=datetime.now(),
         artist=join_artist_names(db_album.artists),
         artist_id=get_album_artist_id_by_album(db_album),
@@ -543,6 +543,12 @@ class SearchService:
         )
 
 
+def playlist_tracks_to_tracks(
+    db_playlist_tracks: Sequence[db.PlaylistTrack],
+) -> List[db.Track]:
+    return [pt.track for pt in db_playlist_tracks]
+
+
 class StarService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.FavouriteDBHelper(session)
@@ -585,9 +591,44 @@ class StarService:
         }
 
 
+def fill_playlist(
+    db_playlist: db.Playlist, db_user: db.User | None, with_songs: bool = False
+) -> dto.Playlist:
+    now = datetime.now()
+    playlist = dto.Playlist(
+        id=db_playlist.id,
+        name=db_playlist.name,
+        song_count=db_playlist.total_tracks,
+        duration=get_tracklist_duration(
+            playlist_tracks_to_tracks(db_playlist.playlist_tracks)
+        ),
+        created=now,
+        changed=now,
+        owner=db_playlist.user.login,
+        public=True,
+    )
+    if with_songs:
+        playlist.tracks = fill_tracks(
+            playlist_tracks_to_tracks(db_playlist.playlist_tracks), db_user
+        )
+    return playlist
+
+
+def fill_playlists(
+    db_playlists: Sequence[db.Playlist],
+    db_user: db.User | None,
+    with_songs: bool = False,
+) -> List[dto.Playlist]:
+    return list(
+        map(
+            partial(fill_playlist, db_user=db_user, with_songs=with_songs), db_playlists
+        )
+    )
+
+
 class PlaylistService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.PlaylistDBHelper(session)
+        self.playlist_db_helper = db_helpers.PlaylistDBHelper(session)
 
     @staticmethod
     def get_open_subsonic_format(playlist: db.Playlist, with_tracks=False):
@@ -611,35 +652,34 @@ class PlaylistService:
             res_playlist["entry"] = tracks
         return res_playlist
 
-    def create_playlist(self, name, tracks, user_id):
-        playlist_id = self.DBHelper.create_playlist(name, tracks, user_id)
-        return self.get_playlist(playlist_id)
+    def create_playlist(
+        self, playlist_name: str, track_ids: Sequence[int], user: db.User
+    ) -> dto.Playlist:
+        db_playlist: db.Playlist = self.playlist_db_helper.create_playlist(
+            playlist_name, track_ids, user.id
+        )
+        return fill_playlist(db_playlist, user, with_songs=True)
 
-    def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
-        playlist = self.DBHelper.update_playlist(
-            id, name, tracks_to_add, tracks_to_remove
+    def update_playlist(self, id: int, new_name: str, tracks_to_add: Sequence[int], tracks_to_remove: Sequence[int]) -> bool:
+        playlist = self.playlist_db_helper.update_playlist(
+            id, new_name, tracks_to_add, tracks_to_remove
         )
         if playlist:
-            playlist = self.__class__.get_open_subsonic_format(
-                playlist, with_tracks=True
-            )
-        return playlist
+            return True
+        return False
 
-    def delete_playlist(self, id):
-        self.DBHelper.delete_playlist(id)
+    def delete_playlist(self, id: int, user: db.User) -> bool:
+        return self.playlist_db_helper.delete_playlist(id)
 
-    def get_playlist(self, id):
-        playlist = self.DBHelper.get_playlist(id)
-        if playlist:
-            playlist = self.__class__.get_open_subsonic_format(
-                playlist, with_tracks=True
-            )
-        return playlist
+    def get_playlist(self, id: int) -> dto.Playlist | None:
+        db_playlist = self.playlist_db_helper.get_playlist(id)
+        if db_playlist:
+            return fill_playlist(db_playlist, None, with_songs=True)
+        return None
 
-    def get_playlists(self, music_folder=None):
-        playlists = self.DBHelper.get_all_playlists()
-        playlists = [self.get_open_subsonic_format(i) for i in playlists]
-        return {"playlist": playlists}
+    def get_playlists(self) -> List[dto.Playlist]:
+        db_playlists = self.playlist_db_helper.get_all_playlists()
+        return fill_playlists(db_playlists, None, with_songs=False)
 
 
 class IndexService:
@@ -653,7 +693,9 @@ class IndexService:
         if_modified_since_ms: int = 0,
         with_childs: bool = False,
     ) -> dto.Indexes:
-        indexes: dto.Indexes = dto.Indexes(last_modified=datetime.now()) #  TODO MUS-208 fill last_modified
+        indexes: dto.Indexes = dto.Indexes(
+            last_modified=datetime.now()
+        )  #  TODO MUS-208 fill last_modified
         artists: List[dto.Artist] = fill_artists(
             self.artist_db_helper.get_all_artists(),
             None,
@@ -676,7 +718,9 @@ class IndexService:
             indexes.artist_index.append(dto.ArtistIndex(letter, letter_artists))
 
         if with_childs:
-            tracks: Sequence[dto.Track] = fill_tracks(self.track_db_helper.get_all_tracks(), None)
+            tracks: Sequence[dto.Track] = fill_tracks(
+                self.track_db_helper.get_all_tracks(), None
+            )
             indexes.tracks.extend(tracks)
 
         return indexes

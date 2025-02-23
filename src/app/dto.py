@@ -95,3 +95,19 @@ class Indexes:
     artist_index: List[ArtistIndex] = field(default_factory=list)
     shortcuts: List[Artist] = field(default_factory=list)
     tracks: List[Track] = field(default_factory=list)
+
+
+@dataclass
+class Playlist:
+    id: int
+    name: str
+    song_count: int
+    duration: int
+    created: datetime
+    changed: datetime
+    comment: str | None = None
+    owner: str | None = None
+    public: bool | None = None
+    cover_art_id: int | None = None
+    allowed_users: List[str] = field(default_factory=list)
+    tracks: List[Track] = field(default_factory=list)

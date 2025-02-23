@@ -127,9 +127,9 @@ async def ping():
 async def get_playlists(username: str = "", session: Session = Depends(db.get_session)):
     service = service_layer.PlaylistService(session)
     playlists = service.get_playlists()
-    rsp = SubsonicResponse()
-    rsp.data["playlists"] = playlists
 
+    rsp = SubsonicResponse()
+    rsp.data["playlists"] = OpenSubsonicFormatter.format_playlists(playlists)
     return rsp.to_json_rsp()
 
 
@@ -288,11 +288,12 @@ def get_album(id: int, session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getPlaylist")
 def get_playlist(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.PlaylistService(session)
-    playlist = service.get_playlist(id)
+    playlist: dto.Playlist | None = service.get_playlist(id)
     if playlist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
+
     rsp = SubsonicResponse()
-    rsp.data["playlist"] = playlist
+    rsp.data["playlist"] = OpenSubsonicFormatter.format_playlist(playlist)
     return rsp.to_json_rsp()
 
 
@@ -305,9 +306,10 @@ def create_playlist(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.PlaylistService(session)
-    playlist = service.create_playlist(name, songId, current_user.id)
+    playlist: dto.Playlist = service.create_playlist(name, songId, current_user)
+
     rsp = SubsonicResponse()
-    rsp.data["playlist"] = playlist
+    rsp.data["playlist"] = OpenSubsonicFormatter.format_playlist(playlist)
     return rsp.to_json_rsp()
 
 
@@ -321,7 +323,7 @@ def delete_playlist(
         return JSONResponse(
             {
                 "detail": f"""You do not have permission to perform this operation. 
-            {current_user.login} is not the owner of the playlist."""
+                {current_user.login} is not the owner of the playlist."""
             },
             status_code=403,
         )
@@ -351,8 +353,10 @@ def update_playlist(
             status_code=403,
         )
     service = service_layer.PlaylistService(session)
-    playlist = service.update_playlist(playlistId, name, songIdToAdd, songIdToRemove)
-    if playlist is None:
+    success: bool = service.update_playlist(
+        playlistId, name, songIdToAdd, songIdToRemove
+    )
+    if not success:
         return JSONResponse({"detail": "No such id"}, status_code=404)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()

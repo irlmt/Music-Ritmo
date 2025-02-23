@@ -257,3 +257,30 @@ class OpenSubsonicFormatter:
         )
 
         return result
+
+    @staticmethod
+    def format_playlist(playlist: Playlist) -> dict[str, Any]:
+        result = {
+            "id": playlist.id,
+            "name": playlist.name,
+            "songCount": playlist.song_count,
+            "duration": playlist.duration,
+            "created": playlist.created.isoformat(),
+            "changed": playlist.changed.isoformat(),
+        }
+
+        add_if_not_none(result, "comment", playlist.comment)
+        add_if_not_none(result, "owner", playlist.owner)
+        add_if_not_none(result, "public", playlist.public)
+        add_if_not_none(result, "coverArt", playlist.cover_art_id)
+        add_str_if_not_empty(result, "allowedUser", " ".join(playlist.allowed_users))
+
+        add_list_if_not_empty(
+            result, "entry", list(map(OpenSubsonicFormatter.format_track, playlist.tracks))
+        )
+
+        return result
+
+    @staticmethod
+    def format_playlists(playlists: Sequence[Playlist]) -> dict[str, Any]:
+        return {"playlist": list(map(OpenSubsonicFormatter.format_playlist, playlists))}

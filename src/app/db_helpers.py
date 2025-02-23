@@ -307,7 +307,9 @@ class PlaylistDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_playlist(self, name, tracks: List[int], user_id=0):
+    def create_playlist(
+        self, name: str, tracks: Sequence[int], user_id: int
+    ) -> db.Playlist:
         now = datetime.today()
         playlist = db.Playlist(
             name=name,
@@ -322,12 +324,17 @@ class PlaylistDBHelper:
             playlist.playlist_tracks.append(playlist_track)
         self.session.add(playlist)
         self.session.commit()
-        return playlist.id
+        self.session.refresh(playlist)
+        return playlist
 
     def update_playlist(
-        self, id, name=None, traks_to_add=List[int], track_to_remove=List[int]
-    ):
-        now = datetime.today()
+        self,
+        id: int,
+        name: str | None = None,
+        traks_to_add: Sequence[int] = [],
+        track_to_remove: Sequence[int] = [],
+    ) -> db.Playlist | None:
+        now = datetime.now()
         playlist = self.session.exec(
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
@@ -350,22 +357,25 @@ class PlaylistDBHelper:
                 playlist.playlist_tracks.append(playlist_track)
             playlist.total_tracks = len(playlist.playlist_tracks)
             self.session.commit()
+            self.session.refresh(playlist)
         return playlist
 
-    def delete_playlist(self, id):
+    def delete_playlist(self, id: int) -> bool:
         playlist = self.session.exec(
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
         if playlist:
             self.session.delete(playlist)
             self.session.commit()
+            return True
+        return False
 
-    def get_playlist(self, id):
+    def get_playlist(self, id: int) -> db.Playlist | None:
         return self.session.exec(
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
 
-    def get_all_playlists(self):
+    def get_all_playlists(self) -> Sequence[db.Playlist]:
         return self.session.exec(select(db.Playlist)).all()
 
 
