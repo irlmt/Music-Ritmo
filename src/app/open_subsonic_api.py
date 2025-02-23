@@ -405,7 +405,7 @@ def star(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.star(id, albumId, artistId, playlistId, current_user.id)
+    service.star(id, albumId, artistId, playlistId, current_user)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -420,7 +420,7 @@ def unstar(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.unstar(id, albumId, artistId, playlistId, current_user.id)
+    service.unstar(id, albumId, artistId, playlistId, current_user)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -432,9 +432,11 @@ def get_starred(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    starred = service.get_starred(current_user.id)
+    tracks, albums, artists, playlists = service.get_starred(current_user)
     rsp = SubsonicResponse()
-    rsp.data["starred"] = starred
+    rsp.data["starred"] = OpenSubsonicFormatter.format_combination(
+        artists, albums, tracks, playlists
+    )
     return rsp.to_json_rsp()
 
 
@@ -445,9 +447,11 @@ def get_starred2(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    starred = service.get_starred(current_user.id)
+    tracks, albums, artists, playlists = service.get_starred(current_user)
     rsp = SubsonicResponse()
-    rsp.data["starred2"] = starred
+    rsp.data["starred2"] = OpenSubsonicFormatter.format_combination(
+        artists, albums, tracks, playlists
+    )
     return rsp.to_json_rsp()
 
 

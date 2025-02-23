@@ -191,7 +191,10 @@ class OpenSubsonicFormatter:
 
     @staticmethod
     def format_combination(
-        artists: Sequence[Artist], albums: Sequence[Album], tracks: Sequence[Track]
+        artists: Sequence[Artist] = [],
+        albums: Sequence[Album] = [],
+        tracks: Sequence[Track] = [],
+        playlists: Sequence[Playlist] = [],
     ) -> dict[str, Any]:
         result: dict[str, Any] = {}
 
@@ -211,6 +214,12 @@ class OpenSubsonicFormatter:
             result,
             "song",
             list(map(OpenSubsonicFormatter.format_track, tracks)),
+        )
+
+        add_list_if_not_empty(
+            result,
+            "playlist",
+            list(map(OpenSubsonicFormatter.format_playlist, playlists)),
         )
 
         return result
@@ -276,7 +285,9 @@ class OpenSubsonicFormatter:
         add_str_if_not_empty(result, "allowedUser", " ".join(playlist.allowed_users))
 
         add_list_if_not_empty(
-            result, "entry", list(map(OpenSubsonicFormatter.format_track, playlist.tracks))
+            result,
+            "entry",
+            list(map(OpenSubsonicFormatter.format_track, playlist.tracks)),
         )
 
         return result

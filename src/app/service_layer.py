@@ -551,44 +551,55 @@ def playlist_tracks_to_tracks(
 
 class StarService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.FavouriteDBHelper(session)
+        self.favourite_db_helper = db_helpers.FavouriteDBHelper(session)
 
-    def star(self, track_id, album_id, artist_id, playlist_id, user_id=0):
-        for id in track_id:
-            self.DBHelper.star_track(id, user_id)
-        for id in artist_id:
-            self.DBHelper.star_artist(id, user_id)
-        for id in album_id:
-            self.DBHelper.star_album(id, user_id)
-        for id in playlist_id:
-            self.DBHelper.star_playlist(id, user_id)
+    def star(
+        self,
+        track_ids: Sequence[int],
+        album_ids: Sequence[int],
+        artist_ids: Sequence[int],
+        playlist_ids: Sequence[int],
+        user: db.User,
+    ) -> None:
+        for id in track_ids:
+            self.favourite_db_helper.star_track(id, user.id)
+        for id in artist_ids:
+            self.favourite_db_helper.star_artist(id, user.id)
+        for id in album_ids:
+            self.favourite_db_helper.star_album(id, user.id)
+        for id in playlist_ids:
+            self.favourite_db_helper.star_playlist(id, user.id)
 
-    def unstar(self, track_id, album_id, artist_id, playlist_id, user_id=0):
-        for id in track_id:
-            self.DBHelper.unstar_track(id, user_id)
-        for id in artist_id:
-            self.DBHelper.unstar_artist(id, user_id)
-        for id in album_id:
-            self.DBHelper.unstar_album(id, user_id)
-        for id in playlist_id:
-            self.DBHelper.unstar_playlist(id, user_id)
+    def unstar(
+        self,
+        track_ids: Sequence[int],
+        album_ids: Sequence[int],
+        artist_ids: Sequence[int],
+        playlist_ids: Sequence[int],
+        user: db.User,
+    ) -> None:
+        for id in track_ids:
+            self.favourite_db_helper.unstar_track(id, user.id)
+        for id in artist_ids:
+            self.favourite_db_helper.unstar_artist(id, user.id)
+        for id in album_ids:
+            self.favourite_db_helper.unstar_album(id, user.id)
+        for id in playlist_ids:
+            self.favourite_db_helper.unstar_playlist(id, user.id)
 
-    def get_starred(self, user_id=0):
-        tracks = self.DBHelper.get_starred_tracks(user_id)
-        albums = self.DBHelper.get_starred_albums(user_id)
-        artists = self.DBHelper.get_starred_artists(user_id)
-        playlists = self.DBHelper.get_starred_playlists(user_id)
+    def get_starred(
+        self, user: db.User
+    ) -> Tuple[List[dto.Track], List[dto.Album], List[dto.Artist], List[dto.Playlist]]:
+        db_tracks = self.favourite_db_helper.get_starred_tracks(user.id)
+        db_albums = self.favourite_db_helper.get_starred_albums(user.id)
+        db_artists = self.favourite_db_helper.get_starred_artists(user.id)
+        db_playlists = self.favourite_db_helper.get_starred_playlists(user.id)
 
-        tracks = [TrackService.get_open_subsonic_format(t) for t in tracks]
-        albums = [AlbumService.get_open_subsonic_format(t) for t in albums]
-        artists = [ArtistService.get_open_subsonic_format(t) for t in artists]
-        playlists = [PlaylistService.get_open_subsonic_format(t) for t in playlists]
-        return {
-            "artist": artists,
-            "album": albums,
-            "song": tracks,
-            "playlist": playlists,
-        }
+        tracks = fill_tracks(db_tracks, user)
+        albums = fill_albums(db_albums, user, with_songs=False)
+        artists = fill_artists(db_artists, user, with_albums=False, with_songs=False)
+        playlists = fill_playlists(db_playlists, user, with_songs=False)
+        return (tracks, albums, artists, playlists)
 
 
 def fill_playlist(
@@ -660,7 +671,13 @@ class PlaylistService:
         )
         return fill_playlist(db_playlist, user, with_songs=True)
 
-    def update_playlist(self, id: int, new_name: str, tracks_to_add: Sequence[int], tracks_to_remove: Sequence[int]) -> bool:
+    def update_playlist(
+        self,
+        id: int,
+        new_name: str,
+        tracks_to_add: Sequence[int],
+        tracks_to_remove: Sequence[int],
+    ) -> bool:
         playlist = self.playlist_db_helper.update_playlist(
             id, new_name, tracks_to_add, tracks_to_remove
         )

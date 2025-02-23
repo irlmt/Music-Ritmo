@@ -161,7 +161,7 @@ class FavouriteDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def star_track(self, id: int, user_id: int = 0):
+    def star_track(self, id: int, user_id: int) -> None:
         track = TrackDBHelper(self.session).get_track_by_id(id)
 
         if track:
@@ -176,7 +176,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def star_album(self, id: int, user_id: int = 0):
+    def star_album(self, id: int, user_id: int) -> None:
         album = AlbumDBHelper(self.session).get_album_by_id(id)
         if album:
             if (id, user_id) in [
@@ -190,7 +190,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def star_artist(self, id: int, user_id: int = 0):
+    def star_artist(self, id: int, user_id: int) -> None:
         artist = ArtistDBHelper(self.session).get_artist_by_id(id)
         if artist:
             if (id, user_id) in [
@@ -204,7 +204,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def star_playlist(self, id: int, user_id: int = 0):
+    def star_playlist(self, id: int, user_id: int) -> None:
         playlist = PlaylistDBHelper(self.session).get_playlist(id)
         if playlist:
             if (id, user_id) in [
@@ -218,7 +218,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def unstar_track(self, id: int, user_id: int = 0):
+    def unstar_track(self, id: int, user_id: int) -> None:
         fav_track = self.session.exec(
             select(db.FavouriteTrack).where(
                 (db.FavouriteTrack.track_id == id)
@@ -229,7 +229,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_track)
             self.session.commit()
 
-    def unstar_album(self, id: int, user_id: int = 0):
+    def unstar_album(self, id: int, user_id: int) -> None:
         fav_album = self.session.exec(
             select(db.FavouriteAlbum).where(
                 (db.FavouriteAlbum.album_id == id)
@@ -240,7 +240,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_album)
             self.session.commit()
 
-    def unstar_artist(self, id: int, user_id: int = 0):
+    def unstar_artist(self, id: int, user_id: int) -> None:
         fav_artist = self.session.exec(
             select(db.FavouriteArtist).where(
                 (db.FavouriteArtist.artist_id == id)
@@ -251,7 +251,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_artist)
             self.session.commit()
 
-    def unstar_playlist(self, id: int, user_id: int = 0):
+    def unstar_playlist(self, id: int, user_id: int) -> None:
         fav_playlist = self.session.exec(
             select(db.FavouritePlaylist).where(
                 (db.FavouritePlaylist.playlist_id == id)
@@ -262,7 +262,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_playlist)
             self.session.commit()
 
-    def get_starred_tracks(self, user_id=0):
+    def get_starred_tracks(self, user_id: int) -> Sequence[db.Track]:
         return self.session.exec(
             select(db.Track).where(
                 (
@@ -272,7 +272,7 @@ class FavouriteDBHelper:
             )
         ).all()
 
-    def get_starred_artists(self, user_id=0):
+    def get_starred_artists(self, user_id: int) -> Sequence[db.Artist]:
         return self.session.exec(
             select(db.Artist).where(
                 (
@@ -282,7 +282,7 @@ class FavouriteDBHelper:
             )
         ).all()
 
-    def get_starred_albums(self, user_id=0):
+    def get_starred_albums(self, user_id: int) -> Sequence[db.Album]:
         return self.session.exec(
             select(db.Album).where(
                 (
@@ -292,7 +292,7 @@ class FavouriteDBHelper:
             )
         ).all()
 
-    def get_starred_playlists(self, user_id=0):
+    def get_starred_playlists(self, user_id: int) -> Sequence[db.Playlist]:
         return self.session.exec(
             select(db.Playlist).where(
                 (
