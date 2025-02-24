@@ -31,3 +31,9 @@
 .registration__content_button > * {
   width: 60%;
 }
+
+.message {
+  text-align: center;
+  color: #405a01;
+  font-family: "SteticaMedium";
+}

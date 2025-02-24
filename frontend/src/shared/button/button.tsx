@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import React from "react";
+import React, { useState } from "react";
 
 import styles from "./button.module.css";
 
@@ -18,15 +18,35 @@ interface ButtonProps {
 export const Button: React.FC<ButtonProps> = ({
   children,
   className,
-  type = "small",
-  color = "orange",
+  type = "normal",
+  color = "green",
   onClick,
   disabled,
 }) => {
+  const [isDisabled, setIsDisabled] = useState<boolean>(false);
+
+  const handleClick = (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    if (onClick) {
+      onClick(event);
+    }
+
+    setIsDisabled(true);
+
+    setTimeout(() => {
+      setIsDisabled(false);
+    }, 500);
+  };
+
   const buttonClassName = classNames(className, styles[type], styles[color]);
 
   return (
-    <button className={buttonClassName} disabled={disabled} onClick={onClick}>
+    <button
+      className={buttonClassName}
+      disabled={disabled || isDisabled}
+      onClick={handleClick}
+    >
       {children}
     </button>
   );

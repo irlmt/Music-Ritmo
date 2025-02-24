@@ -55,6 +55,8 @@
   font-family: "SteticaMedium";
   font-size: 16px;
   text-decoration: none;
+  background-color: transparent;
+  border: none;
 }
 
 .user__menu_item:hover {

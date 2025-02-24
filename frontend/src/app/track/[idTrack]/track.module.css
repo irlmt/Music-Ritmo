@@ -13,7 +13,7 @@
   width: 60%;
   align-items: center;
   margin: 0 auto;
-  transform: translateY(260px) translateX(55px);
+  transform: translateY(230px) translateX(57px);
   flex-direction: column;
   justify-content: flex-end;
   text-align: center;
@@ -29,7 +29,7 @@
   font-weight: bold;
 }
 
-.track__author {
+.track__artist {
   margin: 0;
   color: #405a01;
   font-size: 18px;
@@ -38,7 +38,7 @@
 
 .track__infoIcon {
   position: absolute;
-  transform: translateX(110px) translateY(-300px);
+  transform: translateX(110px) translateY(-270px);
   font-size: 20px;
   cursor: pointer;
   color: #405a01;
@@ -81,4 +81,155 @@
 
 .track__playPause {
   cursor: pointer;
+}
+
+.playlists {
+  display: grid;
+  padding-top: 0px;
+  grid-template-columns: repeat(5, 170px);
+  gap: 20px;
+  justify-content: center;
+  margin: 0 auto;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+.playlists__title {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.playlists_button {
+  position: fixed;
+  bottom: 20px;
+  right: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.container {
+  height: 70vh;
+  width: 30vw;
+  margin: auto;
+  margin-top: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+}
+
+.container .arrow {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  cursor: pointer;
+}
+
+.track__avatar {
+  background-color: #ddd;
+}
+
+.track__info h2 {
+  color: #405a01;
+}
+
+.track__controls .track__controlIcon {
+  font-size: 30px;
+  margin: 0 15px;
+  cursor: pointer;
+  color: #405a01;
+}
+
+.track__progress .track__range {
+  width: 80%;
+  background-color: #758934;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modalContent {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  width: 65%;
+  height: 70%;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modalHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  color: #405a01;
+  font-size: 24px;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #405a01;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.closeButton:hover {
+  background-color: #f1f1f1;
+}
+
+.playlists {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.playlistItem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 170px;
+  width: 170px;
+  border-radius: 40px;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.playlistItem__name {
+  font-size: 16px;
+  color: #ffffff;
+  margin-top: auto;
+  padding: 10px 0;
+  font-family: "SteticaLight";
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 0 0 40px 40px;
 }

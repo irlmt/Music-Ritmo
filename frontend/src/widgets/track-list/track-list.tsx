@@ -5,9 +5,9 @@ import styles from "./track-list.module.css";
 interface TracklistProps {
   name: string;
   name_link: string;
-  author: string;
-  author_link: string;
-  favourite: boolean;
+  artist: string;
+  artist_link: string;
+  favourite: string;
   time: number;
   showRemoveButton: boolean;
   onFavouriteToggle: () => void;
@@ -17,8 +17,8 @@ interface TracklistProps {
 export const Tracklist = ({
   name,
   name_link,
-  author,
-  author_link,
+  artist,
+  artist_link,
   favourite,
   time,
   showRemoveButton,
@@ -39,9 +39,9 @@ export const Tracklist = ({
     setRandomColor(getRandomColor(colorOptions));
   }, []);
 
-  const formatTime = (time: number): string => {
+  const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
+    const seconds = Math.floor(time % 60);
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
       2,
       "0"
@@ -61,8 +61,8 @@ export const Tracklist = ({
             <h2 className={styles.playlist__name}>{name}</h2>
           </Link>
 
-          <Link href={author_link}>
-            <p className={styles.playlist__author}>{author}</p>
+          <Link href={artist_link}>
+            <p className={styles.playlist__artist}>{artist}</p>
           </Link>
         </div>
 

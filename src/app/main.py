@@ -1,9 +1,12 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import init_db
+
 from .open_subsonic_api import open_subsonic_router
-from .db_loading import scan_directory_for_audio_files, load_audio_data
+from .db_loading import scan_and_load
 from .frontend_endpoints import frontend_router
+from .database import init_db
+from .utils import create_default_user
 
 app = FastAPI()
 
@@ -19,11 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-init_db()
 
-audio_files = scan_directory_for_audio_files("./tracks/")
-for file in audio_files:
-    load_audio_data(file)
+init_db()
+create_default_user()
+scan_and_load()
 
 app.include_router(open_subsonic_router)
 

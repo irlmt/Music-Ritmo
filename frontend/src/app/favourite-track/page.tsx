@@ -1,76 +1,128 @@
 "use client";
 
 import { Container } from "@/shared/container";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tracklist } from "@/widgets/track-list";
+import { useAuth } from "@/app/auth-context";
 import styles from "./favourite-track.module.css";
 
-export default function FavouriteTrack() {
-  const [playlists, setPlaylists] = useState([
-    {
-      name: "Chill Vibes",
-      name_link: "/track1",
-      author: "DJ Relax",
-      author_link: "/author1",
-      favourite: true,
-      time: 216,
-    },
-    {
-      name: "Top 40 Hits",
-      name_link: "/track1",
-      author: "Hitmaker",
-      author_link: "/author1",
-      favourite: true,
-      time: 180,
-    },
-    {
-      name: "Workout Mix",
-      name_link: "/track1",
-      author: "Fitness Beats",
-      author_link: "/author1",
-      favourite: true,
-      time: 240,
-    },
-  ]);
+interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  artistId: string;
+  album: string;
+  duration: number;
+  coverArt: string;
+  starred: string;
+  playCount: number;
+}
 
-  const toggleFavourite = (index: number) => {
-    const updatedPlaylists = [...playlists];
-    updatedPlaylists[index].favourite = false;
-    setPlaylists(updatedPlaylists.filter((playlist) => playlist.favourite));
+export default function FavouriteTrack() {
+  const [starredTracks, setStarredTracks] = useState<Track[]>([]);
+  const { user, password } = useAuth();
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  useEffect(() => {
+    if (user && password) {
+      setIsAuthReady(true);
+    }
+  }, [user, password]);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    const fetchStarredTracks = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/getStarred2?username=${user}&u=${user}&p=${password}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Ошибка при запросе: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data["subsonic-response"]?.status === "ok") {
+          const { song } = data["subsonic-response"]["starred2"];
+          setStarredTracks(song?.filter((track: Track) => track.starred) || []);
+        } else {
+          console.error("Ошибка получения данных");
+        }
+      } catch (error) {
+        console.error("Ошибка при запросе данных:", error);
+      }
+    };
+
+    fetchStarredTracks();
+  }, [isAuthReady]);
+
+  const handleFavouriteToggle = async (
+    trackId: string,
+    currentStatus: string
+  ) => {
+    if (!user || !password) return;
+
+    const action = currentStatus ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}&username=${user}&u=${user}&p=${password}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data["subsonic-response"].status === "ok") {
+        setStarredTracks((prevTracks) =>
+          prevTracks.filter((track) => track.id !== trackId)
+        );
+        window.location.reload();
+      } else {
+        alert("Ошибка при изменении статуса избранного");
+      }
+    } catch (error) {
+      console.error("Ошибка при изменении статуса избранного:", error);
+      alert("Произошла ошибка при изменении статуса избранного");
+    }
   };
 
-  const favouritePlaylists = playlists.filter((playlist) => playlist.favourite);
-
   return (
-    <>
-      <Container
-        style={{
-          height: "65vh",
-          width: "85vw",
-          margin: "auto",
-          marginTop: "50px",
-        }}
-        direction="column"
-        arrow={true}
-        link_arrow="/"
-      >
-        <h1 className={styles.playlist__title}>Избранные треки</h1>
-        <div className={styles.playlist}>
-          {favouritePlaylists.map((playlist, index) => (
-            <Tracklist
-              key={index}
-              name={playlist.name}
-              name_link={playlist.name_link}
-              author={playlist.author}
-              author_link={playlist.author_link}
-              favourite={playlist.favourite}
-              time={playlist.time}
-              showRemoveButton={false}
-              onFavouriteToggle={() => toggleFavourite(index)}
-            />
-          ))}
-        </div>
-      </Container>
-    </>
+    <Container
+      style={{
+        height: "65vh",
+        width: "85vw",
+        margin: "auto",
+        marginTop: "50px",
+      }}
+      direction="column"
+      arrow={true}
+      link_arrow="/"
+    >
+      <h1 className={styles.playlist__title}>Избранные треки</h1>
+      <div className={styles.playlist}>
+        {isAuthReady ? (
+          starredTracks.length > 0 ? (
+            starredTracks.map((track) => (
+              <Tracklist
+                key={track.id}
+                name={track.title}
+                name_link={`/track/${track.id}`}
+                artist={track.artist}
+                artist_link={`/artist/${track.artistId}`}
+                favourite={track.starred}
+                time={track.duration}
+                showRemoveButton={false}
+                onFavouriteToggle={() =>
+                  handleFavouriteToggle(track.id, track.starred)
+                }
+              />
+            ))
+          ) : (
+            <p>Нет избранных треков</p>
+          )
+        ) : (
+          <p>Загрузка...</p>
+        )}
+      </div>
+    </Container>
   );
 }

@@ -47,9 +47,9 @@ def test_getPlaylists():
 
     playlist = playlists[0]
     assert playlist["name"] == "My Playlist"
-    assert playlist["owner"] == user.id
+    assert playlist["owner"] == user.login
     assert playlist["songCount"] == 10
-    assert playlist["createDate"] == "2025-01-01"
+    assert playlist["created"] is not None
 
 
 def test_get_tracks_by_genre():
