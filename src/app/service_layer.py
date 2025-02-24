@@ -297,18 +297,8 @@ class TrackService:
         random_tracks = random.sample(tracks, min(size, len(tracks)))
         return fill_tracks(random_tracks, None)
 
-
-def fill_genre(db_genre: db.Genre) -> dto.Genre:
-    albumCount = len(set([t.album_id for t in db_genre.tracks]))
-    songCount = len(db_genre.tracks)
-    return dto.Genre(albumCount=albumCount, songCount=songCount, name=db_genre.name)
-
-
-def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
-    return list(map(fill_genre, db_genres))
-
     def extract_lyrics(self, id: int) -> Optional[List[Dict[str, Any]]]:
-        track = self.DBHelper.get_track_by_id(id)
+        track = self.track_db_helper.get_track_by_id(id)
         if track:
             audio, audio_type = get_audio_object(track)
             match audio_type:
@@ -327,6 +317,16 @@ def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
                     return []
         else:
             return None
+
+
+def fill_genre(db_genre: db.Genre) -> dto.Genre:
+    albumCount = len(set([t.album_id for t in db_genre.tracks]))
+    songCount = len(db_genre.tracks)
+    return dto.Genre(albumCount=albumCount, songCount=songCount, name=db_genre.name)
+
+
+def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
+    return list(map(fill_genre, db_genres))
 
 
 class GenreService:
