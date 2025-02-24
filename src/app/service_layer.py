@@ -2,19 +2,18 @@ import random
 import py_avataaars as pa
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Tuple, Union, Any
+from datetime import datetime
+from functools import partial
+from typing import List, Optional, Dict, Sequence, Set, Tuple, Union, Any
 
 from sqlmodel import Session, select
 from mutagen.id3 import USLT
 
+from src.app import dto
+
 from . import database as db
 from . import db_helpers
 from .utils import get_audio_object, AudioType
-
-
-def parse_val(rsp: dict, attr: str, val: Any) -> None:
-    if val is not None and val != "":
-        rsp[attr] = val
 
 
 class RequestType(Enum):
@@ -29,7 +28,7 @@ class RequestType(Enum):
     BY_GENRE = 9
 
 
-def get_album_artist_id(track: db.Track) -> int:
+def get_album_artist_id_by_track(track: db.Track) -> int:
     if track.album_artist_id:
         return track.album_artist_id
     if len(track.artists) > 0:
@@ -37,50 +36,77 @@ def get_album_artist_id(track: db.Track) -> int:
     return -1
 
 
+def get_album_artist_id_by_album(album: db.Album) -> int:
+    if album.album_artist_id:
+        return album.album_artist_id
+    if len(album.artists) > 0:
+        return album.artists[0].id
+    return -1
+
+
+def get_tracklist_duration(db_tracks: Sequence[db.Track]) -> int:
+    if len(db_tracks) == 0:
+        return 0
+    return int(sum([t.duration for t in db_tracks]))
+
+
+def get_album_genre(db_album: db.Album) -> Optional[str]:
+    if len(db_album.tracks) == 0:
+        return None
+    return join_genre_names(db_album.tracks[0].genres)
+
+
+def get_album_genres(db_album: db.Album) -> Set[db.Genre]:
+    genres: Set[db.Genre] = set()
+    if len(db_album.tracks) == 0:
+        return genres
+    for track in db_album.tracks:
+        genres.update(track.genres)
+    return genres
+
+
+def fill_album(
+    db_album: db.Album, db_user: db.User | None, with_songs: bool = False
+) -> dto.Album:
+    album_genres: List[db.Genre] = list(get_album_genres(db_album))
+    album = dto.Album(
+        id=db_album.id,
+        name=db_album.name,
+        song_count=db_album.total_tracks,
+        duration=get_tracklist_duration(db_album.tracks),
+        created=datetime.now(),
+        artist=join_artist_names(db_album.artists),
+        artist_id=get_album_artist_id_by_album(db_album),
+        cover_art_id=db_album.id,
+        play_count=None,
+        starred=None,
+        year=None,
+        genre=join_genre_names(album_genres),
+        artists=fill_artist_items(db_album.artists),
+        genres=fill_genre_items(album_genres),
+    )
+    if with_songs:
+        album.tracks = fill_tracks(db_album.tracks, None)
+    return album
+
+
+def fill_albums(
+    db_albums: Sequence[db.Album], db_user: db.User | None, with_songs: bool
+) -> List[dto.Album]:
+    return list(
+        map(partial(fill_album, db_user=db_user, with_songs=with_songs), db_albums)
+    )
+
+
 class AlbumService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.AlbumDBHelper(session)
+        self.album_db_helper = db_helpers.AlbumDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(
-        album: db.Album, with_songs: bool = False
-    ) -> dict[str, Optional[Union[str, int, List[dict]]]]:
-        genres: List[List[db.Genre]] = [g.genres for g in album.tracks]
-        res_album: dict[str, Optional[Union[str, int, List[dict]]]] = {
-            "id": album.id,
-            "parent": album.artists[0].id if album.artists[0] is not None else -1,
-            "album": album.name,
-            "title": album.name,
-            "name": album.name,
-            "isDir": True,
-            "coverArt": f"al-{album.id}",
-            "songCount": album.total_tracks,
-            "duration": sum([int(t.duration) for t in album.tracks]),
-            "playCount": min([t.plays_count for t in album.tracks]),
-            "artistId": album.artists[0].id if album.artists[0] is not None else -1,
-            "artist": ArtistService.join_artists_names(album.artists),
-            "genre": genres[0][0].name if len(genres[0]) > 0 else "Unknown Genre",
-        }
-        parse_val(res_album, "year", album.year)
-        parse_val(res_album, "created", "2999-31-12T11:06:57.000Z")
-
-        if len(album.album_favourites) > 0:
-            res_album["starred"] = min(a.added_at for a in album.album_favourites)
-        if with_songs:
-            tracks = []
-            for album_track in album.tracks:
-                tracks.append(TrackService.get_open_subsonic_format(album_track))
-            res_album["song"] = tracks
-        return res_album
-
-    def get_album_by_id(self, id):
-        album = self.DBHelper.get_album_by_id(id)
-        if album:
-            album = self.__class__.get_open_subsonic_format(album, with_songs=True)
-        return album
-
-    def get_album_info2(self, id):
-        pass
+    def get_album_by_id(self, id: int) -> Optional[dto.Album]:
+        db_album = self.album_db_helper.get_album_by_id(id)
+        if db_album:
+            return fill_album(db_album, None, with_songs=True)
+        return None
 
     def get_album_list(
         self,
@@ -91,20 +117,20 @@ class AlbumService:
         to_year: Optional[str] = None,
         genre: Optional[str] = None,
         music_folder_id: Optional[str] = None,
-    ) -> Optional[dict[str, Optional[Union[str, int, List[dict]]]]]:
+    ) -> Optional[List[dto.Album]]:
         result = []
         match type:
             case RequestType.RANDOM:
-                albums = self.DBHelper.get_all_albums()
+                albums = self.album_db_helper.get_all_albums()
                 result = random.sample(albums, min(size, len(albums)))
             case RequestType.BY_NAME:
-                result = list(self.DBHelper.get_albums_by_name(size, offset))
+                result = list(self.album_db_helper.get_albums_by_name(size, offset))
             case RequestType.BY_ARTIST:
-                albums = list(self.DBHelper.get_all_albums())
+                albums = list(self.album_db_helper.get_all_albums())
                 albums.sort(key=lambda album: self.compare_albums_by_artist(album.id))
                 result = albums[offset : offset + size]
             case RequestType.BY_YEAR if from_year is not None and to_year is not None:
-                albums = self.DBHelper.get_all_albums()
+                albums = self.album_db_helper.get_all_albums()
                 result = [
                     album
                     for album in albums
@@ -124,102 +150,142 @@ class AlbumService:
             case _:  # validation error
                 return None
 
-        return {"album": [AlbumService.get_open_subsonic_format(a) for a in result]}
+        return fill_albums(result, None, with_songs=False)
 
     def compare_albums_by_artist(self, album_id: int) -> str:
-        artist: Optional[db.Artist] = self.DBHelper.get_album_artist(album_id)
+        artist: Optional[db.Artist] = self.album_db_helper.get_album_artist(album_id)
         return "" if artist is None else artist.name
 
-    def get_sorted_artist_albums(self, artistId: int, size: int = 10, offset: int = 0):
-        albums = self.DBHelper.get_sorted_artist_albums(artistId, size, offset)
-        return {"album": [AlbumService.get_open_subsonic_format(a) for a in albums]}
+    def get_sorted_artist_albums(
+        self, artistId: int, size: int = 10, offset: int = 0
+    ) -> List[dto.Album]:
+        albums = self.album_db_helper.get_sorted_artist_albums(artistId, size, offset)
+        return fill_albums(albums, None, with_songs=False)
+
+
+def join_artist_names(artists: Sequence[db.Artist]) -> Optional[str]:
+    if len(artists) == 0:
+        return None
+    return ", ".join(a.name for a in artists)
+
+
+def join_genre_names(genres: Sequence[db.Genre]) -> Optional[str]:
+    if len(genres) == 0:
+        return None
+    return ", ".join(g.name for g in genres)
+
+
+def get_album_artist(db_track: db.Track) -> Optional[db.Artist]:
+    # TODO MUS-206 Use db_track.album_artist
+    if len(db_track.album.artists) > 0:
+        return db_track.album.artists[0]
+    return None
+
+
+def get_album_artist_id_by_artist(db_artist: Optional[db.Artist]) -> Optional[int]:
+    if db_artist:
+        return db_artist.id
+    return None
+
+
+def fill_artist_item(artist: db.Artist) -> dto.ArtistItem:
+    return dto.ArtistItem(
+        id=artist.id,
+        name=artist.name,
+    )
+
+
+def fill_artist_items(artists: Sequence[db.Artist]) -> List[dto.ArtistItem]:
+    return list(map(fill_artist_item, artists))
+
+
+def fill_genre_item(genre: db.Genre) -> dto.GenreItem:
+    return dto.GenreItem(
+        name=genre.name,
+    )
+
+
+def fill_genre_items(genres: Sequence[db.Genre]) -> List[dto.GenreItem]:
+    return list(map(fill_genre_item, genres))
+
+
+def extract_year(str_year: str | None) -> int | None:
+    if str_year and len(str_year) == 4 and str_year.isnumeric():
+        return int(str_year)
+    return None
+
+
+def fill_track(db_track: db.Track, db_user: db.User | None) -> dto.Track:
+    return dto.Track(
+        id=db_track.id,
+        title=db_track.title,
+        album=db_track.album.name,
+        album_id=db_track.album_id,
+        artist=join_artist_names(db_track.artists),
+        artist_id=get_album_artist_id_by_artist(get_album_artist(db_track)),
+        track_number=db_track.album_position,
+        disc_number=None,
+        year=extract_year(db_track.year),
+        genre=join_genre_names(db_track.genres),
+        cover_art_id=db_track.id,
+        file_size=db_track.file_size,
+        content_type=db_track.type,
+        duration=int(db_track.duration),
+        bit_rate=db_track.bit_rate,
+        sampling_rate=db_track.sample_rate,
+        bit_depth=db_track.bits_per_sample,
+        channel_count=db_track.channels,
+        path=db_track.file_path,
+        play_count=db_track.plays_count,
+        created=datetime.now(),
+        starred=None,  # TODO
+        bpm=None,
+        comment=None,
+        artists=fill_artist_items(db_track.artists),
+        genres=fill_genre_items(db_track.genres),
+    )
+
+
+def fill_tracks(
+    db_tracks: Sequence[db.Track], db_user: db.User | None
+) -> List[dto.Track]:
+    return list(map(partial(fill_track, db_user=db_user), db_tracks))
 
 
 class TrackService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.TrackDBHelper(session)
-        self.genre_helper = db_helpers.GenresDBHelper(session)
+        self.track_db_helper = db_helpers.TrackDBHelper(session)
+        self.genre_db_helper = db_helpers.GenresDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(
-        track: db.Track, with_genres=False, with_artists=False
-    ):
-        res_song = {
-            "id": track.id,
-            "parent": track.album_id,
-            "isDir": False,
-            "title": track.title,
-            "album": track.album.name,
-            "artist": ArtistService.join_artists_names(track.artists),
-            "track": 1,
-            "coverArt": f"mf-{track.id}",
-            "size": track.file_size,
-            "contentType": track.type,
-            "suffix": "mp3",
-            "duration": int(track.duration),
-            "bitRate": track.bit_rate,
-            "bitDepth": track.bits_per_sample,
-            "samplingRate": track.sample_rate,
-            "channelCount": track.channels,
-            "path": track.file_path,
-            "playCount": track.plays_count,
-            "discNumber": 1,
-            "albumId": track.album_id,
-            "artistId": get_album_artist_id(track),
-            "type": track.type,
-            "isVideo": False,
-        }
-        parse_val(res_song, "year", track.year)
-        parse_val(res_song, "created", "2999-31-12T11:06:57.000Z")
-        if len(track.track_favourites) > 0:
-            res_song["starred"] = min(t.added_at for t in track.track_favourites)
-        if with_genres:
-            genres = []
-            for genre in track.genres:
-                genres.append(
-                    GenreService.get_open_subsonic_format(genre, item_genre=True)
-                )
-            res_song["genres"] = genres
-        if with_artists:
-            artists = []
-            for artist in track.artists:
-                artists.append(ArtistService.get_open_subsonic_format(artist))
-            res_song["artists"] = artists
-        return res_song
+    def get_song_by_id(self, id: int) -> Optional[dto.Track]:
+        db_track = self.track_db_helper.get_track_by_id(id)
+        if db_track:
+            return fill_track(db_track, None)
+        return None
 
-    def get_song_by_id(self, id):
-        track = self.DBHelper.get_track_by_id(id)
-        if track:
-            track = self.__class__.get_open_subsonic_format(
-                track, with_genres=True, with_artists=True
-            )
-        return track
-
-    def _get_tracks_by_genre_without_subsonic(
-        self, genre, count=10, offset=0, music_folder=None
-    ):
-        genre = self.genre_helper.get_genres_by_name(filter_name=genre)
-        return [] if not genre else genre[-1].tracks[offset : offset + count]
-
-    def get_songs_by_genre(self, genre, count=10, offset=0, music_folder=None):
-        return [
-            self.get_open_subsonic_format(track, with_genres=False)
-            for track in self._get_tracks_by_genre_without_subsonic(
-                genre, count, offset, music_folder
-            )
-        ]
+    def get_songs_by_genre(
+        self,
+        genre: str,
+        count: int = 10,
+        offset: int = 0,
+        music_folder: str | None = None,
+    ) -> List[dto.Track]:
+        return fill_tracks(
+            self.track_db_helper.get_tracks_by_genre_name(genre, count, offset),
+            None,
+        )
 
     def get_random_songs(
         self,
-        size=10,
+        size: int = 10,
         genre: Optional[str] = None,
         from_year: Optional[str] = None,
         to_year: Optional[str] = None,
         music_folder_id: Optional[str] = None,
-    ):
-        tracks = self.DBHelper.get_all_tracks()
+    ) -> List[dto.Track]:
+        tracks = self.track_db_helper.get_all_tracks()
         if genre:
-            tracks = self._get_tracks_by_genre_without_subsonic(genre)
+            tracks = self.track_db_helper.get_tracks_by_genre_name(genre)
         if from_year:
             tracks = list(
                 filter(lambda track: track.year and track.year >= from_year, tracks)
@@ -229,10 +295,17 @@ class TrackService:
                 filter(lambda track: track.year and track.year <= to_year, tracks)
             )
         random_tracks = random.sample(tracks, min(size, len(tracks)))
-        return [
-            self.get_open_subsonic_format(track, with_genres=False, with_artists=False)
-            for track in random_tracks
-        ]
+        return fill_tracks(random_tracks, None)
+
+
+def fill_genre(db_genre: db.Genre) -> dto.Genre:
+    albumCount = len(set([t.album_id for t in db_genre.tracks]))
+    songCount = len(db_genre.tracks)
+    return dto.Genre(albumCount=albumCount, songCount=songCount, name=db_genre.name)
+
+
+def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
+    return list(map(fill_genre, db_genres))
 
     def extract_lyrics(self, id: int) -> Optional[List[Dict[str, Any]]]:
         track = self.DBHelper.get_track_by_id(id)
@@ -260,146 +333,106 @@ class GenreService:
     def __init__(self, session: Session):
         self.DBHelper = db_helpers.GenresDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(genre: db.Genre, item_genre=False):
-        if item_genre:
-            return {"name": genre.name}
-        res_genre = {
-            "songCount": len(genre.tracks),
-            "AlbumCount": len(set([a.album.name for a in genre.tracks])),
-            "value": genre.name,
-        }
-
-        return res_genre
-
-    def get_genres(self):
-        genres = self.DBHelper.get_all_genres()
-        if genres:
-            genres = {
-                "genre:": [self.__class__.get_open_subsonic_format(g) for g in genres]
-            }
+    def get_genres(self) -> List[dto.Genre]:
+        db_genres = self.DBHelper.get_all_genres()
+        genres = fill_genres(db_genres)
         return genres
+
+
+def fill_artist(
+    db_artist: db.Artist,
+    db_user: db.User | None,
+    with_albums: bool = True,
+    with_songs: bool = False,
+) -> dto.Artist:
+    result = dto.Artist(
+        id=db_artist.id,
+        name=db_artist.name,
+        artist_image_url=None,
+        starred=None,
+    )
+    if with_albums:
+        result.albums = fill_albums(db_artist.albums, None, with_songs=with_songs)
+    return result
+
+
+def fill_artists(
+    db_artists: Sequence[db.Artist],
+    db_user: db.User | None,
+    with_albums: bool = True,
+    with_songs: bool = False,
+) -> List[dto.Artist]:
+    return list(
+        map(
+            partial(
+                fill_artist,
+                db_user=db_user,
+                with_albums=with_albums,
+                with_songs=with_songs,
+            ),
+            db_artists,
+        )
+    )
 
 
 class ArtistService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.ArtistDBHelper(session)
+        self.artist_db_helper = db_helpers.ArtistDBHelper(session)
 
     @staticmethod
-    def join_artists_names(artists: List[db.Artist]):
+    def join_artists_names(artists: List[db.Artist]) -> str:
         return ", ".join(a.name for a in artists)
 
-    @staticmethod
-    def get_open_subsonic_format(
-        artist: db.Artist, with_albums: bool = False, with_tracks: bool = False
-    ) -> dict[str, Optional[Union[str, int, List[dict]]]]:
-        res_artist: dict[str, Optional[Union[str, int, List[dict]]]] = {
-            "id": artist.id,
-            "name": artist.name,
-            "coverArt": f"ar-{artist.id}",
-            "albumCount": len(artist.albums),
-        }
-        if len(artist.artist_favourites) > 0:
-            min(a.added_at for a in artist.artist_favourites)
-        if with_albums:
-            albums = []
-            for i in artist.albums:
-                albums.append(AlbumService.get_open_subsonic_format(i))
-            res_artist["album"] = albums
-        if with_tracks:
-            tracks = []
-            for i in artist.tracks:
-                tracks.append(TrackService.get_open_subsonic_format(i))
-            res_artist["song"] = tracks
-        return res_artist
-
-    def get_artist_by_id(self, id):
-        artist = self.DBHelper.get_artist_by_id(id)
-        if artist:
-            artist = self.__class__.get_open_subsonic_format(
-                artist, with_albums=True, with_tracks=True
-            )
-        return artist
-
-    def get_artists(self, music_folder=None):
-        pass
-
-    def get_artist_info2(self, id, count=20, include_not_present=False):
-        pass
+    def get_artist_by_id(self, id: int) -> Optional[dto.Artist]:
+        db_artist = self.artist_db_helper.get_artist_by_id(id)
+        if db_artist:
+            return fill_artist(db_artist, None, with_albums=True, with_songs=True)
+        return None
 
 
 class SearchService:
     def __init__(self, session: Session):
-        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
-        self.AlbumDBHelper = db_helpers.AlbumDBHelper(session)
-        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
-
-    @staticmethod
-    def get_open_subsonic_format(
-        artists: List[db.Artist], albums: List[db.Album], tracks: List[db.Track]
-    ):
-
-        res_search = {
-            "artist": [ArtistService.get_open_subsonic_format(a) for a in artists],
-            "album": [AlbumService.get_open_subsonic_format(a) for a in albums],
-            "song": [TrackService.get_open_subsonic_format(a) for a in tracks],
-        }
-
-        return res_search
+        self.artist_db_helper = db_helpers.ArtistDBHelper(session)
+        self.album_db_helper = db_helpers.AlbumDBHelper(session)
+        self.track_db_helper = db_helpers.TrackDBHelper(session)
 
     def search2(
         self,
-        query,
-        artist_count,
-        artist_offset,
-        album_count,
-        album_offset,
-        song_count,
-        song_offset,
-    ):
-        artists = self.ArtistDBHelper.get_all_artists(filter_name=query)
-        if artist_count * artist_offset >= len(artists):
-            artists = []
-        else:
-            artists = artists[
-                artist_count
-                * artist_offset : min(
-                    len(artists), artist_count * artist_offset + artist_count
-                )
-            ]
+        query: str,
+        artist_count: int,
+        artist_offset: int,
+        album_count: int,
+        album_offset: int,
+        song_count: int,
+        song_offset: int,
+    ) -> Tuple[Sequence[dto.Artist], Sequence[dto.Album], Sequence[dto.Track]]:
 
-        albums = self.AlbumDBHelper.get_all_albums(filter_name=query)
-        if album_count * album_offset >= len(albums):
-            albums = []
-        else:
-            albums = albums[
-                album_count
-                * album_offset : min(
-                    len(albums), album_count * album_offset + album_count
-                )
-            ]
+        db_artists = self.artist_db_helper.get_artists(
+            artist_count, artist_offset, filter_name=query
+        )
+        db_albums = self.album_db_helper.get_albums(
+            album_count, album_offset, filter_name=query
+        )
+        db_tracks = self.track_db_helper.get_tracks(
+            song_count, song_offset, filter_title=query
+        )
 
-        tracks = self.TrackDBHelper.get_all_tracks(filter_title=query)
-        if song_count * song_offset >= len(tracks):
-            tracks = []
-        else:
-            tracks = tracks[
-                song_count
-                * song_offset : min(len(tracks), song_count * song_offset + song_count)
-            ]
-
-        return self.__class__.get_open_subsonic_format(artists, albums, tracks)
+        return (
+            fill_artists(db_artists, None, with_albums=False, with_songs=False),
+            fill_albums(db_albums, None, with_songs=False),
+            fill_tracks(db_tracks, None),
+        )
 
     def search3(
         self,
-        query,
-        artist_count,
-        artist_offset,
-        album_count,
-        album_offset,
-        song_count,
-        song_offset,
-    ):
+        query: str,
+        artist_count: int,
+        artist_offset: int,
+        album_count: int,
+        album_offset: int,
+        song_count: int,
+        song_offset: int,
+    ) -> Tuple[Sequence[dto.Artist], Sequence[dto.Album], Sequence[dto.Track]]:
         if query != "":
             return self.search2(
                 query,
@@ -410,158 +443,193 @@ class SearchService:
                 song_count,
                 song_offset,
             )
-        artists = self.ArtistDBHelper.get_all_artists()
-        albums = self.AlbumDBHelper.get_all_albums()
-        tracks = self.TrackDBHelper.get_all_tracks()
-        return self.__class__.get_open_subsonic_format(artists, albums, tracks)
+        db_artists = self.artist_db_helper.get_all_artists()
+        db_albums = self.album_db_helper.get_all_albums()
+        db_tracks = self.track_db_helper.get_all_tracks()
+
+        return (
+            fill_artists(db_artists, None, with_albums=False, with_songs=False),
+            fill_albums(db_albums, None, with_songs=False),
+            fill_tracks(db_tracks, None),
+        )
+
+
+def playlist_tracks_to_tracks(
+    db_playlist_tracks: Sequence[db.PlaylistTrack],
+) -> List[db.Track]:
+    return [pt.track for pt in db_playlist_tracks]
 
 
 class StarService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.FavouriteDBHelper(session)
+        self.favourite_db_helper = db_helpers.FavouriteDBHelper(session)
 
-    def star(self, track_id, album_id, artist_id, playlist_id, user_id=0):
-        for id in track_id:
-            self.DBHelper.star_track(id, user_id)
-        for id in artist_id:
-            self.DBHelper.star_artist(id, user_id)
-        for id in album_id:
-            self.DBHelper.star_album(id, user_id)
-        for id in playlist_id:
-            self.DBHelper.star_playlist(id, user_id)
+    def star(
+        self,
+        track_ids: Sequence[int],
+        album_ids: Sequence[int],
+        artist_ids: Sequence[int],
+        playlist_ids: Sequence[int],
+        user: db.User,
+    ) -> None:
+        for id in track_ids:
+            self.favourite_db_helper.star_track(id, user.id)
+        for id in artist_ids:
+            self.favourite_db_helper.star_artist(id, user.id)
+        for id in album_ids:
+            self.favourite_db_helper.star_album(id, user.id)
+        for id in playlist_ids:
+            self.favourite_db_helper.star_playlist(id, user.id)
 
-    def unstar(self, track_id, album_id, artist_id, playlist_id, user_id=0):
-        for id in track_id:
-            self.DBHelper.unstar_track(id, user_id)
-        for id in artist_id:
-            self.DBHelper.unstar_artist(id, user_id)
-        for id in album_id:
-            self.DBHelper.unstar_album(id, user_id)
-        for id in playlist_id:
-            self.DBHelper.unstar_playlist(id, user_id)
+    def unstar(
+        self,
+        track_ids: Sequence[int],
+        album_ids: Sequence[int],
+        artist_ids: Sequence[int],
+        playlist_ids: Sequence[int],
+        user: db.User,
+    ) -> None:
+        for id in track_ids:
+            self.favourite_db_helper.unstar_track(id, user.id)
+        for id in artist_ids:
+            self.favourite_db_helper.unstar_artist(id, user.id)
+        for id in album_ids:
+            self.favourite_db_helper.unstar_album(id, user.id)
+        for id in playlist_ids:
+            self.favourite_db_helper.unstar_playlist(id, user.id)
 
-    def get_starred(self, user_id=0):
-        tracks = self.DBHelper.get_starred_tracks(user_id)
-        albums = self.DBHelper.get_starred_albums(user_id)
-        artists = self.DBHelper.get_starred_artists(user_id)
-        playlists = self.DBHelper.get_starred_playlists(user_id)
+    def get_starred(
+        self, user: db.User
+    ) -> Tuple[List[dto.Track], List[dto.Album], List[dto.Artist], List[dto.Playlist]]:
+        db_tracks = self.favourite_db_helper.get_starred_tracks(user.id)
+        db_albums = self.favourite_db_helper.get_starred_albums(user.id)
+        db_artists = self.favourite_db_helper.get_starred_artists(user.id)
+        db_playlists = self.favourite_db_helper.get_starred_playlists(user.id)
 
-        tracks = [TrackService.get_open_subsonic_format(t) for t in tracks]
-        albums = [AlbumService.get_open_subsonic_format(t) for t in albums]
-        artists = [ArtistService.get_open_subsonic_format(t) for t in artists]
-        playlists = [PlaylistService.get_open_subsonic_format(t) for t in playlists]
-        return {
-            "artist": artists,
-            "album": albums,
-            "song": tracks,
-            "playlist": playlists,
-        }
+        tracks = fill_tracks(db_tracks, user)
+        albums = fill_albums(db_albums, user, with_songs=False)
+        artists = fill_artists(db_artists, user, with_albums=False, with_songs=False)
+        playlists = fill_playlists(db_playlists, user, with_songs=False)
+        return (tracks, albums, artists, playlists)
+
+
+def fill_playlist(
+    db_playlist: db.Playlist, db_user: db.User | None, with_songs: bool = False
+) -> dto.Playlist:
+    now = datetime.now()
+    playlist = dto.Playlist(
+        id=db_playlist.id,
+        name=db_playlist.name,
+        song_count=db_playlist.total_tracks,
+        duration=get_tracklist_duration(
+            playlist_tracks_to_tracks(db_playlist.playlist_tracks)
+        ),
+        created=now,
+        changed=now,
+        owner=db_playlist.user.login,
+        public=True,
+    )
+    if with_songs:
+        playlist.tracks = fill_tracks(
+            playlist_tracks_to_tracks(db_playlist.playlist_tracks), db_user
+        )
+    return playlist
+
+
+def fill_playlists(
+    db_playlists: Sequence[db.Playlist],
+    db_user: db.User | None,
+    with_songs: bool = False,
+) -> List[dto.Playlist]:
+    return list(
+        map(
+            partial(fill_playlist, db_user=db_user, with_songs=with_songs), db_playlists
+        )
+    )
 
 
 class PlaylistService:
     def __init__(self, session: Session):
-        self.DBHelper = db_helpers.PlaylistDBHelper(session)
+        self.playlist_db_helper = db_helpers.PlaylistDBHelper(session)
 
-    @staticmethod
-    def get_open_subsonic_format(playlist: db.Playlist, with_tracks=False):
-        playlist_tracks = playlist.playlist_tracks
-        res_playlist: dict[str, Optional[Union[str, int, List[dict]]]] = {
-            "id": playlist.id,
-            "name": playlist.name,
-            "owner": playlist.user.login,
-            "public": True,
-            "created": playlist.create_date,
-            "changed": max(
-                [a.added_at for a in playlist_tracks], default=playlist.create_date
-            ),
-            "songCount": playlist.total_tracks,
-            "duration": sum(t.track.duration for t in playlist_tracks),
-        }
-        if with_tracks:
-            tracks = [
-                TrackService.get_open_subsonic_format(t.track) for t in playlist_tracks
-            ]
-            res_playlist["entry"] = tracks
-        return res_playlist
+    def create_playlist(
+        self, playlist_name: str, track_ids: Sequence[int], user: db.User
+    ) -> dto.Playlist:
+        db_playlist: db.Playlist = self.playlist_db_helper.create_playlist(
+            playlist_name, track_ids, user.id
+        )
+        return fill_playlist(db_playlist, user, with_songs=True)
 
-    def create_playlist(self, name, tracks, user_id):
-        playlist_id = self.DBHelper.create_playlist(name, tracks, user_id)
-        return self.get_playlist(playlist_id)
-
-    def update_playlist(self, id, name, tracks_to_add, tracks_to_remove):
-        playlist = self.DBHelper.update_playlist(
-            id, name, tracks_to_add, tracks_to_remove
+    def update_playlist(
+        self,
+        id: int,
+        new_name: str,
+        tracks_to_add: Sequence[int],
+        tracks_to_remove: Sequence[int],
+    ) -> bool:
+        playlist = self.playlist_db_helper.update_playlist(
+            id, new_name, tracks_to_add, tracks_to_remove
         )
         if playlist:
-            playlist = self.__class__.get_open_subsonic_format(
-                playlist, with_tracks=True
-            )
-        return playlist
+            return True
+        return False
 
-    def delete_playlist(self, id):
-        self.DBHelper.delete_playlist(id)
+    def delete_playlist(self, id: int, user: db.User) -> bool:
+        return self.playlist_db_helper.delete_playlist(id)
 
-    def get_playlist(self, id):
-        playlist = self.DBHelper.get_playlist(id)
-        if playlist:
-            playlist = self.__class__.get_open_subsonic_format(
-                playlist, with_tracks=True
-            )
-        return playlist
+    def get_playlist(self, id: int) -> dto.Playlist | None:
+        db_playlist = self.playlist_db_helper.get_playlist(id)
+        if db_playlist:
+            return fill_playlist(db_playlist, None, with_songs=True)
+        return None
 
-    def get_playlists(self, music_folder=None):
-        playlists = self.DBHelper.get_all_playlists()
-        playlists = [self.get_open_subsonic_format(i) for i in playlists]
-        return {"playlist": playlists}
+    def get_playlists(self) -> List[dto.Playlist]:
+        db_playlists = self.playlist_db_helper.get_all_playlists()
+        return fill_playlists(db_playlists, None, with_songs=False)
 
 
 class IndexService:
     def __init__(self, session: Session):
-        self.ArtistDBHelper = db_helpers.ArtistDBHelper(session)
-        self.TrackDBHelper = db_helpers.TrackDBHelper(session)
-
-    @dataclass
-    class ArtistIndex:
-        name: str
-        artist: List[db.Artist]
-
-        def get_open_subsonic_format(self):
-            return {
-                "name": self.name,
-                "artist": [
-                    ArtistService.get_open_subsonic_format(a) for a in self.artist
-                ],
-            }
+        self.artist_db_helper = db_helpers.ArtistDBHelper(session)
+        self.track_db_helper = db_helpers.TrackDBHelper(session)
 
     def get_indexes_artists(
         self,
         music_folder_id: str = "",
         if_modified_since_ms: int = 0,
         with_childs: bool = False,
-    ) -> Dict[str, List[Dict]]:
-        artists: List[db.Artist] = list(self.ArtistDBHelper.get_all_artists())
-        artists.sort(key=lambda a: a.name)
-        index: List[IndexService.ArtistIndex] = []
+    ) -> dto.Indexes:
+        indexes: dto.Indexes = dto.Indexes(
+            last_modified=datetime.now()
+        )  #  TODO MUS-208 fill last_modified
+        artists: List[dto.Artist] = fill_artists(
+            self.artist_db_helper.get_all_artists(),
+            None,
+            with_albums=True,
+            with_songs=with_childs,
+        )
+        sorted_artists = sorted(artists, key=lambda a: a.name)
+
         letter: str = ""
-        letter_artists: List[db.Artist] = []
-        for a in artists:
+        letter_artists: List[dto.Artist] = []
+        for a in sorted_artists:
             if len(a.name) > 0 and a.name[0] != letter:
                 if len(letter_artists) > 0:
-                    index.append(IndexService.ArtistIndex(letter, letter_artists))
+                    indexes.artist_index.append(dto.ArtistIndex(letter, letter_artists))
                 letter = a.name[0]
                 letter_artists = []
             letter_artists.append(a)
-        res = {
-            "index": [indexArtist.get_open_subsonic_format() for indexArtist in index]
-        }
+
+        if len(letter_artists) > 0:
+            indexes.artist_index.append(dto.ArtistIndex(letter, letter_artists))
+
         if with_childs:
-            tracks: List[str] = []
-            for a in artists:
-                ts: List[db.Track] = self.TrackDBHelper.get_track_by_artist_id(a.id)
-                for t in ts:
-                    tracks.append(TrackService.get_open_subsonic_format(t))
-            res["child"] = tracks
-        return res
+            tracks: Sequence[dto.Track] = fill_tracks(
+                self.track_db_helper.get_all_tracks(), None
+            )
+            indexes.tracks.extend(tracks)
+
+        return indexes
 
 
 def random_enum_choice(e):
