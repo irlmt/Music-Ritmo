@@ -161,9 +161,7 @@ def get_songs_by_genre(
 
 
 @open_subsonic_router.get("/download")
-async def download(
-    id: int, session: Session = Depends(db.get_session)
-) -> Response:
+async def download(id: int, session: Session = Depends(db.get_session)) -> Response:
     track = session.exec(select(db.Track).where(db.Track.id == id)).first()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
@@ -172,9 +170,7 @@ async def download(
 
 
 @open_subsonic_router.get("/stream")
-async def stream(
-    id: int, session: Session = Depends(db.get_session)
-) -> Response:
+async def stream(id: int, session: Session = Depends(db.get_session)) -> Response:
     track = session.exec(select(db.Track).where(db.Track.id == id)).first()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
