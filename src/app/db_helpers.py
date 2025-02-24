@@ -141,7 +141,7 @@ class TrackDBHelper:
             .where(db.Artist.id == db.ArtistTrack.artist_id)
             .where(db.ArtistTrack.track_id == track_id)
             .limit(1)
-        ).first()
+        ).one()
 
     def get_tracks_by_genre_name(
         self, genre_name: str, size: int | None = None, offset: int | None = None

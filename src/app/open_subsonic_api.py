@@ -8,8 +8,8 @@ from sqlmodel import Session, select
 from PIL import Image
 
 from src.app.open_subsonic_formatter import OpenSubsonicFormatter
-from src.app.subsonic_response import SubsonicResponse
-from src.app.auth import authenticate_user
+from .subsonic_response import SubsonicResponse
+from .auth import authenticate_user
 from src.app import dto
 
 from . import database as db
@@ -595,10 +595,14 @@ def get_lyrics_by_song_id(id: int, session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getCoverArt")
 def get_cover_art(
     id: str, size: int | None = None, session: Session = Depends(db.get_session)
-):
+) -> Response:
     image_bytes: bytes | None = None
 
-    prefix, parsed_id = id.split("-")
+    prefix, right = id.split("-")
+    if not right.isdigit():
+        return JSONResponse({"detail": "Invalid id"}, status_code=400)
+    parsed_id = int(right)
+
     if prefix == "mf":
         track = session.exec(
             select(db.Track).where(db.Track.id == parsed_id)
@@ -643,7 +647,9 @@ def get_cover_art(
         image.thumbnail((size, size))
         image_bytes = utils.image_to_bytes(image)
 
-    return Response(content=image_bytes, media_type=f"image/{image.format.lower()}")
+    return Response(
+        content=image_bytes, media_type=f"image/{str(image.format).lower()}"
+    )
 
 
 @open_subsonic_router.get("/getAvatar")
