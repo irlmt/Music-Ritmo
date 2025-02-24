@@ -12,7 +12,9 @@ class ArtistDBHelper:
     def get_all_artists(self, filter_name: str | None = None) -> Sequence[db.Artist]:
         query = select(db.Artist)
         if filter_name:
-            query.where(func.lower(db.Artist.name).like(f"%{filter_name.lower()}%"))
+            query = query.where(
+                func.lower(db.Artist.name).like(f"%{filter_name.lower()}%")
+            )
         return self.session.exec(query).all()
 
     def get_artists(
@@ -20,8 +22,10 @@ class ArtistDBHelper:
     ) -> Sequence[db.Artist]:
         query = select(db.Artist)
         if filter_name:
-            query.where(func.lower(db.Artist.name).like(f"%{filter_name.lower()}%"))
-        query.limit(size).offset(offset)
+            query = query.where(
+                func.lower(db.Artist.name).like(f"%{filter_name.lower()}%")
+            )
+        query = query.limit(size).offset(offset)
         return self.session.exec(query).all()
 
     def get_artist_by_id(self, id: int) -> db.Artist | None:
@@ -38,7 +42,9 @@ class AlbumDBHelper:
     def get_all_albums(self, filter_name: str | None = None) -> Sequence[db.Album]:
         query = select(db.Album)
         if filter_name:
-            query.where(func.lower(db.Album.name).like(f"%{filter_name.lower()}%"))
+            query = query.where(
+                func.lower(db.Album.name).like(f"%{filter_name.lower()}%")
+            )
         return self.session.exec(query).all()
 
     def get_albums(
@@ -46,8 +52,10 @@ class AlbumDBHelper:
     ) -> Sequence[db.Album]:
         query = select(db.Album)
         if filter_name:
-            query.where(func.lower(db.Album.name).like(f"%{filter_name.lower()}%"))
-        query.limit(size).offset(offset)
+            query = query.where(
+                func.lower(db.Album.name).like(f"%{filter_name.lower()}%")
+            )
+        query = query.limit(size).offset(offset)
         return self.session.exec(query).all()
 
     def get_album_by_id(self, id: int) -> db.Album | None:
@@ -94,7 +102,9 @@ class TrackDBHelper:
     def get_all_tracks(self, filter_title: str | None = None) -> Sequence[db.Track]:
         query = select(db.Track)
         if filter_title:
-            query.where(func.lower(db.Track.title).like(f"%{filter_title.lower()}%"))
+            query = query.where(
+                func.lower(db.Track.title).like(f"%{filter_title.lower()}%")
+            )
         return self.session.exec(query).all()
 
     def get_tracks(
@@ -102,8 +112,10 @@ class TrackDBHelper:
     ) -> Sequence[db.Track]:
         query = select(db.Track)
         if filter_title:
-            query.where(func.lower(db.Track.title).like(f"%{filter_title.lower()}%"))
-        query.limit(size).offset(offset)
+            query = query.where(
+                func.lower(db.Track.title).like(f"%{filter_title.lower()}%")
+            )
+        query = query.limit(size).offset(offset)
         return self.session.exec(query).all()
 
     def get_track_by_id(self, id: int) -> db.Track | None:
@@ -143,9 +155,9 @@ class TrackDBHelper:
             .where(db.Genre.name == genre_name)
         )
         if size:
-            query.limit(size)
+            query = query.limit(size)
         if offset:
-            query.offset(offset)
+            query = query.offset(offset)
         return self.session.exec(query).all()
 
 
