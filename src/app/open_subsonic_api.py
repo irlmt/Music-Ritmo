@@ -610,10 +610,14 @@ def get_lyrics_by_song_id(id: int, session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getCoverArt")
 def get_cover_art(
     id: str, size: int | None = None, session: Session = Depends(db.get_session)
-):
+) -> Response:
     image_bytes: bytes | None = None
 
-    prefix, parsed_id = id.split("-")
+    prefix, right = id.split("-")
+    if not right.isdigit():
+        return JSONResponse({"detail": "Invalid id"}, status_code=400)
+    parsed_id = int(right)
+
     if prefix == "mf":
         track = session.exec(
             select(db.Track).where(db.Track.id == parsed_id)

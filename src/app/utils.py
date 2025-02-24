@@ -1,9 +1,9 @@
-from typing import cast
+from typing import Any, cast
 from PIL import Image
 from io import BytesIO
 
 from enum import Enum
-from mutagen.id3 import TXXX, TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC
+from mutagen.id3 import TXXX, TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC  # type: ignore[attr-defined]
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from sqlmodel import Session, select
@@ -51,7 +51,7 @@ def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes, str]:
 def get_cover_from_mp3(audio_file_mp3: MP3) -> bytes | None:
     tags = audio_file_mp3.tags
     if tags is not None and "APIC:3.jpeg" in tags:
-        return tags["APIC:3.jpeg"].data
+        return bytes(tags["APIC:3.jpeg"].data)
     return None
 
 
@@ -81,17 +81,18 @@ def get_audio_object(track: db.Track) -> tuple[MP3 | FLAC, AudioType]:
 
 
 def update_tags(
-    track: db.Track, tags, session: Session
+    track: db.Track, tags: dict[str, Any], session: Session
 ) -> tuple[MP3 | FLAC, AudioType]:
     audio, audio_type = get_audio_object(track)
 
-    for key, value in tags:
+    for key, value in tags.items():
+        value = str(value)
         match key:
             case "title":
                 if value != track.title:
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TIT2"] = TIT2(text=[value])
+                            audio["TIT2"] = TIT2(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["TITLE"] = value
 
@@ -100,7 +101,7 @@ def update_tags(
                 if set(artists) != set(track.artists):
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TPE1"] = TPE1(text=[value])
+                            audio["TPE1"] = TPE1(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["ARTIST"] = artists
 
@@ -120,7 +121,7 @@ def update_tags(
                 if value != album_artist:
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TPE2"] = TPE2(text=[value])
+                            audio["TPE2"] = TPE2(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["ALBUMARTIST"] = value
 
@@ -128,15 +129,15 @@ def update_tags(
                 if value != track.album:
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TALB"] = TALB(text=[value])
+                            audio["TALB"] = TALB(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["ALBUM"] = value
 
             case "album_position":
-                if value != track.album_position:
+                if value.isdigit() and value != track.album_position:
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TRCK"] = TRCK(text=[value])
+                            audio["TRCK"] = TRCK(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["TRACKNUMBER"] = str(value)
 
@@ -144,7 +145,7 @@ def update_tags(
                 if value != track.year:
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TDRC"] = TDRC(text=[value])
+                            audio["TDRC"] = TDRC(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["DATE"] = str(value)
 
@@ -153,14 +154,14 @@ def update_tags(
                 if set(genres) != set(track.genres):
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TCON"] = TCON(text=[value])
+                            audio["TCON"] = TCON(text=[value])  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["GENRE"] = genres
 
             case _:
                 found = False
                 should_update = False
-                for tag in track.tags:
+                for tag in track.custom_tags:
                     if tag.name == key:
                         found = True
                         tag.updated = True
@@ -171,9 +172,14 @@ def update_tags(
                 if not found or should_update:
                     match audio_type:
                         case AudioType.MP3:
-                            audio["TXXX:" + key] = TXXX(desc=key, text=value)
+                            audio["TXXX:" + key] = TXXX(desc=key, text=value)  # type: ignore[no-untyped-call]
                         case AudioType.FLAC:
                             audio["TXXX:" + key] = value
+
+    for tag in track.custom_tags:
+        if tag.updated == False:
+            audio.pop("TXXX:" + tag.name)
+        tag.updated = False
 
     audio.save()
     return audio, audio_type
@@ -183,7 +189,7 @@ def create_default_user() -> None:
     service_layer.create_user(next(db.get_session()), "admin", "admin")
 
 
-def clear_table(table, session: Session) -> None:
+def clear_table(table: Any, session: Session) -> None:
     for row in session.exec(select(table)).all():
         session.delete(row)
 
@@ -192,7 +198,7 @@ def clear_media(session: Session) -> None:
     clear_table(db.Album, session)
     clear_table(db.Playlist, session)
     clear_table(db.Genre, session)
-    clear_table(db.Tag, session)
+    clear_table(db.CustomTag, session)
     clear_table(db.Track, session)
 
     clear_table(db.GenreTrack, session)
@@ -202,8 +208,8 @@ def clear_media(session: Session) -> None:
     session.commit()
 
 
-def get_custom_tags_mp3(audio_file: MP3) -> list[tuple]:
-    custom_tags: list[tuple] = []
+def get_custom_tags_mp3(audio_file: MP3) -> list[tuple[str, str]]:
+    custom_tags: list[tuple[str, str]] = []
     if audio_file.tags:
         for tag in audio_file.tags:
             if tag.startswith("TXXX:"):
@@ -211,8 +217,8 @@ def get_custom_tags_mp3(audio_file: MP3) -> list[tuple]:
     return custom_tags
 
 
-def get_custom_tags_flac(audio_file: FLAC) -> list[tuple]:
-    custom_tags: list[tuple] = []
+def get_custom_tags_flac(audio_file: FLAC) -> list[tuple[str, str]]:
+    custom_tags: list[tuple[str, str]] = []
     if audio_file.tags:
         for key, value in audio_file.tags:
             if key.startswith("TXXX:"):
@@ -220,15 +226,7 @@ def get_custom_tags_flac(audio_file: FLAC) -> list[tuple]:
     return custom_tags
 
 
-def clear_outdated_tags(track: db.Track, audio: MP3 | FLAC) -> None:
-    for tag in track.tags:
-        if tag.updated == False:
-            audio.pop("TXXX:" + tag.name)
-        tag.updated = False
-    audio.save()
-
-
-def get_base_tags(track: db.Track, session: Session) -> dict:
+def get_base_tags(track: db.Track, session: Session) -> dict[str, str]:
     album_artist = ""
     if track.album_artist_id is not None:
         album_artist = (
@@ -242,14 +240,14 @@ def get_base_tags(track: db.Track, session: Session) -> dict:
         "artists": ", ".join(artist.name for artist in track.artists),
         "album_artist": album_artist,
         "album": track.album.name,
-        "album_position": track.album_position,
+        "album_position": str(track.album_position),
         "year": track.year,
         "genres": ", ".join(genre.name for genre in track.genres),
     }
 
 
-def get_custom_tags(track: db.Track) -> dict:
+def get_custom_tags(track: db.Track) -> dict[str, str]:
     custom_tags = {}
-    for tag in track.tags:
+    for tag in track.custom_tags:
         custom_tags[tag.name] = tag.value
     return custom_tags

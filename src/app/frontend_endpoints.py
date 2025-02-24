@@ -1,6 +1,9 @@
+from typing import Any
 from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlmodel import Session, select
+from mutagen.mp3 import MP3
+from mutagen.flac import FLAC
 
 from .subsonic_response import SubsonicResponse
 from .auth import authenticate_user
@@ -40,7 +43,9 @@ def get_sorted_artist_albums(
 
 
 @frontend_router.get("/getCoverArtPreview")
-def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
+def get_cover_art_preview(
+    id: int, session: Session = Depends(db.get_session)
+) -> Response:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
@@ -61,21 +66,22 @@ def get_tags(id: int, session: Session = Depends(db.get_session)) -> JSONRespons
 
 @frontend_router.put("/updateTags")
 def update_tags(
-    id: int, data: dict = Body(...), session: Session = Depends(db.get_session)
+    id: int,
+    data: dict[str, Any] = Body(...),
+    session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
-    audio, audio_type = utils.update_tags(track, data.items(), session)
-    utils.clear_outdated_tags(track, audio)
+    audio, audio_type = utils.update_tags(track, data, session)
 
-    audio_info: db_loading.AudioInfo
+    audio_info = db_loading.AudioInfo(track.file_path)
     match audio_type:
         case utils.AudioType.MP3:
-            audio_info = db_loading.extract_metadata_mp3(track.file_path)
+            db_loading.extract_metadata_mp3(MP3(track.file_path), audio_info)
         case utils.AudioType.FLAC:
-            audio_info = db_loading.extract_metadata_flac(track.file_path)
+            db_loading.extract_metadata_flac(FLAC(track.file_path), audio_info)
 
     db_loading.load_audio_data(audio_info)
 

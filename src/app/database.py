@@ -1,3 +1,4 @@
+from typing import Any, Generator
 from sqlmodel import SQLModel, Session, create_engine, Field, Relationship
 
 DATABASE_URL = "sqlite:///database.db"
@@ -9,7 +10,7 @@ def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
 
-def get_session():
+def get_session() -> Generator[Session, Any, None]:
     with Session(engine) as session:
         yield session
 
@@ -33,9 +34,9 @@ class ArtistAlbum(SQLModel, table=True):
     album_id: int = Field(primary_key=True, foreign_key="Albums.id")
 
 
-class TagTrack(SQLModel, table=True):
-    __tablename__ = "Tag_Tracks"
-    tag_id: int = Field(primary_key=True, foreign_key="Tags.id")
+class CustomTagTrack(SQLModel, table=True):
+    __tablename__ = "CustomTag_Tracks"
+    custom_tag_id: int = Field(primary_key=True, foreign_key="CustomTags.id")
     track_id: int = Field(primary_key=True, foreign_key="Tracks.id")
 
 
@@ -130,7 +131,9 @@ class Track(SQLModel, table=True):
     artists: list["Artist"] = Relationship(
         back_populates="tracks", link_model=ArtistTrack
     )
-    tags: list["Tag"] = Relationship(back_populates="tracks", link_model=TagTrack)
+    custom_tags: list["CustomTag"] = Relationship(
+        back_populates="tracks", link_model=CustomTagTrack
+    )
     track_playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
     track_favourites: list["FavouriteTrack"] = Relationship(back_populates="track")
 
@@ -196,11 +199,13 @@ class Genre(SQLModel, table=True):
         return hash(self.name)
 
 
-class Tag(SQLModel, table=True):
-    __tablename__ = "Tags"
+class CustomTag(SQLModel, table=True):
+    __tablename__ = "CustomTags"
     id: int = Field(primary_key=True)
     name: str = Field(index=True)
     value: str
     updated: bool
 
-    tracks: list["Track"] = Relationship(back_populates="tags", link_model=TagTrack)
+    tracks: list["Track"] = Relationship(
+        back_populates="custom_tags", link_model=CustomTagTrack
+    )
