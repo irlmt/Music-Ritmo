@@ -1,13 +1,13 @@
 import random
-import py_avataaars as pa
+import py_avataaars as pa  # type: ignore
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
-from typing import List, Optional, Dict, Sequence, Set, Tuple, Union, Any
+from typing import List, Optional, Dict, Sequence, Set, Tuple, Union, Any, cast
 
 from sqlmodel import Session, select
-from mutagen.id3 import USLT
+from mutagen.id3 import USLT  # type: ignore
 
 from src.app import dto
 
@@ -632,7 +632,7 @@ class IndexService:
         return indexes
 
 
-def random_enum_choice(e):
+def random_enum_choice(e: type[Enum]) -> Any:
     return random.choice(list(e))
 
 
@@ -671,7 +671,7 @@ def generate_and_save_avatar(session: Session, user: db.User) -> bytes:
 def get_avatar(user: db.User) -> bytes:
     avatar = pa.PyAvataaar()
     avatar.unique_id = user.avatar
-    return avatar.render_png()
+    return cast(bytes, avatar.render_png())
 
 
 def get_user_by_username(session: Session, username: str) -> Optional[db.User]:
