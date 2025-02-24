@@ -241,7 +241,7 @@ def get_base_tags(track: db.Track, session: Session) -> dict[str, str]:
         "album_artist": album_artist,
         "album": track.album.name,
         "album_position": str(track.album_position),
-        "year": track.year,
+        "year": str(track.year),
         "genres": ", ".join(genre.name for genre in track.genres),
     }
 
