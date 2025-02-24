@@ -21,7 +21,7 @@ frontend_router = APIRouter(prefix="/specific")
 def generate_random_avatar(
     current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
-):
+) -> Response:
 
     avatar = service_layer.generate_and_save_avatar(session, current_user)
 
@@ -34,7 +34,7 @@ def get_sorted_artist_albums(
     size: int = 10,
     offset: int = 0,
     session: Session = Depends(db.get_session),
-):
+) -> JSONResponse:
     album_service = service_layer.AlbumService(session)
     sortedAlbums = album_service.get_sorted_artist_albums(id, size, offset)
 
