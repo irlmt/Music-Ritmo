@@ -198,25 +198,25 @@ class OpenSubsonicFormatter:
     ) -> dict[str, Any]:
         result: dict[str, Any] = {}
 
-        add_list_if_not_empty(
+        add_if_not_none(
             result,
             "artist",
             list(map(OpenSubsonicFormatter.format_artist, artists)),
         )
 
-        add_list_if_not_empty(
+        add_if_not_none(
             result,
             "album",
             list(map(OpenSubsonicFormatter.format_album, albums)),
         )
 
-        add_list_if_not_empty(
+        add_if_not_none(
             result,
             "song",
             list(map(OpenSubsonicFormatter.format_track, tracks)),
         )
 
-        add_list_if_not_empty(
+        add_if_not_none(
             result,
             "playlist",
             list(map(OpenSubsonicFormatter.format_playlist, playlists)),
