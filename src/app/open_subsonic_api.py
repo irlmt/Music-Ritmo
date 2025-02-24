@@ -7,10 +7,8 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from PIL import Image
 
-from src.app.open_subsonic_formatter import OpenSubsonicFormatter
 from src.app.subsonic_response import SubsonicResponse
 from src.app.auth import authenticate_user
-from src.app import dto
 
 from . import database as db
 from . import service_layer
@@ -19,6 +17,35 @@ from . import db_loading
 from . import utils
 
 open_subsonic_router = APIRouter(prefix="/rest")
+
+
+class SubsonicTrack(BaseModel):
+    id: str = Field(default_factory=str)
+    parent: str = Field(default_factory=str)
+    title: str = Field(default_factory=str)
+    isDir: bool = False
+    isVideo: bool = False
+    type: str = "music"
+    albumId: str = Field(default_factory=str)
+    album: str = ""
+    artistId: str = Field(default_factory=str)
+    artist: str = ""
+    coverArt: Optional[str] = None
+    duration: float = 0
+    bitRate: int = 0
+    bitDepth: int = 16
+    samplingRate: int = 44100
+    channelCount: int = 2
+    userRating: int = 0
+    averageRating: float = 0.0
+    track: int = 1
+    year: str = ""
+    genre: str = ""
+    size: int = 0
+    discNumber: int = 1
+    suffix: str = Field(default_factory=str)
+    contentType: str = "audio/mpeg"
+    path: str = Field(default_factory=str)
 
 
 @open_subsonic_router.get("/createUser")
@@ -127,9 +154,9 @@ async def ping():
 async def get_playlists(username: str = "", session: Session = Depends(db.get_session)):
     service = service_layer.PlaylistService(session)
     playlists = service.get_playlists()
-
     rsp = SubsonicResponse()
-    rsp.data["playlists"] = OpenSubsonicFormatter.format_playlists(playlists)
+    rsp.data["playlists"] = playlists
+
     return rsp.to_json_rsp()
 
 
@@ -152,7 +179,7 @@ def get_songs_by_genre(genre: str, session: Session = Depends(db.get_session)):
     rsp = SubsonicResponse()
     service = service_layer.TrackService(session)
     tracks = service.get_songs_by_genre(genre)
-    rsp.data["songsByGenre"] = OpenSubsonicFormatter.format_tracks(tracks)
+    rsp.data["songsByGenre"] = {"song": tracks}
     return rsp.to_json_rsp()
 
 
@@ -186,13 +213,11 @@ async def search2(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.SearchService(session)
-    artists, albums, tracks = service.search2(
+    result = service.search2(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult2"] = OpenSubsonicFormatter.format_combination(
-        artists, albums, tracks
-    )
+    rsp.data["searchResult2"] = result
 
     return rsp.to_json_rsp()
 
@@ -209,13 +234,11 @@ async def search3(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.SearchService(session)
-    artists, albums, tracks = service.search3(
+    result = service.search3(
         query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
     )
     rsp = SubsonicResponse()
-    rsp.data["searchResult3"] = OpenSubsonicFormatter.format_combination(
-        artists, albums, tracks
-    )
+    rsp.data["searchResult3"] = result
 
     return rsp.to_json_rsp()
 
@@ -223,10 +246,9 @@ async def search3(
 @open_subsonic_router.get("/getGenres")
 async def get_genres(session: Session = Depends(db.get_session)):
     service = service_layer.GenreService(session)
-    genres: List[dto.Genre] = service.get_genres()
-
+    genres_result = service.get_genres()
     rsp = SubsonicResponse()
-    rsp.data["genres"] = OpenSubsonicFormatter.format_genres(genres)
+    rsp.data["genres"] = genres_result
 
     return rsp.to_json_rsp()
 
@@ -234,12 +256,12 @@ async def get_genres(session: Session = Depends(db.get_session)):
 @open_subsonic_router.get("/getSong")
 def get_song(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.TrackService(session)
-    track: Optional[dto.Track] = service.get_song_by_id(id)
+    track = service.get_song_by_id(id)
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["song"] = OpenSubsonicFormatter.format_track(track)
+    rsp.data["song"] = track
     return rsp.to_json_rsp()
 
 
@@ -257,19 +279,19 @@ def get_random_songs(
         return JSONResponse({"detail": "No page found"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["randomSongs"] = OpenSubsonicFormatter.format_tracks(tracks)
+    rsp.data["randomSongs"] = {"song": tracks}
     return rsp.to_json_rsp()
 
 
 @open_subsonic_router.get("/getArtist")
 def get_artist(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.ArtistService(session)
-    artist: Optional[dto.Artist] = service.get_artist_by_id(id)
+    artist = service.get_artist_by_id(id)
     if artist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["artist"] = OpenSubsonicFormatter.format_artist(artist)
+    rsp.data["artist"] = artist
     return rsp.to_json_rsp()
 
 
@@ -281,19 +303,18 @@ def get_album(id: int, session: Session = Depends(db.get_session)):
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     rsp = SubsonicResponse()
-    rsp.data["album"] = OpenSubsonicFormatter.format_album(album)
+    rsp.data["album"] = album
     return rsp.to_json_rsp()
 
 
 @open_subsonic_router.get("/getPlaylist")
 def get_playlist(id: int, session: Session = Depends(db.get_session)):
     service = service_layer.PlaylistService(session)
-    playlist: dto.Playlist | None = service.get_playlist(id)
+    playlist = service.get_playlist(id)
     if playlist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
-
     rsp = SubsonicResponse()
-    rsp.data["playlist"] = OpenSubsonicFormatter.format_playlist(playlist)
+    rsp.data["playlist"] = playlist
     return rsp.to_json_rsp()
 
 
@@ -306,10 +327,9 @@ def create_playlist(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.PlaylistService(session)
-    playlist: dto.Playlist = service.create_playlist(name, songId, current_user)
-
+    playlist = service.create_playlist(name, songId, current_user.id)
     rsp = SubsonicResponse()
-    rsp.data["playlist"] = OpenSubsonicFormatter.format_playlist(playlist)
+    rsp.data["playlist"] = playlist
     return rsp.to_json_rsp()
 
 
@@ -323,7 +343,7 @@ def delete_playlist(
         return JSONResponse(
             {
                 "detail": f"""You do not have permission to perform this operation. 
-                {current_user.login} is not the owner of the playlist."""
+            {current_user.login} is not the owner of the playlist."""
             },
             status_code=403,
         )
@@ -353,10 +373,8 @@ def update_playlist(
             status_code=403,
         )
     service = service_layer.PlaylistService(session)
-    success: bool = service.update_playlist(
-        playlistId, name, songIdToAdd, songIdToRemove
-    )
-    if not success:
+    playlist = service.update_playlist(playlistId, name, songIdToAdd, songIdToRemove)
+    if playlist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
@@ -370,12 +388,14 @@ def get_indexes(
 ):
     index_service = service_layer.IndexService(session)
 
-    indexes: dto.Indexes = index_service.get_indexes_artists(
+    indexes = index_service.get_indexes_artists(
         musicFolderId, ifModifiedSince, with_childs=True
     )
 
     rsp = SubsonicResponse()
-    rsp.data["indexes"] = OpenSubsonicFormatter.format_indexes(indexes)
+    rsp.data["indexes"] = indexes
+    rsp.data["indexes"]["ignoredArticles"] = ""
+    rsp.data["indexes"]["lastModified"] = 0
     return rsp.to_json_rsp()
 
 
@@ -386,12 +406,11 @@ def get_artists(
 ):
     index_service = service_layer.IndexService(session)
 
-    indexes: dto.Indexes = index_service.get_indexes_artists(
-        musicFolderId, with_childs=False
-    )
+    indexes = index_service.get_indexes_artists(musicFolderId)
 
     rsp = SubsonicResponse()
-    rsp.data["artists"] = OpenSubsonicFormatter.format_indexes(indexes)
+    rsp.data["artists"] = indexes
+    rsp.data["artists"]["ignoredArticles"] = ""
     return rsp.to_json_rsp()
 
 
@@ -405,7 +424,7 @@ def star(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.star(id, albumId, artistId, playlistId, current_user)
+    service.star(id, albumId, artistId, playlistId, current_user.id)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -420,7 +439,7 @@ def unstar(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    service.unstar(id, albumId, artistId, playlistId, current_user)
+    service.unstar(id, albumId, artistId, playlistId, current_user.id)
     rsp = SubsonicResponse()
     return rsp.to_json_rsp()
 
@@ -432,11 +451,9 @@ def get_starred(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    tracks, albums, artists, playlists = service.get_starred(current_user)
+    starred = service.get_starred(current_user.id)
     rsp = SubsonicResponse()
-    rsp.data["starred"] = OpenSubsonicFormatter.format_combination(
-        artists, albums, tracks, playlists
-    )
+    rsp.data["starred"] = starred
     return rsp.to_json_rsp()
 
 
@@ -447,11 +464,9 @@ def get_starred2(
     session: Session = Depends(db.get_session),
 ):
     service = service_layer.StarService(session)
-    tracks, albums, artists, playlists = service.get_starred(current_user)
+    starred = service.get_starred(current_user.id)
     rsp = SubsonicResponse()
-    rsp.data["starred2"] = OpenSubsonicFormatter.format_combination(
-        artists, albums, tracks, playlists
-    )
+    rsp.data["starred2"] = starred
     return rsp.to_json_rsp()
 
 
@@ -511,7 +526,7 @@ def get_album_list(
         return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
 
     rsp = SubsonicResponse()
-    rsp.data["albumList"] = OpenSubsonicFormatter.format_albums(albums)
+    rsp.data["albumList"] = albums
     return rsp.to_json_rsp()
 
 
@@ -551,7 +566,7 @@ def get_album_list2(
         return JSONResponse({"detail": "Invalid arguments"}, status_code=400)
 
     rsp = SubsonicResponse()
-    rsp.data["albumList2"] = OpenSubsonicFormatter.format_albums(albums)
+    rsp.data["albumList2"] = albums
     return rsp.to_json_rsp()
 
 
