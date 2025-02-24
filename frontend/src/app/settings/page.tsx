@@ -9,12 +9,15 @@ import Image from "next/image";
 import styles from "./settings.module.css";
 
 export default function Settings() {
-  const { user, password, login } = useAuth();
+  const { user, password, updateUser } = useAuth();
   const [newUsername, setNewUsername] = useState<string>(user || "");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [, setErrorMessage] = useState<string>("");
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [isUsernameUnique, setIsUsernameUnique] = useState<boolean>(true);
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const checkUsernameUniqueness = useCallback(
     async (username: string) => {
@@ -46,11 +49,6 @@ export default function Settings() {
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      setErrorMessage("Пароли не совпадают.");
-      return;
-    }
-
     try {
       const response = await fetch(
         `http://localhost:8000/rest/updateUser?username=${user}&u=${user}&p=${password}&newUsername=${newUsername}`,
@@ -62,10 +60,7 @@ export default function Settings() {
       const data = await response.json();
       if (data["subsonic-response"]?.status === "ok") {
         setErrorMessage("");
-        setNewPassword("");
-        setConfirmPassword("");
-
-        login(newUsername, newPassword);
+        updateUser(newUsername, password || "");
       } else {
         setErrorMessage("Ошибка при изменении логина.");
       }
@@ -100,8 +95,7 @@ export default function Settings() {
       const data = await response.json();
       if (data["subsonic-response"]?.status === "ok") {
         setErrorMessage("");
-        setNewPassword("");
-        setConfirmPassword("");
+        updateUser(user || "", newPassword);
       } else {
         setErrorMessage("Ошибка при изменении пароля.");
       }
@@ -113,47 +107,170 @@ export default function Settings() {
       }
     }
   };
+
+  const handleSaveChanges = async () => {
+    setErrorMessage("");
+
+    if (newUsername !== user) {
+      await updateUsername();
+    }
+
+    if (newPassword && newPassword === confirmPassword) {
+      await changePassword();
+    }
+  };
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/getAvatar?username=${user}&u=${user}&p=${password}`
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get("Content-Type");
+
+          if (contentType && contentType.includes("image")) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            setAvatar(url);
+          } else {
+            const data = await response.json();
+            setAvatar(data.avatarUrl);
+          }
+        } else {
+          console.error("Не удалось загрузить аватар");
+        }
+      } catch (error) {
+        console.error("Ошибка при получении аватара:", error);
+      }
+    };
+
+    fetchAvatar();
+  }, [user, password]);
+
+  const validateUsername = (value: string) => {
+    if (!value) {
+      setUsernameError("Пожалуйста, введите логин.");
+    } else if (value.length < 5 || value.length > 64) {
+      setUsernameError("Логин должен быть от 5 до 64 символов.");
+    } else {
+      setUsernameError("");
+    }
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError("Пожалуйста, введите пароль.");
+    } else if (value.length < 5 || value.length > 64) {
+      setPasswordError("Пароль должен быть от 5 до 64 символов.");
+    } else {
+      setPasswordError("");
+    }
+  };
+
+  const generateAvatar = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/specific/generateAvatar?u=${user}&p=${password}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (response.ok) {
+        const contentType = response.headers.get("Content-Type");
+
+        if (contentType && contentType.includes("image")) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setAvatar(url);
+        } else {
+          const data = await response.json();
+          setAvatar(data.avatarUrl);
+        }
+      } else {
+        console.error("Не удалось сгенерировать новый аватар");
+      }
+    } catch (error) {
+      console.error("Ошибка при генерации аватара:", error);
+    }
+  };
+
   useEffect(() => {
     if (newUsername) {
       checkUsernameUniqueness(newUsername);
     }
   }, [newUsername, checkUsernameUniqueness]);
 
+  const isSaveButtonDisabled = Boolean(
+    !newUsername ||
+      (newUsername === user && !newPassword) ||
+      newPassword !== confirmPassword ||
+      usernameError ||
+      passwordError
+  );
+
   return (
     <div className={styles.settings}>
       <div className={styles.settings__avatar}>
         <h1 className={styles.settings__avatar__name}>{user}</h1>
-        <Image
-          src="/images/logo.svg"
-          alt="User Avatar"
-          width={300}
-          height={300}
-          className={styles.settings__avatar__image}
-        />
+
+        {avatar ? (
+          <Image
+            src={avatar}
+            alt="User Avatar"
+            width={300}
+            height={300}
+            className={styles.settings__avatar__image}
+          />
+        ) : (
+          <Image
+            src="/images/logo.svg"
+            alt="User Avatar"
+            width={300}
+            height={300}
+            className={styles.settings__avatar__image}
+          />
+        )}
+        <Button type="normal" color="green" onClick={generateAvatar}>
+          Сменить аватар
+        </Button>
       </div>
+
       <div className={styles.settings__content}>
         <Container
           style={{ height: "45vh", width: "30vw" }}
           direction="column"
           arrow={true}
-          link_arrow="/login"
+          link_arrow="/"
         >
-          <h2 className={styles.registration__content__title}>Смена логина</h2>
+          <h2 className={styles.registration__content__title}>
+            Смена логина и пароля
+          </h2>
           <Input
             type="text"
             placeholder="введите новый логин"
             value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
+            onChange={(e) => {
+              setNewUsername(e.target.value);
+              validateUsername(e.target.value);
+            }}
           />
           {!isUsernameUnique && (
             <div className={styles.errorMessage}>Этот логин уже занят.</div>
           )}
+          {usernameError && <div className={styles.error}>{usernameError}</div>}
           <Input
             type="password"
             placeholder="введите новый пароль"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              validatePassword(e.target.value);
+            }}
           />
+          {passwordError && <div className={styles.error}>{passwordError}</div>}
           <Input
             type="password"
             placeholder="подтвердите новый пароль"
@@ -163,27 +280,14 @@ export default function Settings() {
           {newPassword !== confirmPassword && (
             <div className={styles.errorMessage}>Пароли не совпадают.</div>
           )}
-          {(!newUsername || !newPassword || !confirmPassword) && (
-            <div className={styles.errorMessage}>
-              Пожалуйста, заполните все поля.
-            </div>
-          )}
           <div className={styles.registration__content_button}>
             <Button
               type="normal"
               color="green"
-              disabled={false}
-              onClick={updateUsername}
+              disabled={isSaveButtonDisabled}
+              onClick={handleSaveChanges}
             >
-              Сохранить изменения логина
-            </Button>
-            <Button
-              type="normal"
-              color="green"
-              disabled={false}
-              onClick={changePassword}
-            >
-              Сохранить изменения пароля
+              Сохранить изменения
             </Button>
           </div>
         </Container>

@@ -14,6 +14,7 @@ interface Song {
   artist: string;
   album: string;
   genre: string;
+  starred: string;
   additionalData?: Record<string, unknown>;
 }
 
@@ -35,6 +36,7 @@ interface SearchResult {
   title: string;
   artist: string;
   album: string;
+  starred: string;
   name: string;
   type: "song" | "album" | "artist";
 }
@@ -197,7 +199,7 @@ function SearchResultsPage() {
                   name_link={`/track/${song.id}`}
                   artist={song.artist}
                   artist_link={`/artist/${song.artist}`}
-                  favourite={false}
+                  favourite={song.starred}
                   time={0}
                   showRemoveButton={false}
                   onFavouriteToggle={() => {}}

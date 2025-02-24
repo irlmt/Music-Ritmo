@@ -14,6 +14,7 @@ interface AuthContextType {
   password: string | null;
   login: (username: string, password: string) => void;
   logout: () => void;
+  updateUser: (username: string, password: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,19 +40,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("password", password);
     setUser(username);
     setPassword(password);
-    router.push("/settings");
+    router.push("/");
   };
 
   const logout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("password");
-    setUser(null);
-    setPassword(null);
     router.push("/login");
+    setTimeout(() => {
+      localStorage.removeItem("username");
+      localStorage.removeItem("password");
+      setUser(null);
+      setPassword(null);
+      window.location.reload();
+    }, 100);
+  };
+
+  const updateUser = (username: string, password: string) => {
+    localStorage.setItem("username", username);
+    localStorage.setItem("password", password);
+    setUser(username);
+    setPassword(password);
   };
 
   return (
-    <AuthContext.Provider value={{ user, password, login, logout }}>
+    <AuthContext.Provider value={{ user, password, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

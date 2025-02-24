@@ -573,7 +573,9 @@ def get_album_list2(
 @open_subsonic_router.get("/getOpenSubsonicExtensions")
 def get_open_subsonic_extensions():
     rsp = SubsonicResponse()
-    rsp.data["openSubsonicExtensions"] = []
+    rsp.data["openSubsonicExtensions"] = [
+        {"name": "songLyrics", "versions": [1]},
+    ]
     return rsp.to_json_rsp()
 
 
@@ -581,6 +583,27 @@ def get_open_subsonic_extensions():
 def get_music_folders():
     rsp = SubsonicResponse()
     rsp.data["musicFolders"] = {"musicFolder": [{"id": 1, "name": "tracks"}]}
+    return rsp.to_json_rsp()
+
+
+@open_subsonic_router.get("/getLyricsBySongId")
+def get_lyrics_by_song_id(id: int, session: Session = Depends(db.get_session)):
+    service = service_layer.TrackService(session)
+    lyrics_list = service.extract_lyrics(id)
+    if lyrics_list is None:
+        return JSONResponse({"detail": "No such a song"}, status_code=404)
+    lyrics_res = []
+    for lyrics in lyrics_list:
+        lyrics_res.append(
+            {
+                "lang": lyrics.get("lang", "xxx"),
+                "offset": 0,
+                "synced": False,
+                "line": [{"value": i} for i in lyrics.get("text", [])],
+            }
+        )
+    rsp = SubsonicResponse()
+    rsp.data["lyricsList"] = {"structuredLyrics": lyrics_res}
     return rsp.to_json_rsp()
 
 

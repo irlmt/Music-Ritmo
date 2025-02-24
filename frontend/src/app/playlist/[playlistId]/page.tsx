@@ -7,14 +7,16 @@ import { Button } from "@/shared/button";
 import styles from "./playlist.module.css";
 import { Tracklist } from "@/widgets/track-list";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/app/auth-context";
 
 interface Track {
   id: string;
   title: string;
   artist: string;
   artistId: string;
-  favourite?: boolean;
   duration: number;
+  path: string;
+  starred: string;
 }
 
 interface Playlist {
@@ -26,7 +28,6 @@ interface Playlist {
 export default function Playlist() {
   const { playlistId } = useParams();
   const [playlistData, setPlaylistData] = useState<Playlist | null>(null);
-  const [isFavourite, setIsFavourite] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [playlistName, setPlaylistName] = useState<string>("");
   const [existingPlaylists, setExistingPlaylists] = useState<string[]>([]);
@@ -34,6 +35,8 @@ export default function Playlist() {
   const [trackToRemove, setTrackToRemove] = useState<number | null>(null);
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
   const [renameSuccess, setRenameSuccess] = useState(false);
+  const { user, password } = useAuth();
+  const [, setStarredTracks] = useState<Track[]>([]);
 
   useEffect(() => {
     const fetchPlaylistData = async () => {
@@ -45,6 +48,8 @@ export default function Playlist() {
         );
         const data = await response.json();
 
+        console.log("Fetched playlist data:", data);
+
         if (data["subsonic-response"]?.status === "ok") {
           const playlist: Playlist = {
             id: data["subsonic-response"].playlist.id,
@@ -55,16 +60,18 @@ export default function Playlist() {
                 title: track.title,
                 artist: track.artist,
                 artistId: track.artistId,
-                favourite: track.favourite || false,
+                starred: track.starred,
                 duration: track.duration,
               })
             ),
           };
           setPlaylistData(playlist);
           setPlaylistName(playlist.name);
+        } else {
+          console.error("Failed to fetch playlist data:", data);
         }
       } catch (error) {
-        console.error("Ошибка при запросе:", error);
+        console.error("Error fetching playlist data:", error);
       }
     };
 
@@ -76,15 +83,19 @@ export default function Playlist() {
         );
         const data = await response.json();
 
+        console.log("Fetched playlists:", data);
+
         if (data["subsonic-response"].status === "ok") {
           const fetchedPlaylists: Playlist[] =
             data["subsonic-response"].playlists.playlist;
           setExistingPlaylists(
             fetchedPlaylists.map((playlist) => playlist.name)
           );
+        } else {
+          console.error("Failed to fetch existing playlists:", data);
         }
-      } catch {
-        console.error("Произошла ошибка при загрузке существующих плейлистов");
+      } catch (error) {
+        console.error("Error fetching existing playlists:", error);
       }
     };
 
@@ -92,20 +103,31 @@ export default function Playlist() {
     fetchPlaylists();
   }, [playlistId]);
 
-  const handleFavouriteToggle = async (trackId: string) => {
-    const action = isFavourite ? "unstar" : "star";
-    const url = `http://localhost:8000/rest/${action}?id=${trackId}`;
+  const handleFavouriteToggle = async (
+    trackId: string,
+    currentStatus: string
+  ) => {
+    if (!user || !password) return;
+
+    const action = currentStatus ? "unstar" : "star";
+    const url = `http://localhost:8000/rest/${action}?id=${trackId}&username=${user}&u=${user}&p=${password}`;
 
     try {
       const response = await fetch(url);
       const data = await response.json();
+
+      console.log("Favourite toggle response:", data);
+
       if (data["subsonic-response"].status === "ok") {
-        setIsFavourite(!isFavourite);
+        setStarredTracks((prevTracks) =>
+          prevTracks.filter((track) => track.id !== trackId)
+        );
+        window.location.reload();
       } else {
         alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
-      console.error("Ошибка при изменении статуса избранного:", error);
+      console.error("Error toggling favourite:", error);
       alert("Произошла ошибка при изменении статуса избранного");
     }
   };
@@ -127,7 +149,7 @@ export default function Playlist() {
     }
   };
 
-  const [renameError, setRenameError] = useState<string | null>(null);
+  const [, setRenameError] = useState<string | null>(null);
 
   const handleSaveChanges = async () => {
     if (nameError) return;
@@ -136,10 +158,13 @@ export default function Playlist() {
       const response = await fetch(
         `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&name=${encodeURIComponent(
           playlistName
-        )}`,
+        )}&username=${user}&u=${user}&p=${password}`,
         { method: "GET" }
       );
       const data = await response.json();
+      const albumData = data["subsonic-response"]?.playlist.entry;
+
+      console.log("Updated playlist data:", albumData);
 
       if (data["subsonic-response"].status === "ok") {
         setRenameSuccess(true);
@@ -160,10 +185,12 @@ export default function Playlist() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIndexToRemove=${trackToRemove}`,
+        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIndexToRemove=${trackToRemove}&username=${user}&u=${user}&p=${password}`,
         { method: "GET" }
       );
       const data = await response.json();
+
+      console.log("Remove track response:", data);
 
       if (data["subsonic-response"].status === "ok") {
         setPlaylistData((prev) => {
@@ -211,20 +238,24 @@ export default function Playlist() {
       >
         <h1 className={styles.playlist__title}>{playlistData.name}</h1>
         <div className={styles.playlist}>
-          {playlistData.entry.map((track, index) => (
-            <Tracklist
-              key={track.id}
-              name={track.title}
-              name_link={`/track/${track.id}`}
-              artist={track.artist}
-              artist_link={`/artist/${track.artistId}`}
-              favourite={Boolean(track.favourite)}
-              time={track.duration}
-              showRemoveButton={true}
-              onRemove={() => handleRemoveTrack(index)}
-              onFavouriteToggle={() => handleFavouriteToggle(track.id)}
-            />
-          ))}
+          {playlistData.entry.map((track, index) => {
+            return (
+              <Tracklist
+                key={track.id}
+                name={track.title}
+                name_link={`/track/${track.id}`}
+                artist={track.artist}
+                artist_link={`/artist/${track.artistId}`}
+                favourite={track.starred}
+                time={track.duration}
+                showRemoveButton={true}
+                onRemove={() => handleRemoveTrack(index)}
+                onFavouriteToggle={() =>
+                  handleFavouriteToggle(track.id, track.starred)
+                }
+              />
+            );
+          })}
         </div>
       </Container>
 
@@ -252,7 +283,6 @@ export default function Playlist() {
             <h2 className={styles.create_playlists__title}>
               Вы уверены, что хотите удалить этот трек из плейлиста?
             </h2>
-            {renameError && <div className={styles.error}>{renameError}</div>}
 
             <div style={{ display: "flex", justifyContent: "center" }}>
               <Button type="normal" color="green" onClick={confirmRemoveTrack}>

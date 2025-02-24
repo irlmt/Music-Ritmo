@@ -7,7 +7,7 @@ interface TracklistProps {
   name_link: string;
   artist: string;
   artist_link: string;
-  favourite: boolean;
+  favourite: string;
   time: number;
   showRemoveButton: boolean;
   onFavouriteToggle: () => void;
