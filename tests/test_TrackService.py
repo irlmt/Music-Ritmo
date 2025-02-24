@@ -33,7 +33,9 @@ class TestTrackService(unittest.TestCase):
             uslt_tag.text = "Test lyrics text"
             uslt_tag.lang = "eng"
             mock_audio.__iter__.return_value = ["uslt"]
-            mock_audio.__getitem__.side_effect = lambda tag: uslt_tag if tag == 'uslt' else None
+            mock_audio.__getitem__.side_effect = lambda tag: (
+                uslt_tag if tag == "uslt" else None
+            )
             mock_get_audio_object.return_value = (mock_audio, mock_audio_type)
             result = self.track_service.extract_lyrics(1)
             expected = [{"text": ["Test lyrics text"], "lang": "eng"}]
