@@ -22,7 +22,7 @@ interface GenresResponse {
     serverVersion: string;
     openSubsonic: boolean;
     genres: {
-      "genre:": Genre[];
+      "genre": Genre[];
     };
   };
 }
@@ -62,7 +62,7 @@ const GenreList = () => {
     return <div>Ошибка: {error}</div>;
   }
 
-  const genres = responseData?.["subsonic-response"]?.genres?.["genre:"];
+  const genres = responseData?.["subsonic-response"]?.genres?.["genre"];
 
   return (
     <>

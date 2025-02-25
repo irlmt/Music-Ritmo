@@ -9,16 +9,26 @@ class ArtistDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_all_artists(self, filter_name=None) -> Sequence[db.Artist]:
+    def get_all_artists(self, filter_name: str | None = None) -> Sequence[db.Artist]:
+        query = select(db.Artist)
         if filter_name:
-            return self.session.exec(
-                select(db.Artist).where(
-                    func.lower(db.Artist.name).like(f"%{filter_name.lower()}%")
-                )
-            ).all()
-        return self.session.exec(select(db.Artist)).all()
+            query = query.where(
+                func.lower(db.Artist.name).like(f"%{filter_name.lower()}%")
+            )
+        return self.session.exec(query).all()
 
-    def get_artist_by_id(self, id):
+    def get_artists(
+        self, size: int, offset: int, filter_name: str | None = None
+    ) -> Sequence[db.Artist]:
+        query = select(db.Artist)
+        if filter_name:
+            query = query.where(
+                func.lower(db.Artist.name).like(f"%{filter_name.lower()}%")
+            )
+        query = query.limit(size).offset(offset)
+        return self.session.exec(query).all()
+
+    def get_artist_by_id(self, id: int) -> db.Artist | None:
         return self.session.exec(
             select(db.Artist).where(db.Artist.id == id)
         ).one_or_none()
@@ -29,16 +39,26 @@ class AlbumDBHelper:
         self.session = session
         self.track_db_helper = TrackDBHelper(session)
 
-    def get_all_albums(self, filter_name=None):
+    def get_all_albums(self, filter_name: str | None = None) -> Sequence[db.Album]:
+        query = select(db.Album)
         if filter_name:
-            return self.session.exec(
-                select(db.Album).where(
-                    func.lower(db.Album.name).like(f"%{filter_name.lower()}%")
-                )
-            ).all()
-        return self.session.exec(select(db.Album)).all()
+            query = query.where(
+                func.lower(db.Album.name).like(f"%{filter_name.lower()}%")
+            )
+        return self.session.exec(query).all()
 
-    def get_album_by_id(self, id):
+    def get_albums(
+        self, size: int, offset: int, filter_name: str | None = None
+    ) -> Sequence[db.Album]:
+        query = select(db.Album)
+        if filter_name:
+            query = query.where(
+                func.lower(db.Album.name).like(f"%{filter_name.lower()}%")
+            )
+        query = query.limit(size).offset(offset)
+        return self.session.exec(query).all()
+
+    def get_album_by_id(self, id: int) -> db.Album | None:
         return self.session.exec(
             select(db.Album).where(db.Album.id == id)
         ).one_or_none()
@@ -48,7 +68,7 @@ class AlbumDBHelper:
             select(db.Album).order_by(db.Album.name).limit(size).offset(offset)
         ).all()
 
-    def get_first_track(self, albumId) -> Optional[db.Track]:
+    def get_first_track(self, albumId: int) -> db.Track | None:
         return self.session.exec(
             select(db.Track)
             .where(db.Track.album_id == albumId)
@@ -56,7 +76,7 @@ class AlbumDBHelper:
             .limit(1)
         ).one_or_none()
 
-    def get_album_artist(self, albumId: int) -> Optional[db.Artist]:
+    def get_album_artist(self, albumId: int) -> db.Artist | None:
         track = self.get_first_track(albumId)
         return self.track_db_helper.get_album_artist(track.id) if track else None
 
@@ -79,31 +99,34 @@ class TrackDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_all_tracks(self, filter_title=None):
+    def get_all_tracks(self, filter_title: str | None = None) -> Sequence[db.Track]:
+        query = select(db.Track)
         if filter_title:
-            return self.session.exec(
-                select(db.Track).where(
-                    func.lower(db.Track.title).like(f"%{filter_title.lower()}%")
-                )
-            ).all()
-        return self.session.exec(select(db.Track)).all()
+            query = query.where(
+                func.lower(db.Track.title).like(f"%{filter_title.lower()}%")
+            )
+        return self.session.exec(query).all()
 
-    def get_track_by_id(self, id):
+    def get_tracks(
+        self, size: int, offset: int, filter_title: str | None = None
+    ) -> Sequence[db.Track]:
+        query = select(db.Track)
+        if filter_title:
+            query = query.where(
+                func.lower(db.Track.title).like(f"%{filter_title.lower()}%")
+            )
+        query = query.limit(size).offset(offset)
+        return self.session.exec(query).all()
+
+    def get_track_by_id(self, id: int) -> db.Track | None:
         return self.session.exec(
             select(db.Track).where(db.Track.id == id)
         ).one_or_none()
 
-    def get_track_by_artist_id(self, artist_id):
-        return self.session.exec(
-            select(db.Track)
-            .join(db.ArtistTrack)
-            .where(db.ArtistTrack.artist_id == artist_id)
-        ).all()
-
-    def get_album_artist(self, track_id) -> db.Artist:
+    def get_album_artist(self, track_id: int) -> db.Artist | None:
         track = self.get_track_by_id(track_id)
         if track is None:
-            raise RuntimeError()
+            return None
 
         if track.album_artist_id is not None:
             artist = self.session.exec(
@@ -118,40 +141,39 @@ class TrackDBHelper:
             .where(db.Artist.id == db.ArtistTrack.artist_id)
             .where(db.ArtistTrack.track_id == track_id)
             .limit(1)
-        ).first()
+        ).one()
+
+    def get_tracks_by_genre_name(
+        self, genre_name: str, size: int | None = None, offset: int | None = None
+    ) -> Sequence[db.Track]:
+        query = (
+            select(db.Track)
+            .join(db.GenreTrack)
+            .where(db.GenreTrack.track_id == db.Track.id)
+            .join(db.Genre)
+            .where(db.GenreTrack.genre_id == db.Genre.id)
+            .where(db.Genre.name == genre_name)
+        )
+        if size:
+            query = query.limit(size)
+        if offset:
+            query = query.offset(offset)
+        return self.session.exec(query).all()
 
 
 class GenresDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_genres_by_name(self, filter_name=None):
-        if filter_name:
-            return self.session.exec(
-                select(db.Genre).where(func.lower(db.Genre.name) == filter_name.lower())
-            ).all()
+    def get_all_genres(self) -> Sequence[db.Genre]:
         return self.session.exec(select(db.Genre)).all()
-
-    def get_all_genres(self, filter_name=None):
-        if filter_name:
-            return self.session.exec(
-                select(db.Genre).where(
-                    func.lower(db.Genre.name).like(f"%{filter_name.lower()}%")
-                )
-            ).all()
-        return self.session.exec(select(db.Genre)).all()
-
-    def get_track_by_name(self, name):
-        return self.session.exec(
-            select(db.Genre).where(db.Genre.name == name)
-        ).one_or_none()
 
 
 class FavouriteDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def star_track(self, id: int, user_id: int = 0):
+    def star_track(self, id: int, user_id: int) -> None:
         track = TrackDBHelper(self.session).get_track_by_id(id)
 
         if track:
@@ -166,7 +188,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def star_album(self, id: int, user_id: int = 0):
+    def star_album(self, id: int, user_id: int) -> None:
         album = AlbumDBHelper(self.session).get_album_by_id(id)
         if album:
             if (id, user_id) in [
@@ -180,7 +202,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def star_artist(self, id: int, user_id: int = 0):
+    def star_artist(self, id: int, user_id: int) -> None:
         artist = ArtistDBHelper(self.session).get_artist_by_id(id)
         if artist:
             if (id, user_id) in [
@@ -194,7 +216,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def star_playlist(self, id: int, user_id: int = 0):
+    def star_playlist(self, id: int, user_id: int) -> None:
         playlist = PlaylistDBHelper(self.session).get_playlist(id)
         if playlist:
             if (id, user_id) in [
@@ -208,7 +230,7 @@ class FavouriteDBHelper:
             )
             self.session.commit()
 
-    def unstar_track(self, id: int, user_id: int = 0):
+    def unstar_track(self, id: int, user_id: int) -> None:
         fav_track = self.session.exec(
             select(db.FavouriteTrack).where(
                 (db.FavouriteTrack.track_id == id)
@@ -219,7 +241,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_track)
             self.session.commit()
 
-    def unstar_album(self, id: int, user_id: int = 0):
+    def unstar_album(self, id: int, user_id: int) -> None:
         fav_album = self.session.exec(
             select(db.FavouriteAlbum).where(
                 (db.FavouriteAlbum.album_id == id)
@@ -230,7 +252,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_album)
             self.session.commit()
 
-    def unstar_artist(self, id: int, user_id: int = 0):
+    def unstar_artist(self, id: int, user_id: int) -> None:
         fav_artist = self.session.exec(
             select(db.FavouriteArtist).where(
                 (db.FavouriteArtist.artist_id == id)
@@ -241,7 +263,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_artist)
             self.session.commit()
 
-    def unstar_playlist(self, id: int, user_id: int = 0):
+    def unstar_playlist(self, id: int, user_id: int) -> None:
         fav_playlist = self.session.exec(
             select(db.FavouritePlaylist).where(
                 (db.FavouritePlaylist.playlist_id == id)
@@ -252,7 +274,7 @@ class FavouriteDBHelper:
             self.session.delete(fav_playlist)
             self.session.commit()
 
-    def get_starred_tracks(self, user_id=0):
+    def get_starred_tracks(self, user_id: int) -> Sequence[db.Track]:
         return self.session.exec(
             select(db.Track).where(
                 (
@@ -262,7 +284,7 @@ class FavouriteDBHelper:
             )
         ).all()
 
-    def get_starred_artists(self, user_id=0):
+    def get_starred_artists(self, user_id: int) -> Sequence[db.Artist]:
         return self.session.exec(
             select(db.Artist).where(
                 (
@@ -272,7 +294,7 @@ class FavouriteDBHelper:
             )
         ).all()
 
-    def get_starred_albums(self, user_id=0):
+    def get_starred_albums(self, user_id: int) -> Sequence[db.Album]:
         return self.session.exec(
             select(db.Album).where(
                 (
@@ -282,7 +304,7 @@ class FavouriteDBHelper:
             )
         ).all()
 
-    def get_starred_playlists(self, user_id=0):
+    def get_starred_playlists(self, user_id: int) -> Sequence[db.Playlist]:
         return self.session.exec(
             select(db.Playlist).where(
                 (
@@ -297,7 +319,9 @@ class PlaylistDBHelper:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_playlist(self, name, tracks: List[int], user_id=0):
+    def create_playlist(
+        self, name: str, tracks: Sequence[int], user_id: int
+    ) -> db.Playlist:
         now = datetime.today()
         playlist = db.Playlist(
             name=name,
@@ -312,12 +336,17 @@ class PlaylistDBHelper:
             playlist.playlist_tracks.append(playlist_track)
         self.session.add(playlist)
         self.session.commit()
-        return playlist.id
+        self.session.refresh(playlist)
+        return playlist
 
     def update_playlist(
-        self, id, name=None, traks_to_add=List[int], track_to_remove=List[int]
-    ):
-        now = datetime.today()
+        self,
+        id: int,
+        name: str | None = None,
+        traks_to_add: Sequence[int] = [],
+        track_to_remove: Sequence[int] = [],
+    ) -> db.Playlist | None:
+        now = datetime.now()
         playlist = self.session.exec(
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
@@ -340,22 +369,25 @@ class PlaylistDBHelper:
                 playlist.playlist_tracks.append(playlist_track)
             playlist.total_tracks = len(playlist.playlist_tracks)
             self.session.commit()
+            self.session.refresh(playlist)
         return playlist
 
-    def delete_playlist(self, id):
+    def delete_playlist(self, id: int) -> bool:
         playlist = self.session.exec(
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
         if playlist:
             self.session.delete(playlist)
             self.session.commit()
+            return True
+        return False
 
-    def get_playlist(self, id):
+    def get_playlist(self, id: int) -> db.Playlist | None:
         return self.session.exec(
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
 
-    def get_all_playlists(self):
+    def get_all_playlists(self) -> Sequence[db.Playlist]:
         return self.session.exec(select(db.Playlist)).all()
 
 

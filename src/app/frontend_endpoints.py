@@ -1,9 +1,13 @@
+from typing import Any
 from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlmodel import Session, select
+from mutagen.mp3 import MP3
+from mutagen.flac import FLAC
 
-from src.app.subsonic_response import SubsonicResponse
-from src.app.auth import authenticate_user
+from src.app.open_subsonic_formatter import OpenSubsonicFormatter
+from .subsonic_response import SubsonicResponse
+from .auth import authenticate_user
 
 from . import db_loading
 from . import database as db
@@ -17,7 +21,7 @@ frontend_router = APIRouter(prefix="/specific")
 def generate_random_avatar(
     current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
-):
+) -> Response:
 
     avatar = service_layer.generate_and_save_avatar(session, current_user)
 
@@ -30,17 +34,19 @@ def get_sorted_artist_albums(
     size: int = 10,
     offset: int = 0,
     session: Session = Depends(db.get_session),
-):
+) -> JSONResponse:
     album_service = service_layer.AlbumService(session)
     sortedAlbums = album_service.get_sorted_artist_albums(id, size, offset)
 
     rsp = SubsonicResponse()
-    rsp.data["sortedAlbums"] = sortedAlbums
+    rsp.data["sortedAlbums"] = OpenSubsonicFormatter.format_albums(sortedAlbums)
     return rsp.to_json_rsp()
 
 
 @frontend_router.get("/getCoverArtPreview")
-def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
+def get_cover_art_preview(
+    id: int, session: Session = Depends(db.get_session)
+) -> Response:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
@@ -49,50 +55,35 @@ def get_cover_art_preview(id: int, session: Session = Depends(db.get_session)):
 
 
 @frontend_router.get("/getTags")
-def get_tags(id: int, session: Session = Depends(db.get_session)):
+def get_tags(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
-    album_artist = ""
-    if track.album_artist_id is not None:
-        album_artist = (
-            session.exec(select(db.Artist).where(db.Artist.id == track.album_artist_id))
-            .one_or_none()
-            .name
-        )
-
     return JSONResponse(
-        {
-            "title": track.title,
-            "artists": ", ".join(artist.name for artist in track.artists),
-            "album_artist": album_artist,
-            "album": track.album.name,
-            "album_position": track.album_position,
-            "year": track.year,
-            "genres": ", ".join(genre.name for genre in track.genres),
-        }
+        utils.get_base_tags(track, session) | utils.get_custom_tags(track)
     )
 
 
 @frontend_router.put("/updateTags")
 def update_tags(
-    id: int, data: dict = Body(...), session: Session = Depends(db.get_session)
-):
+    id: int,
+    data: dict[str, Any] = Body(...),
+    session: Session = Depends(db.get_session),
+) -> JSONResponse:
     track = session.exec(select(db.Track).where(db.Track.id == id)).one_or_none()
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
-    audio, audio_type = utils.update_tags(track, data.items(), session)
-    audio.save()
+    audio, audio_type = utils.update_tags(track, data, session)
 
-    audio_info: db_loading.AudioInfo
+    audio_info = db_loading.AudioInfo(track.file_path)
     match audio_type:
         case utils.AudioType.MP3:
-            audio_info = db_loading.extract_metadata_mp3(track.file_path)
+            db_loading.extract_metadata_mp3(MP3(track.file_path), audio_info)
         case utils.AudioType.FLAC:
-            audio_info = db_loading.extract_metadata_flac(track.file_path)
+            db_loading.extract_metadata_flac(FLAC(track.file_path), audio_info)
 
     db_loading.load_audio_data(audio_info)
 
-    return Response()
+    return JSONResponse({"detail": "success"})
