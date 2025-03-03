@@ -1,13 +1,13 @@
 import random
-import py_avataaars as pa
+import py_avataaars as pa  # type: ignore
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
-from typing import List, Optional, Dict, Sequence, Set, Tuple, Union, Any
+from typing import List, Optional, Dict, Sequence, Set, Tuple, Union, Any, cast
 
 from sqlmodel import Session, select
-from mutagen.id3 import USLT
+from mutagen.id3 import USLT  # type: ignore
 
 from src.app import dto
 
@@ -297,18 +297,8 @@ class TrackService:
         random_tracks = random.sample(tracks, min(size, len(tracks)))
         return fill_tracks(random_tracks, None)
 
-
-def fill_genre(db_genre: db.Genre) -> dto.Genre:
-    albumCount = len(set([t.album_id for t in db_genre.tracks]))
-    songCount = len(db_genre.tracks)
-    return dto.Genre(albumCount=albumCount, songCount=songCount, name=db_genre.name)
-
-
-def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
-    return list(map(fill_genre, db_genres))
-
     def extract_lyrics(self, id: int) -> Optional[List[Dict[str, Any]]]:
-        track = self.DBHelper.get_track_by_id(id)
+        track = self.track_db_helper.get_track_by_id(id)
         if track:
             audio, audio_type = get_audio_object(track)
             match audio_type:
@@ -327,6 +317,16 @@ def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
                     return []
         else:
             return None
+
+
+def fill_genre(db_genre: db.Genre) -> dto.Genre:
+    albumCount = len(set([t.album_id for t in db_genre.tracks]))
+    songCount = len(db_genre.tracks)
+    return dto.Genre(albumCount=albumCount, songCount=songCount, name=db_genre.name)
+
+
+def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
+    return list(map(fill_genre, db_genres))
 
 
 class GenreService:
@@ -632,7 +632,7 @@ class IndexService:
         return indexes
 
 
-def random_enum_choice(e):
+def random_enum_choice(e: type[Enum]) -> Any:
     return random.choice(list(e))
 
 
@@ -671,7 +671,7 @@ def generate_and_save_avatar(session: Session, user: db.User) -> bytes:
 def get_avatar(user: db.User) -> bytes:
     avatar = pa.PyAvataaar()
     avatar.unique_id = user.avatar
-    return avatar.render_png()
+    return cast(bytes, avatar.render_png())
 
 
 def get_user_by_username(session: Session, username: str) -> Optional[db.User]:

@@ -1,9 +1,10 @@
+from typing import Any
 from fastapi.responses import JSONResponse
 
 
 class SubsonicResponse:
-    def __init__(self):
-        self.data = {
+    def __init__(self) -> None:
+        self.data: dict[str, Any] = {
             "status": "ok",
             "version": "1.16.1",
             "type": "MusicRitmo",
@@ -11,7 +12,7 @@ class SubsonicResponse:
             "openSubsonic": True,
         }
 
-    def set_error(self, code: int, message: str):
+    def set_error(self, code: int, message: str) -> None:
         self.data["status"] = "failed"
         self.data["error"] = {"code": code, "message": message}
 
