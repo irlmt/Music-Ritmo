@@ -37,6 +37,10 @@ class AudioInfo:
     channels: int
     duration: int
 
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self.file_size = os.path.getsize(file_path)
+
 
 def extract_metadata_mp3(audio_file: MP3, audio_info: AudioInfo) -> None:
     audio_info.type = "audio/mpeg"
@@ -46,7 +50,7 @@ def extract_metadata_mp3(audio_file: MP3, audio_info: AudioInfo) -> None:
         else Path(audio_info.file_path).stem
     )
     audio_info.artists = (
-        re.split(r"[;,\\]\s*", str(audio_file["TPE1"]))
+        re.split(utils.TAG_MULTIPLE_PATTERN, str(audio_file["TPE1"]))
         if "TPE1" in audio_file.tags
         else ["Неизвестный исполнитель"]
     )
@@ -57,7 +61,7 @@ def extract_metadata_mp3(audio_file: MP3, audio_info: AudioInfo) -> None:
         str(audio_file["TALB"]) if "TALB" in audio_file.tags else "Неизвестный альбом"
     )
     audio_info.genres = (
-        re.split(r"[;,\\]\s*", str(audio_file["TCON"]))
+        re.split(utils.TAG_MULTIPLE_PATTERN, str(audio_file["TCON"]))
         if "TCON" in audio_file.tags
         else []
     )
@@ -111,9 +115,7 @@ def scan_directory_for_audio_files(dir: str) -> list[AudioInfo]:
         for file in files:
             file_path = os.path.join(root, file)
             try:
-                audio_info = AudioInfo()
-                audio_info.file_path = file_path
-                audio_info.file_size = os.path.getsize(file_path)
+                audio_info = AudioInfo(file_path)
 
                 audio_file: MP3 | FLAC | None = None
 
@@ -148,133 +150,134 @@ def scan_directory_for_audio_files(dir: str) -> list[AudioInfo]:
     return data
 
 
-def load_audio_data(audio_info: AudioInfo) -> None:
-    with Session(db.engine) as session:
-        artists = []
-        for name in audio_info.artists:
-            artist = session.exec(
-                select(db.Artist).where(db.Artist.name == name)
-            ).one_or_none()
-            if artist is None:
-                artist = db.Artist(name=name)
-                session.add(artist)
-                session.commit()
-                session.refresh(artist)
-            artists.append(artist)
-
-        album_artists = []
-        album_artist_id: int | None = None
-        if (
-            audio_info.album_artist is not None
-            and audio_info.album_artist != "Various Artists"
-        ):
-            album_artist = session.exec(
-                select(db.Artist).where(db.Artist.name == audio_info.album_artist)
-            ).one_or_none()
-            if album_artist is None:
-                album_artist = db.Artist(name=audio_info.album_artist)
-                session.add(album_artist)
-                session.commit()
-                session.refresh(album_artist)
-            album_artist_id = album_artist.id
-            album_artists = [album_artist]
-        else:
-            album_artists = artists
-
-        album = session.exec(
-            select(db.Album).where(db.Album.name == audio_info.album)
+def load_audio_data(audio_info: AudioInfo, session: Session) -> None:
+    artists = []
+    for name in audio_info.artists:
+        artist = session.exec(
+            select(db.Artist).where(db.Artist.name == name)
         ).one_or_none()
-        if album is None:
-            album = db.Album(
-                name=audio_info.album,
-                album_artist_id=album_artist_id,
-                total_tracks=1,
-                year=audio_info.year,
-                cover=audio_info.cover,
-                artists=album_artists,
-            )
-            session.add(album)
+        if artist is None:
+            artist = db.Artist(name=name)
+            session.add(artist)
             session.commit()
-            session.refresh(album)
-        elif album.album_artist_id is None:
-            if album_artist_id is not None:
-                album.album_artist_id = album_artist_id
-            else:
-                album.artists = list(set(album.artists).union(artists))
-        elif album_artist_id is not None and album.album_artist_id != album_artist_id:
-            album.album_artist_id = album_artist_id
+            session.refresh(artist)
+        artists.append(artist)
 
-        genres = []
-        for name in audio_info.genres:
-            genre = session.exec(
-                select(db.Genre).where(db.Genre.name == name)
-            ).one_or_none()
-            if genre is None:
-                genre = db.Genre(name=name)
-                session.add(genre)
-                session.commit()
-                session.refresh(genre)
-            genres.append(genre)
-
-        custom_tags: list[db.CustomTag] = []
-        for name, value in audio_info.custom_tags:
-            tag = session.exec(
-                select(db.CustomTag)
-                .where(db.CustomTag.name == name)
-                .where(db.CustomTag.value == value)
-            ).one_or_none()
-            if tag is None:
-                tag = db.CustomTag(name=name, value=value, updated=False)
-                session.add(tag)
-                session.commit()
-                session.refresh(tag)
-            custom_tags.append(tag)
-
-        track = session.exec(
-            select(db.Track).where(db.Track.file_path == audio_info.file_path)
+    album_artists = []
+    album_artist_id: int | None = None
+    if (
+        audio_info.album_artist is not None
+        and audio_info.album_artist != "Various Artists"
+    ):
+        album_artist = session.exec(
+            select(db.Artist).where(db.Artist.name == audio_info.album_artist)
         ).one_or_none()
-        if track is None:
-            track = db.Track(
-                file_path=audio_info.file_path,
-                file_size=audio_info.file_size,
-                type=audio_info.type,
-                title=audio_info.title,
-                album_id=album.id,
-                album_artist_id=album_artist_id,
-                album_position=audio_info.track_number,
-                year=audio_info.year,
-                plays_count=0,
-                cover=audio_info.cover,
-                cover_type=audio_info.cover_type,
-                bit_rate=audio_info.bit_rate,
-                bits_per_sample=audio_info.bits_per_sample,
-                sample_rate=audio_info.sample_rate,
-                channels=audio_info.channels,
-                duration=audio_info.duration,
-                genres=genres,
-                artists=artists,
-                custom_tags=custom_tags,
-            )
-            album.total_tracks = album.total_tracks + 1
-        else:
-            track.title = audio_info.title
-            track.artists = artists
-            track.album_id = album.id
-            track.album_artist_id = album_artist_id
-            track.album_position = audio_info.track_number
-            track.year = audio_info.year
-            track.genres = genres
-            track.custom_tags = custom_tags
+        if album_artist is None:
+            album_artist = db.Artist(name=audio_info.album_artist)
+            session.add(album_artist)
+            session.commit()
+            session.refresh(album_artist)
+        album_artist_id = album_artist.id
+        album_artists = [album_artist]
+    else:
+        album_artists = artists
 
-        session.add(track)
+    album = session.exec(
+        select(db.Album).where(db.Album.name == audio_info.album)
+    ).one_or_none()
+    if album is None:
+        album = db.Album(
+            name=audio_info.album,
+            album_artist_id=album_artist_id,
+            total_tracks=0,
+            year=audio_info.year,
+            cover=audio_info.cover,
+            artists=album_artists,
+        )
+        session.add(album)
         session.commit()
-        session.refresh(track)
+        session.refresh(album)
+    elif album.album_artist_id is None:
+        if album_artist_id is not None:
+            album.album_artist_id = album_artist_id
+        else:
+            album.artists = list(set(album.artists).union(artists))
+    elif album_artist_id is not None and album.album_artist_id != album_artist_id:
+        album.album_artist_id = album_artist_id
+
+    genres = []
+    for name in audio_info.genres:
+        genre = session.exec(
+            select(db.Genre).where(db.Genre.name == name)
+        ).one_or_none()
+        if genre is None:
+            genre = db.Genre(name=name)
+            session.add(genre)
+            session.commit()
+            session.refresh(genre)
+        genres.append(genre)
+
+    custom_tags: list[db.CustomTag] = []
+    for name, value in audio_info.custom_tags:
+        tag = session.exec(
+            select(db.CustomTag)
+            .where(db.CustomTag.name == name)
+            .where(db.CustomTag.value == value)
+        ).one_or_none()
+        if tag is None:
+            tag = db.CustomTag(name=name, value=value, updated=False)
+            session.add(tag)
+            session.commit()
+            session.refresh(tag)
+        custom_tags.append(tag)
+
+    track = session.exec(
+        select(db.Track).where(db.Track.file_path == audio_info.file_path)
+    ).one_or_none()
+    if track is None:
+        track = db.Track(
+            file_path=audio_info.file_path,
+            file_size=audio_info.file_size,
+            type=audio_info.type,
+            title=audio_info.title,
+            album_id=album.id,
+            album_artist_id=album_artist_id,
+            album_position=audio_info.track_number,
+            year=audio_info.year,
+            plays_count=0,
+            cover=audio_info.cover,
+            cover_type=audio_info.cover_type,
+            bit_rate=audio_info.bit_rate,
+            bits_per_sample=audio_info.bits_per_sample,
+            sample_rate=audio_info.sample_rate,
+            channels=audio_info.channels,
+            duration=audio_info.duration,
+            genres=genres,
+            artists=artists,
+            custom_tags=custom_tags,
+        )
+        album.total_tracks = album.total_tracks + 1
+    else:
+        track.title = audio_info.title
+        track.artists = artists
+        track.album_id = album.id
+        track.album_artist_id = album_artist_id
+        track.album_position = audio_info.track_number
+        track.year = audio_info.year
+        track.genres = genres
+        track.custom_tags = custom_tags
+
+    session.add(track)
+    session.commit()
+    session.refresh(track)
 
 
 def scan_and_load(directory_path: str = "./tracks/") -> None:
     audio_files = scan_directory_for_audio_files(directory_path)
-    for file in audio_files:
-        load_audio_data(file)
-        scanStatus["count"] = scanStatus["count"] + 1
+
+    with Session(db.engine) as session:
+        for file in audio_files:
+            load_audio_data(file, session)
+            scanStatus["count"] = scanStatus["count"] + 1
 
     scanStatus["scanning"] = False
