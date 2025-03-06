@@ -83,8 +83,10 @@ def get_audio_object(track: db.Track) -> tuple[MP3 | FLAC, AudioType]:
             assert False, f"Unexpected track type: {track.type}"
 
 
-def popTag(audio: MP3 | FLAC, audio_type: AudioType, tag_names: dict[AudioType, str]):
-    if tag_names[audio_type] in audio.tags:
+def popTag(
+    audio: MP3 | FLAC, audio_type: AudioType, tag_names: dict[AudioType, str]
+) -> None:
+    if tag_names[audio_type] in (audio.tags or []):
         audio.pop(tag_names[audio_type])
 
 
@@ -189,7 +191,7 @@ def update_tags(track: db.Track, tags: dict[str, Any]) -> tuple[MP3 | FLAC, Audi
 
     for tag in track.custom_tags:
         key = "TXXX:" + tag.name
-        if tag.updated == False and key in audio.tags:
+        if tag.updated == False and key in (audio.tags or []):
             audio.pop(key)
         tag.updated = False
 
