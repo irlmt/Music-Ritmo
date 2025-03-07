@@ -5,11 +5,9 @@ from typing import Any
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 from mutagen.id3 import TXXX
-from sqlmodel import Session, select
 
 from src.app import utils
 from src.app import database as db
-from .temp_db import init_temp_db
 
 TEST_MP3_FILE = "tracks\\MACAN_-_I_AM_78125758.mp3"
 TEST_FLAC_FILE = "tracks\\Atomic Heart\\03. Arlekino (Geoffrey Day Remix).flac"
@@ -187,76 +185,102 @@ def test_update_tags(new_tags: dict[str, Any], expected_tags) -> None:
         exp_custom,
     ) = expected_tags
 
-    with Session(init_temp_db()) as session:
-        track_mp3 = session.exec(
-            select(db.Track).where(db.Track.type == "audio/mpeg")
-        ).first()
-        track_mp3.file_path = TEST_MP3_FILE
+    track_mp3 = db.Track(
+        file_path=TEST_MP3_FILE,
+        file_size=3,
+        type="audio/mpeg",
+        title="Present",
+        album_artist_id=None,
+        album_id=None,
+        album_position=2,
+        year="2019",
+        plays_count=0,
+        cover=bytes(),
+        cover_type="",
+        bit_rate=10,
+        bits_per_sample=10,
+        sample_rate=10,
+        channels=10,
+        duration=10,
+    )
 
-        track_flac = session.exec(
-            select(db.Track).where(db.Track.type == "audio/flac")
-        ).first()
-        track_flac.file_path = TEST_FLAC_FILE
+    track_flac = db.Track(
+        file_path=TEST_FLAC_FILE,
+        file_size=3,
+        type="audio/flac",
+        title="Already",
+        album_artist_id=None,
+        album_id=None,
+        album_position=1,
+        year="2020",
+        plays_count=0,
+        cover=bytes(),
+        cover_type="",
+        bit_rate=10,
+        bits_per_sample=10,
+        sample_rate=10,
+        channels=10,
+        duration=10,
+    )
 
-        new_audio_mp3, _ = utils.update_tags(track_mp3, new_tags)
-        new_audio_flac, _ = utils.update_tags(track_flac, new_tags)
+    new_audio_mp3, _ = utils.update_tags(track_mp3, new_tags)
+    new_audio_flac, _ = utils.update_tags(track_flac, new_tags)
 
-        assert str(new_audio_mp3["TIT2"]) == exp_title
-        assert new_audio_flac["TITLE"][0] == exp_title
+    assert str(new_audio_mp3["TIT2"]) == exp_title
+    assert new_audio_flac["TITLE"][0] == exp_title
 
-        assert (
-            re.split(utils.TAG_MULTIPLE_PATTERN, str(new_audio_mp3["TPE1"]))
-            == exp_artists
-        )
-        assert new_audio_flac["ARTIST"] == exp_artists
+    assert (
+        re.split(utils.TAG_MULTIPLE_PATTERN, str(new_audio_mp3["TPE1"])) == exp_artists
+    )
+    assert new_audio_flac["ARTIST"] == exp_artists
 
-        assert (
-            "TPE2" not in new_audio_mp3.tags
-            and exp_album_artist is None
-            or str(new_audio_mp3["TPE2"]) == exp_album_artist
-        )
-        assert (
-            "ALBUMARTIST" not in new_audio_flac.tags
-            and exp_album_artist is None
-            or new_audio_flac["ALBUMARTIST"][0] == exp_album_artist
-        )
+    assert (
+        "TPE2" not in new_audio_mp3.tags
+        and exp_album_artist is None
+        or str(new_audio_mp3["TPE2"]) == exp_album_artist
+    )
+    assert (
+        "ALBUMARTIST" not in new_audio_flac.tags
+        and exp_album_artist is None
+        or new_audio_flac["ALBUMARTIST"][0] == exp_album_artist
+    )
 
-        assert str(new_audio_mp3["TALB"]) == exp_album
-        assert new_audio_flac["ALBUM"][0] == exp_album
+    assert str(new_audio_mp3["TALB"]) == exp_album
+    assert new_audio_flac["ALBUM"][0] == exp_album
 
-        assert (
-            "TCON" not in new_audio_mp3.tags
-            and exp_genres == []
-            or re.split(utils.TAG_MULTIPLE_PATTERN, str(new_audio_mp3["TCON"]))
-            == exp_genres
-        )
-        assert (
-            "GENRE" not in new_audio_flac.tags
-            and exp_genres == []
-            or new_audio_flac["GENRE"] == exp_genres
-        )
+    assert (
+        "TCON" not in new_audio_mp3.tags
+        and exp_genres == []
+        or re.split(utils.TAG_MULTIPLE_PATTERN, str(new_audio_mp3["TCON"]))
+        == exp_genres
+    )
+    assert (
+        "GENRE" not in new_audio_flac.tags
+        and exp_genres == []
+        or new_audio_flac["GENRE"] == exp_genres
+    )
 
-        assert (
-            "TRCK" not in new_audio_mp3.tags
-            and exp_track_number is None
-            or int(str(new_audio_mp3["TRCK"])) == exp_track_number
-        )
-        assert (
-            "TRACKNUMBER" not in new_audio_flac.tags
-            and exp_track_number is None
-            or int(new_audio_flac["TRACKNUMBER"][0]) == exp_track_number
-        )
+    assert (
+        "TRCK" not in new_audio_mp3.tags
+        and exp_track_number is None
+        or int(str(new_audio_mp3["TRCK"])) == exp_track_number
+    )
+    assert (
+        "TRACKNUMBER" not in new_audio_flac.tags
+        and exp_track_number is None
+        or int(new_audio_flac["TRACKNUMBER"][0]) == exp_track_number
+    )
 
-        assert (
-            "TDRC" not in new_audio_mp3.tags
-            and exp_year is None
-            or str(new_audio_mp3["TDRC"][0]) == exp_year
-        )
-        assert (
-            "DATE" not in new_audio_flac.tags
-            and exp_year is None
-            or new_audio_flac["DATE"][0] == exp_year
-        )
+    assert (
+        "TDRC" not in new_audio_mp3.tags
+        and exp_year is None
+        or str(new_audio_mp3["TDRC"][0]) == exp_year
+    )
+    assert (
+        "DATE" not in new_audio_flac.tags
+        and exp_year is None
+        or new_audio_flac["DATE"][0] == exp_year
+    )
 
-        assert set(utils.get_custom_tags_mp3(new_audio_mp3)) == set(exp_custom)
-        assert set(utils.get_custom_tags_flac(new_audio_flac)) == set(exp_custom)
+    assert set(utils.get_custom_tags_mp3(new_audio_mp3)) == set(exp_custom)
+    assert set(utils.get_custom_tags_flac(new_audio_flac)) == set(exp_custom)

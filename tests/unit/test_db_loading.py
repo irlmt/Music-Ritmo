@@ -3,11 +3,13 @@ from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 from mutagen.id3 import TIT2, TPE1, TPE2, TALB, TCON, TRCK, TDRC  # type: ignore[attr-defined]
 from unittest.mock import MagicMock, patch
-from sqlmodel import Session, select
+from sqlmodel import SQLModel, create_engine, Session, select
 
 from src.app import db_loading
 from src.app import database as db
-from .temp_db import init_temp_db, TEST_MP3_FILE, TEST_FLAC_FILE
+
+TEST_MP3_FILE = "tracks\\MACAN_-_I_AM_78125758.mp3"
+TEST_FLAC_FILE = "tracks\\Atomic Heart\\03. Arlekino (Geoffrey Day Remix).flac"
 
 
 @pytest.mark.parametrize(
@@ -281,6 +283,86 @@ def test_extract_metadata_flac(
     assert audio_info.year == exp_year
 
 
+@pytest.fixture
+def session():
+    engine = create_engine("sqlite:///:memory:")
+    SQLModel.metadata.create_all(engine)
+
+    session = Session(engine, autoflush=False)
+
+    temp_artist = db.Artist(name="present_artist1")
+    temp_album = db.Album(
+        name="present_album1",
+        album_artist_id=None,
+        total_tracks=1,
+        year="2019",
+        cover=bytes(),
+        artists=[temp_artist],
+    )
+    session.add(temp_album)
+    session.commit()
+    session.refresh(temp_artist)
+    session.refresh(temp_album)
+
+    temp_genre = db.Genre(name="present_genre1")
+    temp_custom_tag = db.CustomTag(
+        name="present_custom1", value="present_value1", updated=False
+    )
+
+    temp_track_mp3 = db.Track(
+        file_path="./present_track.mp3",
+        file_size=3,
+        type="audio/mpeg",
+        title="Present",
+        album_artist_id=None,
+        album_id=temp_album.id,
+        album_position=2,
+        year="2019",
+        plays_count=0,
+        cover=bytes(),
+        cover_type="",
+        bit_rate=10,
+        bits_per_sample=10,
+        sample_rate=10,
+        channels=10,
+        duration=10,
+        artists=[temp_artist],
+        genres=[temp_genre],
+        custom_tags=[temp_custom_tag],
+    )
+    session.add(temp_track_mp3)
+
+    temp_track_flac = db.Track(
+        file_path="./already_song.flac",
+        file_size=3,
+        type="audio/flac",
+        title="Already",
+        album_artist_id=None,
+        album_id=temp_album.id,
+        album_position=1,
+        year="2020",
+        plays_count=0,
+        cover=bytes(),
+        cover_type="",
+        bit_rate=10,
+        bits_per_sample=10,
+        sample_rate=10,
+        channels=10,
+        duration=10,
+        artists=[temp_artist],
+        genres=[temp_genre],
+        custom_tags=[temp_custom_tag],
+    )
+    session.add(temp_track_flac)
+    session.commit()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        SQLModel.metadata.drop_all(engine)
+
+
 @pytest.mark.parametrize(
     "file_path, type, title, artists, album_artist, album, genres, track_number, year, custom_tags",
     [
@@ -361,6 +443,7 @@ def test_extract_metadata_flac(
 @patch("os.path.getsize")
 def test_db_load_audio(
     mock_getsize: MagicMock,
+    session: Session,
     file_path: str,
     type: str,
     title: str,
@@ -393,46 +476,37 @@ def test_db_load_audio(
     audio_info.channels = 1
     audio_info.duration = 1
 
-    checked = False
-    with Session(init_temp_db()) as session:
-        db_loading.load_audio_data(audio_info, session)
+    db_loading.load_audio_data(audio_info, session)
 
-        track = session.exec(
-            select(db.Track).where(db.Track.file_path == file_path)
-        ).one_or_none()
-        assert track is not None
+    track = session.exec(select(db.Track).where(db.Track.file_path == file_path)).one()
 
-        assert track.file_path == file_path
-        assert track.type == type
-        assert track.title == title
+    assert track.file_path == file_path
+    assert track.type == type
+    assert track.title == title
 
-        artists_names = list(artist.name for artist in track.artists)
-        for artist in artists:
-            assert artist in artists_names
+    artists_names = list(artist.name for artist in track.artists)
+    for artist in artists:
+        assert artist in artists_names
 
-        if album_artist is None:
-            assert track.album_artist_id is None
-        else:
-            assert track.album_artist_id is not None
-            album_artist_db = session.exec(
-                select(db.Artist).where(db.Artist.id == track.album_artist_id)
-            ).one_or_none()
-            assert album_artist_db is not None
-            assert album_artist_db.name == album_artist
+    if album_artist is None:
+        assert track.album_artist_id is None
+    else:
+        assert track.album_artist_id is not None
+        album_artist_db = session.exec(
+            select(db.Artist).where(db.Artist.id == track.album_artist_id)
+        ).one()
+        assert album_artist_db.name == album_artist
 
-        assert track.album.name == album
-        genres_names = list(genre.name for genre in track.genres)
-        for genre in genres:
-            assert genre in genres_names
+    assert track.album.name == album
+    genres_names = list(genre.name for genre in track.genres)
+    for genre in genres:
+        assert genre in genres_names
 
-        assert track.album_position == track_number
-        assert track.year == year
+    assert track.album_position == track_number
+    assert track.year == year
 
-        track_custom_tags = list(
-            (custom_tag.name, custom_tag.value) for custom_tag in track.custom_tags
-        )
-        for name, value in custom_tags:
-            assert (name, value) in track_custom_tags
-
-        checked = True
-    assert checked == True
+    track_custom_tags = list(
+        (custom_tag.name, custom_tag.value) for custom_tag in track.custom_tags
+    )
+    for name, value in custom_tags:
+        assert (name, value) in track_custom_tags
