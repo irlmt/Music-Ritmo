@@ -185,36 +185,24 @@ class TestTrackService(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (2000, 2000, [(1, 1999), (2, 2000), (3, 2001), (4, 2000)], [2, 4]),
-            (2000, 2000, [(1, 2000), (2, None)], [1]),
-            (2000, 2010, [(1, 2010), (2, 2003), (3, 2008)], [2, 3, 1]),
-            (2010, 2000, [(1, 2010), (2, 2003), (3, 2008)], [1, 3, 2]),
-            (2011, 2020, [(1, 2010), (2, 2003), (3, 2008)], []),
-            (2000, 2010, [(1, 2010), (2, 2003), (3, 2008)], [2, 3], 2, 0),
-            (2000, 2010, [(1, 2010), (2, 2003), (3, 2008)], [3, 1], 2, 1),
-            (2000, 2010, [(1, 2010), (2, 2003), (3, 2008)], [3, 1], 3, 1),
-            (2010, 2000, [(1, 2010), (2, 2003), (3, 2008)], [1, 3], 2, 0),
-            (2010, 2000, [(1, 2010), (2, 2003), (3, 2008)], [3, 2], 2, 1),
-            (2010, 2000, [(1, 2010), (2, 2003), (3, 2008)], [3, 2], 3, 1),
+            ("2000", "2010", ("2000", "2010", False)),
+            ("2010", "2000", ("2000", "2010", True)),
+            ("2000", "2000", ("2000", "2000", False)),
         ]
     )
     def test_get_album_list_by_year(
         self,
-        from_year: int | None,
-        to_year: int | None,
-        input_id_year: list[tuple[int, int]],
-        output_ids: list[int],
+        from_year: str,
+        to_year: str,
+        expected_call: tuple[str, str, bool],
         size: int = 10,
         offset: int = 0,
     ):
-        albums = []
-        for id, year in input_id_year:
-            album, _, _ = get_entities(id)
-            album.year = year
-            albums.append(album)
+        album, _, _ = get_entities(1)
+        album.year = "2005"
 
-        self.album_service.album_db_helper.get_all_albums = MagicMock(
-            return_value=albums
+        self.album_service.album_db_helper.get_sorted_by_year_albums = MagicMock(
+            return_value=[album]
         )
 
         result = self.album_service.get_album_list(
@@ -225,25 +213,28 @@ class TestTrackService(unittest.TestCase):
             to_year=to_year,
         )
 
+        self.album_service.album_db_helper.get_sorted_by_year_albums.assert_called_with(
+            expected_call[0], expected_call[1], size, offset, expected_call[2]
+        )
+
         self.assertIsNotNone(result)
-        self.assertEqual(len(result), len(output_ids))
-        for album in result:
-            self.assertIn(album.id, output_ids)
+        self.assertEqual(len(result), 1)
+        self.check_album(result[0], album, with_tracks=False)
 
     @parameterized.expand(
         [
-            (2000, None),
-            (None, 2010),
+            ("2000", None),
+            (None, "2010"),
             (None, None),
         ]
     )
     def test_get_album_list_failed(
         self,
-        from_year: int | None,
-        to_year: int | None,
+        from_year: str | None,
+        to_year: str | None,
     ):
         album, _, _ = get_entities(1)
-        album.year = 2005
+        album.year = "2005"
 
         self.album_service.album_db_helper.get_all_albums = MagicMock(
             return_value=[album]
