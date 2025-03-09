@@ -275,9 +275,11 @@ class AlbumService:
                     for album in albums
                     if album.year
                     and min(from_year, to_year) <= album.year <= max(from_year, to_year)
-                ][offset : size + offset]
+                ]
+                result.sort(key=lambda album: album.year)
                 if from_year > to_year:
                     result.reverse()
+                result = result[offset : size + offset]
             case (
                 RequestType.NEWEST
                 | RequestType.HIGHEST
