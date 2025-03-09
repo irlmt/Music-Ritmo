@@ -289,12 +289,13 @@ class AlbumService:
                 result = self.album_db_helper.get_sorted_by_year_albums(
                     min_year, max_year, size, offset, reversed_order
                 )
+            case RequestType.BY_GENRE if genre is not None:
+                result = self.album_db_helper.get_albums_by_genre(genre, size, offset)
             case (
                 RequestType.NEWEST
                 | RequestType.HIGHEST
                 | RequestType.FREQUENT
                 | RequestType.RECENT
-                | RequestType.BY_GENRE
             ):
                 raise NotImplementedError()
             case _:  # validation error
