@@ -129,6 +129,17 @@ class AlbumDBHelper:
             .offset(offset)
         ).all()
 
+    def get_sorted_albums_by_frequency(
+        self, size: int, offset: int
+    ) -> Sequence[db.Album]:
+        return self.session.exec(
+            select(db.Album)
+            .order_by(desc(db.Album.play_count))  # type: ignore
+            .order_by(db.Album.name)
+            .limit(size)
+            .offset(offset)
+        ).all()
+
 
 class TrackDBHelper:
     def __init__(self, session: Session):

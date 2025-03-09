@@ -37,6 +37,7 @@ class TestMusicFunctions(unittest.TestCase):
         mock_album.name = name
         mock_album.total_tracks = total_tracks
         mock_album.tracks = tracks
+        mock_album.play_count = 1
         return mock_album
 
     def create_mock_track(self, id=1, title="Test Track", album_name="Test Album"):
@@ -111,7 +112,7 @@ class TestMusicFunctions(unittest.TestCase):
         self.assertEqual(album.artist, "Test Artist")
         self.assertEqual(album.artist_id, 2)
         self.assertEqual(album.cover_art_id, 1)
-        self.assertIsNone(album.play_count)
+        self.assertEqual(album.play_count, 1)
         self.assertIsNone(album.starred)
         self.assertIsNone(album.year)
         self.assertEqual(album.genre, "")
