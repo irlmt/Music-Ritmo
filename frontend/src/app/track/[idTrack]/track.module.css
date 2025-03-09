@@ -1,3 +1,8 @@
+.wrapper {
+  display: flex;
+  flex-direction: row;
+}
+
 .track__avatar {
   display: flex;
   width: 80%;

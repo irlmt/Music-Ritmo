@@ -165,6 +165,9 @@ export default function PlayedTrack() {
   const [trackData, setTrackData] = useState<TrackData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  const [lyrics, setLyrics] = useState<string | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -420,12 +423,34 @@ export default function PlayedTrack() {
     }
   }, []);
 
+  useEffect(() => {
+    const idFromUrl = pathname?.split("/")[2];
+    if (idFromUrl) {
+      setTrackId(parseInt(idFromUrl));
+    }
+  }, [pathname]);
+
+  const toggleLyrics = async () => {
+    setIsLyricsOpen(!isLyricsOpen);
+    if (!isLyricsOpen && trackId) {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/specific/getLyricsBySongId?id=${trackId}`
+        );
+        const data = await response.json();
+        setLyrics(data.lyrics || "Текст песни не найден");
+      } catch {
+        setLyrics("Ошибка загрузки текста песни");
+      }
+    }
+  };
+
   if (isLoading) {
     return <div>Загрузка...</div>;
   }
 
   return (
-    <div>
+    <div className={styles.wrapper}>
       <Container
         style={{
           height: "70vh",
@@ -545,9 +570,36 @@ export default function PlayedTrack() {
             className={`fa-solid fa-share ${styles.track__controlIcon}`}
             onClick={toggleModal}
           ></i>
-          <i className={`fa-solid fa-list-ul ${styles.track__controlIcon}`}></i>
+          <i
+            className={`fa-solid fa-list-ul ${styles.track__controlIcon}`}
+            onClick={toggleLyrics}
+          ></i>
         </div>
       </Container>
+
+      {isLyricsOpen && (
+        <Container
+          style={{
+            height: "70vh",
+            width: "21vw",
+            position: "fixed",
+            right: "25px",
+            top: "70px",
+          }}
+          arrow={false}
+          direction="column"
+        >
+          <div
+            style={{
+              wordWrap: "break-word",
+              whiteSpace: "normal",
+              textAlign: "left",
+            }}
+          >
+            {lyrics || "Загрузка..."}
+          </div>
+        </Container>
+      )}
 
       {audioUrl && (
         <audio
