@@ -1,51 +1,86 @@
+import pytest
 import unittest
 from unittest.mock import MagicMock, patch
-from fastapi.responses import Response, JSONResponse
-from src.app.frontend_endpoints import generate_random_avatar, get_tags
-import json
+from fastapi.responses import JSONResponse
+import src.app.open_subsonic_api as api
 
 
-class TestAvatarEndpoints(unittest.TestCase):
+class TestOpenSubsonicAPI(unittest.TestCase):
     def setUp(self):
+        self.session_mock = MagicMock()
         self.user_mock = MagicMock()
+        self.user_mock.login = "testuser"
 
-    @patch("src.app.service_layer.generate_and_save_avatar")
-    def test_generate_random_avatar_success(self, mock_generate):
-        mock_generate.return_value = b"fake_avatar"
-        response = generate_random_avatar(self.user_mock, MagicMock())
-        self.assertEqual(response.media_type, "image/png")
-        self.assertEqual(response.body, b"fake_avatar")
+    @pytest.mark.asyncio
+    async def test_create_user_error(self):
+        with patch("src.app.service_layer.create_user") as mock_create_user:
+            mock_create_user.return_value = (None, "Error creating user")
+            result = await api.create_user(
+                username="testuser", password="testpass", session=self.session_mock
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 400
+            assert result.body == b'{"detail":"Error creating user"}'
 
-    @patch("src.app.service_layer.generate_and_save_avatar")
-    def test_generate_random_avatar_failure(self, mock_generate):
-        mock_generate.return_value = None
-        response = Response(status_code=500)
-        self.assertEqual(response.status_code, 500)
+    @pytest.mark.asyncio
+    async def test_delete_user(self):
+        with patch("src.app.database.Session.exec") as mock_exec:
+            mock_exec.return_value.one_or_none.return_value = self.user_mock
+            result = await api.delete_user(
+                username="testuser",
+                current_user=self.user_mock,
+                session=self.session_mock,
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 200
 
+    @pytest.mark.asyncio
+    async def test_update_user_not_found(self):
+        with patch("src.app.database.Session.exec") as mock_exec:
+            mock_exec.return_value.one_or_none.return_value = None
+            result = await api.update_user(
+                username="testuser", session=self.session_mock
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 404
+            assert result.body == b'{"detail":"User not found"}'
 
-class TestUserEndpoints(unittest.TestCase):
-    def setUp(self):
-        self.data_mock = {"artist": "New Artist"}
+    @pytest.mark.asyncio
+    async def test_change_password_not_found(self):
+        with patch("src.app.database.Session.exec") as mock_exec:
+            mock_exec.return_value.one_or_none.return_value = None
+            result = await api.change_password(
+                username="testuser",
+                password="newpass",
+                session=self.session_mock,
+                current_user=self.user_mock,
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 404
+            assert result.body == b'{"detail":"User not found"}'
 
-    @patch("src.app.utils.get_base_tags", return_value={"title": "Song"})
-    @patch("src.app.utils.get_custom_tags", return_value={"mood": "Happy"})
-    def test_get_tags_success(self, mock_get_custom, mock_get_base):
-        response = get_tags(1, MagicMock())
-        expected_response = {"title": "Song", "mood": "Happy"}
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.body), expected_response)
+    @pytest.mark.asyncio
+    async def test_get_user_not_found(self):
+        with patch("src.app.database.Session.exec") as mock_exec:
+            mock_exec.return_value.one_or_none.return_value = None
+            result = await api.get_user(
+                username="testuser",
+                session=self.session_mock,
+                current_user=self.user_mock,
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 404
+            assert result.body == b'{"detail":"User not found"}'
 
-    def test_get_tags_not_found(self):
-        response = JSONResponse(content={"detail": "No such id"}, status_code=404)
-        expected_response = {"detail": "No such id"}
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(json.loads(response.body), expected_response)
-
-    def test_update_tags_not_found(self):
-        response = JSONResponse(content={"detail": "No such id"}, status_code=404)
-        expected_response = {"detail": "No such id"}
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(json.loads(response.body), expected_response)
+    @pytest.mark.asyncio
+    async def test_get_users(self):
+        with patch("src.app.database.Session.exec") as mock_exec:
+            mock_exec.return_value.all.return_value = [self.user_mock]
+            result = await api.get_users(
+                session=self.session_mock, current_user=self.user_mock
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 200
 
 
 if __name__ == "__main__":
