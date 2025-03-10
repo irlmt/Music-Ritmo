@@ -15,7 +15,7 @@ interface Song {
 
 interface Album {
   id: string;
-  title: string;
+  name: string;
   artist: string;
 }
 
@@ -47,6 +47,7 @@ export const SearchPanel = () => {
           `http://localhost:8000/rest/search3?query=${query}`
         );
         const data = await response.json();
+        console.log(data);
 
         if (
           data["subsonic-response"] &&
@@ -138,7 +139,7 @@ export const SearchPanel = () => {
               )}
               {result.type === "album" && (
                 <div className={styles.search__resultAlbum}>
-                  Альбом {result.album}
+                  Альбом {result.name}
                 </div>
               )}
               {result.type === "artist" && (

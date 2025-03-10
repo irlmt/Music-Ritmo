@@ -55,9 +55,8 @@ describe("SearchPanel Component", () => {
                 album: [
                   {
                     id: "2",
-                    title: "Test Album",
+                    name: "Test Album",
                     artist: "Test Artist",
-                    album: "Test Album",
                   },
                 ],
                 artist: [

@@ -48,8 +48,6 @@ export default function Album() {
           const data = await response.json();
           const albumData = data["subsonic-response"]?.album;
 
-          console.log(albumData);
-
           if (albumData) {
             const tracks = albumData.song.map((track: Track) => ({
               ...track,
