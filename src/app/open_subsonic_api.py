@@ -135,9 +135,10 @@ async def get_playlists(
     return rsp.to_json_rsp()
 
 
-@open_subsonic_router.get("/scroble")
-def scroble(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
-    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+@open_subsonic_router.get("/scrobble")
+def scrobble(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
+    track_helper = db_helpers.TrackDBHelper(session)
+    track = track_helper.get_track_by_id(id)
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
