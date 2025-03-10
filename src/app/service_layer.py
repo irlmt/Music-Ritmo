@@ -60,7 +60,7 @@ def fill_album(
         cover_art_id=db_album.id,
         play_count=None,
         starred=None,
-        year=None,
+        year=extract_year(db_album.year),
         genre=join_genre_names(album_genres),
         artists=fill_artist_items(db_album.artists),
         genres=fill_genre_items(album_genres),
@@ -257,7 +257,7 @@ class AlbumService:
         genre: Optional[str] = None,
         music_folder_id: Optional[str] = None,
     ) -> Optional[List[dto.Album]]:
-        result = []
+        result: Sequence[db.Album] = []
         match type:
             case RequestType.RANDOM:
                 albums = self.album_db_helper.get_all_albums()
@@ -269,15 +269,13 @@ class AlbumService:
                 albums.sort(key=lambda album: self.compare_albums_by_artist(album.id))
                 result = albums[offset : offset + size]
             case RequestType.BY_YEAR if from_year is not None and to_year is not None:
-                albums = self.album_db_helper.get_all_albums()
-                result = [
-                    album
-                    for album in albums
-                    if album.year
-                    and min(from_year, to_year) <= album.year <= max(from_year, to_year)
-                ][offset : size + offset]
-                if from_year > to_year:
-                    result.reverse()
+                min_year: str = min(from_year, to_year)
+                max_year: str = max(from_year, to_year)
+                reversed_order = from_year > to_year
+
+                result = self.album_db_helper.get_sorted_by_year_albums(
+                    min_year, max_year, size, offset, reversed_order
+                )
             case (
                 RequestType.NEWEST
                 | RequestType.HIGHEST
