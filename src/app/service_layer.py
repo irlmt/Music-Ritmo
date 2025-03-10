@@ -362,6 +362,8 @@ class TrackService:
         to_year: Optional[str] = None,
         music_folder_id: Optional[str] = None,
     ) -> List[dto.Track]:
+        if size < 0:
+            return []
         tracks = self.track_db_helper.get_all_tracks()
         if genre:
             tracks = self.track_db_helper.get_tracks_by_genre_name(genre)
