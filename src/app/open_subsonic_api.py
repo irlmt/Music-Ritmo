@@ -259,7 +259,7 @@ def get_random_songs(
     service = service_layer.TrackService(session)
     tracks = service.get_random_songs(size, genre, fromYear, toYear)
     if tracks is None:
-        return JSONResponse({"detail": "No page found"}, status_code=404)
+        return JSONResponse({"detail": "Tracks not found"}, status_code=404)
 
     rsp = SubsonicResponse()
     rsp.data["randomSongs"] = OpenSubsonicFormatter.format_tracks(tracks)
