@@ -28,8 +28,10 @@ class TestArtistService(unittest.TestCase):
         assert result is None
 
     def test_get_artist_by_id_artist_found(self):
-        artist = create_artist_entity(id = 1501)
-        self.artist_service.artist_db_helper.get_artist_by_id = MagicMock(return_value=artist)
+        artist = create_artist_entity(id=1501)
+        self.artist_service.artist_db_helper.get_artist_by_id = MagicMock(
+            return_value=artist
+        )
 
         result = self.artist_service.get_artist_by_id(1501)
         assert result is not None
@@ -40,12 +42,13 @@ class TestArtistService(unittest.TestCase):
 
     def test_join_artists_names_empty_list(self):
         result = self.artist_service.join_artists_names([])
-        assert result == ''
+        assert result == ""
 
     def test_join_artists_names_not_empty_list(self):
         artists = [create_artist_entity(id) for id in range(1, 6)]
         result = self.artist_service.join_artists_names(artists)
         assert result == "artist-1, artist-2, artist-3, artist-4, artist-5"
+
 
 if __name__ == "__main__":
     unittest.main()
