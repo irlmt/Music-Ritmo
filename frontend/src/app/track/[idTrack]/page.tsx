@@ -432,14 +432,22 @@ export default function PlayedTrack() {
 
   const toggleLyrics = async () => {
     setIsLyricsOpen(!isLyricsOpen);
+
     if (!isLyricsOpen && trackId) {
       try {
         const response = await fetch(
-          `http://localhost:8000/specific/getLyricsBySongId?id=${trackId}`
+          `http://localhost:8000/rest/getLyricsBySongId?id=${trackId}`
         );
         const data = await response.json();
-        setLyrics(data.lyrics || "Текст песни не найден");
-      } catch {
+        console.log(data);
+        const lines =
+          data?.["subsonic-response"]?.lyricsList?.structuredLyrics?.[0]?.line
+            ?.map((l: { value: string }) => l.value)
+            .join("\n") || "Текст песни не найден";
+
+        setLyrics(lines);
+      } catch (error) {
+        console.error("Ошибка загрузки текста песни:", error);
         setLyrics("Ошибка загрузки текста песни");
       }
     }
@@ -589,15 +597,7 @@ export default function PlayedTrack() {
           arrow={false}
           direction="column"
         >
-          <div
-            style={{
-              wordWrap: "break-word",
-              whiteSpace: "normal",
-              textAlign: "left",
-            }}
-          >
-            {lyrics || "Загрузка..."}
-          </div>
+          <p className={styles.lirics}>{lyrics || "Загрузка..."}</p>
         </Container>
       )}
 
