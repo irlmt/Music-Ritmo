@@ -1,7 +1,8 @@
 from datetime import datetime
-from sqlalchemy import desc, func
+from sqlalchemy import asc, desc, func
 from sqlmodel import Session, select
 from typing import List, Optional, Sequence
+
 from . import database as db
 
 
@@ -90,6 +91,25 @@ class AlbumDBHelper:
             .where(db.ArtistAlbum.artist_id == artist_id)
             .distinct()
             .order_by(desc(db.Album.year), db.Album.name)  # type: ignore
+            .limit(size)
+            .offset(offset)
+        ).all()
+
+    def get_sorted_by_year_albums(
+        self,
+        min_year: str,
+        max_year: str,
+        size: int,
+        offset: int,
+        reversed_order: bool = False,
+    ) -> Sequence[db.Album]:
+        order = asc if not reversed_order else desc
+        return self.session.exec(
+            select(db.Album)
+            .where(db.Album.year >= min_year)  # type: ignore
+            .where(db.Album.year <= max_year)  # type: ignore
+            .order_by(order(db.Album.year))  # type: ignore
+            .order_by(db.Album.name)
             .limit(size)
             .offset(offset)
         ).all()

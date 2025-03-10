@@ -72,8 +72,8 @@ class OpenSubsonicFormatter:
     def format_track(track: Track) -> dict[str, Any]:
         result = {"id": track.id, "isDir": False, "title": track.title, "type": "music"}
 
-        add_if_not_none(result, "ablum", track.album)
-        add_if_not_none(result, "ablumId", track.album_id)
+        add_if_not_none(result, "album", track.album)
+        add_if_not_none(result, "albumId", track.album_id)
         add_if_not_none(result, "parent", track.album_id)
 
         add_if_not_none(result, "artist", track.artist)
@@ -143,6 +143,8 @@ class OpenSubsonicFormatter:
             f"al-{album.cover_art_id}" if album.cover_art_id else None,
         )
 
+        add_if_not_none(result, "genre", album.genre)
+
         add_if_not_none(result, "playCount", album.play_count)
 
         add_datetime_if_not_none(result, "starred", album.starred)
@@ -184,10 +186,6 @@ class OpenSubsonicFormatter:
         )
 
         return result
-
-    @staticmethod
-    def format_artists(artists: Sequence[Artist]) -> dict[str, Any]:
-        return {"artist": list(map(OpenSubsonicFormatter.format_artist, artists))}
 
     @staticmethod
     def format_combination(
@@ -237,14 +235,10 @@ class OpenSubsonicFormatter:
         return result
 
     @staticmethod
-    def format_artist_indexes(indexes: Sequence[ArtistIndex]) -> dict[str, Any]:
-        return {"index": list(map(OpenSubsonicFormatter.format_artist_index, indexes))}
-
-    @staticmethod
     def format_indexes(indexes: Indexes) -> dict[str, Any]:
         result = {
             "ignoredArticles": " ".join(indexes.ignored_articles),
-            "lastModified": indexes.last_modified.timestamp() * 1000,
+            "lastModified": int(indexes.last_modified.timestamp()) * 1000,
         }
 
         add_list_if_not_empty(
@@ -281,7 +275,11 @@ class OpenSubsonicFormatter:
         add_if_not_none(result, "comment", playlist.comment)
         add_if_not_none(result, "owner", playlist.owner)
         add_if_not_none(result, "public", playlist.public)
-        add_if_not_none(result, "coverArt", playlist.cover_art_id)
+        add_if_not_none(
+            result,
+            "coverArt",
+            f"pl-{playlist.cover_art_id}" if playlist.cover_art_id else None,
+        )
         add_str_if_not_empty(result, "allowedUser", " ".join(playlist.allowed_users))
 
         add_list_if_not_empty(
