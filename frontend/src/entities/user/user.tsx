@@ -34,7 +34,6 @@ export const User = () => {
             setAvatar(url);
           } else {
             const data = await response.json();
-            console.log("Полученный ответ с бека:", data);
             setAvatar(data.avatarUrl);
           }
         } else {
@@ -72,7 +71,7 @@ export const User = () => {
       </div>
 
       {isMenuOpen && (
-        <div className={styles.user__menu}>
+        <div className={styles.user__menu} data-testid="user-menu">
           <ul className={styles.user__menu_list}>
             <li>
               <Link href="/settings" className={styles.user__menu_item}>

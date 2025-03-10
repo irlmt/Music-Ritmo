@@ -72,10 +72,10 @@ export const Tracklist = ({
           onClick={onFavouriteToggle}
           data-testid="favourite-icon"
         >
-          {favourite ? (
-            <i className="fa-solid fa-star"></i>
+          {favourite === "true" ? (
+            <i className="fa-solid fa-star" data-testid="filled-star"></i>
           ) : (
-            <i className="fa-regular fa-star"></i>
+            <i className="fa-regular fa-star" data-testid="empty-star"></i>
           )}
         </div>
 

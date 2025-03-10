@@ -107,6 +107,7 @@ export const Playlist = ({
             role="button"
             className={`fa-regular fa-trash-can ${styles.deleteIcon}`}
             onClick={handleDeleteClick}
+            aria-label="delete"
           ></i>
         )}
         <Link href={link} role="link" data-testid="playlist-link">

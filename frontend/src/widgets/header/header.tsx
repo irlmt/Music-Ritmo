@@ -13,10 +13,18 @@ export const Header = () => {
       </div>
       <div className={styles.header__buttons}>
         <Link href="/playlists">
-          <i className={`fa-solid fa-music ${styles.header__buttons__icons}`} />
+          <i
+            className={`fa-solid fa-music ${styles.header__buttons__icons}`}
+            role="img"
+            aria-label="music"
+          />
         </Link>
         <Link href="/favourite-track">
-          <i className={`fa-solid fa-star ${styles.header__buttons__icons}`} />
+          <i
+            className={`fa-solid fa-star ${styles.header__buttons__icons}`}
+            role="img"
+            aria-label="star"
+          />
         </Link>
         <User />
       </div>
