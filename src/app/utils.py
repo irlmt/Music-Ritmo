@@ -33,10 +33,6 @@ def image_to_bytes(image: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def get_default_cover() -> Image.Image:
-    return cast(Image.Image, Image.open(DEFAULT_COVER_PATH))
-
-
 def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes, str]:
     if image_bytes is None:
         default_image = Image.open(DEFAULT_COVER_PREVIEW_PATH)
@@ -51,26 +47,16 @@ def get_cover_preview(image_bytes: bytes | None) -> tuple[bytes, str]:
     return image_to_bytes(image), str(image.format).lower()
 
 
-def get_cover_from_mp3(audio_file_mp3: MP3) -> bytes | None:
-    tags = audio_file_mp3.tags
-    if tags is not None and "APIC:3.jpeg" in tags:
-        return bytes(tags["APIC:3.jpeg"].data)
-    return None
-
-
-def get_cover_from_flac(audio_file_flac: FLAC) -> bytes | None:
-    return (
-        audio_file_flac.pictures[0].data if len(audio_file_flac.pictures) > 0 else None
-    )
-
-
-def get_cover_art(track: db.Track) -> bytes | None:
-    if track.type == "audio/mpeg":
-        return get_cover_from_mp3(MP3(track.file_path))
-    elif track.type == "audio/flac":
-        return get_cover_from_flac(FLAC(track.file_path))
-    else:
-        return None
+def get_cover_from_audio(audio: MP3 | FLAC) -> bytes | None:
+    cover: bytes | None = None
+    match audio:
+        case MP3():
+            tags = audio.tags
+            if tags is not None and "APIC:3.jpeg" in tags:
+                cover = bytes(tags["APIC:3.jpeg"].data)
+        case FLAC():
+            cover = audio.pictures[0].data if len(audio.pictures) > 0 else None
+    return cover
 
 
 def get_audio_object(track: db.Track) -> tuple[MP3 | FLAC, AudioType]:
@@ -187,10 +173,14 @@ def update_tags(track: db.Track, tags: dict[str, Any]) -> tuple[MP3 | FLAC, Audi
                     case AudioType.MP3:
                         audio["TXXX:" + key] = TXXX(desc=key, text=valueStr)  # type: ignore[no-untyped-call]
                     case AudioType.FLAC:
-                        audio["TXXX:" + key] = valueStr
+                        audio["TXXX:" + str(hash(key))] = key + "; " + valueStr
 
     for tag in track.custom_tags:
-        key = "TXXX:" + tag.name
+        match audio_type:
+            case AudioType.MP3:
+                key = "TXXX:" + tag.name
+            case AudioType.FLAC:
+                key = "TXXX:" + str(hash(tag.name))
         if tag.updated == False and key in (audio.tags or []):
             audio.pop(key)
         tag.updated = False
@@ -198,44 +188,38 @@ def update_tags(track: db.Track, tags: dict[str, Any]) -> tuple[MP3 | FLAC, Audi
     return audio, audio_type
 
 
-def clear_table(table: Any, session: Session) -> None:
-    for row in session.exec(select(table)).all():
-        session.delete(row)
-
-
-def clear_media(session: Session) -> None:
-    clear_table(db.Album, session)
-    clear_table(db.Playlist, session)
-    clear_table(db.Genre, session)
-    clear_table(db.CustomTag, session)
-    clear_table(db.Track, session)
-
-    clear_table(db.GenreTrack, session)
-    clear_table(db.ArtistTrack, session)
-    clear_table(db.ArtistAlbum, session)
-    clear_table(db.PlaylistTrack, session)
+def clear_tables(session: Session) -> None:
+    for table in [
+        db.Album,
+        db.Playlist,
+        db.Genre,
+        db.CustomTag,
+        db.Track,
+        db.GenreTrack,
+        db.ArtistTrack,
+        db.ArtistAlbum,
+        db.PlaylistTrack,
+    ]:
+        for row in session.exec(select(table)).all():
+            session.delete(row)
     session.commit()
 
 
-def get_custom_tags_mp3(audio_file: MP3) -> list[tuple[str, str]]:
+def get_custom_tags(audio_file: MP3 | FLAC) -> list[tuple[str, str]]:
     custom_tags: list[tuple[str, str]] = []
     if audio_file.tags:
         for tag in audio_file.tags:
-            if str(tag).startswith("TXXX:"):
-                custom_tags.append((audio_file[tag].desc, audio_file[tag].text[0]))
+            if isinstance(audio_file, MP3):
+                if str(tag).startswith("TXXX:"):
+                    custom_tags.append((audio_file[tag].desc, audio_file[tag].text[0]))
+            elif isinstance(audio_file, FLAC):
+                key, value = tag
+                if str(key).startswith("TXXX:"):
+                    custom_tags.append(tuple(value.split("; ")))
     return custom_tags
 
 
-def get_custom_tags_flac(audio_file: FLAC) -> list[tuple[str, str]]:
-    custom_tags: list[tuple[str, str]] = []
-    if audio_file.tags:
-        for key, value in audio_file.tags:
-            if str(key).startswith("TXXX:"):
-                custom_tags.append((key.split(":")[-1], value))
-    return custom_tags
-
-
-def get_base_tags(track: db.Track, session: Session) -> dict[str, str]:
+def get_track_tags(track: db.Track, session: Session) -> dict[str, str]:
     album_artist = ""
     if track.album_artist_id is not None:
         album_artist = (
@@ -243,6 +227,10 @@ def get_base_tags(track: db.Track, session: Session) -> dict[str, str]:
             .one()
             .name
         )
+
+    custom_tags = {}
+    for tag in track.custom_tags:
+        custom_tags[tag.name] = tag.value
 
     return {
         "title": track.title,
@@ -252,11 +240,4 @@ def get_base_tags(track: db.Track, session: Session) -> dict[str, str]:
         "album_position": str(track.album_position),
         "year": str(track.year),
         "genres": ", ".join(genre.name for genre in track.genres),
-    }
-
-
-def get_custom_tags(track: db.Track) -> dict[str, str]:
-    custom_tags = {}
-    for tag in track.custom_tags:
-        custom_tags[tag.name] = tag.value
-    return custom_tags
+    } | custom_tags

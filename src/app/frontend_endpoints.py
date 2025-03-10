@@ -60,9 +60,7 @@ def get_tags(id: int, session: Session = Depends(db.get_session)) -> JSONRespons
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
-    return JSONResponse(
-        utils.get_base_tags(track, session) | utils.get_custom_tags(track)
-    )
+    return JSONResponse(utils.get_track_tags(track, session))
 
 
 @frontend_router.put("/updateTags")

@@ -70,9 +70,9 @@ def extract_metadata_mp3(audio_file: MP3, audio_info: AudioInfo) -> None:
     )
     audio_info.year = str(audio_file["TDRC"]) if "TDRC" in audio_file.tags else None
     audio_info.cover, audio_info.cover_type = utils.get_cover_preview(
-        utils.get_cover_from_mp3(audio_file)
+        utils.get_cover_from_audio(audio_file)
     )
-    audio_info.custom_tags = utils.get_custom_tags_mp3(audio_file)
+    audio_info.custom_tags = utils.get_custom_tags(audio_file)
 
 
 def extract_metadata_flac(audio_file: FLAC, audio_info: AudioInfo) -> None:
@@ -103,9 +103,9 @@ def extract_metadata_flac(audio_file: FLAC, audio_info: AudioInfo) -> None:
     )
     audio_info.year = str(audio_file["DATE"][0]) if "DATE" in audio_file.tags else None  # type: ignore[operator]
     audio_info.cover, audio_info.cover_type = utils.get_cover_preview(
-        utils.get_cover_from_flac(audio_file)
+        utils.get_cover_from_audio(audio_file)
     )
-    audio_info.custom_tags = utils.get_custom_tags_flac(audio_file)
+    audio_info.custom_tags = utils.get_custom_tags(audio_file)
 
 
 def scan_directory_for_audio_files(dir: str) -> list[AudioInfo]:
