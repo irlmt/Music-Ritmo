@@ -114,7 +114,6 @@ class TestOpenSubsonicAPI(unittest.TestCase):
             assert isinstance(result, JSONResponse)
             assert result.status_code == 200
 
-
     def test_get_random_songs_not_found(self):
         with patch(
             "src.app.service_layer.TrackService.get_random_songs"
