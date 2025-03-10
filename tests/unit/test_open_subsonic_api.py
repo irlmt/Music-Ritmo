@@ -113,3 +113,17 @@ class TestOpenSubsonicAPI(unittest.TestCase):
         mock_get_artist_by_id.return_value = None
         result = api.get_cover_art(id=id, size=None, session=self.session_mock)
         self.assertEqual(result.status_code, 404)
+
+    @patch("src.app.db_helpers.TrackDBHelper.get_track_by_id")
+    def test_scrobble(self, mock_get_track_by_id):
+        track = MagicMock(id=1, plays_count=0)
+        mock_get_track_by_id.return_value = track
+        result = api.scrobble(id=1, session=self.session_mock)
+        self.assertEqual(track.plays_count, 1)
+        self.assertEqual(result.status_code, 200)
+
+    @patch("src.app.db_helpers.TrackDBHelper.get_track_by_id")
+    def test_scrobble_fail_404(self, mock_get_track_by_id):
+        mock_get_track_by_id.return_value = None
+        result = api.scrobble(id=1, session=self.session_mock)
+        self.assertEqual(result.status_code, 404)
