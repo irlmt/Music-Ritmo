@@ -296,3 +296,49 @@ class TestOpenSubsonicAPI(unittest.TestCase):
         mock_get_track_by_id.return_value = None
         result = api.scrobble(id=1, session=self.session_mock)
         self.assertEqual(result.status_code, 404)
+
+    def test_update_playlist_valid_user(self):
+        with patch(
+            "src.app.service_layer.PlaylistService.update_playlist"
+        ) as mock_update_playlist:
+            user = db.User(id=1, login="login", password="pass", avatar="")
+            user.playlists.append(
+                create_playlist_entity(
+                    1, db.User(id=1, login="login", password="pass", avatar="")
+                ),
+                None,
+            )
+            result = api.update_playlist(
+                playlistId=1, current_user=user, session=self.session_mock
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 200
+
+    def test_update_playlist_valid_user_not_found(self):
+        with patch(
+            "src.app.service_layer.PlaylistService.update_playlist"
+        ) as mock_update_playlist:
+            mock_update_playlist.return_value = False
+            user = db.User(id=1, login="login", password="pass", avatar="")
+            user.playlists.append(
+                create_playlist_entity(
+                    1, db.User(id=1, login="login", password="pass", avatar="")
+                ),
+                None,
+            )
+            result = api.update_playlist(
+                playlistId=1, current_user=user, session=self.session_mock
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 404
+
+    def test_update_playlist_not_valid_user(self):
+        with patch(
+            "src.app.service_layer.PlaylistService.update_playlist"
+        ) as mock_update_playlist:
+            user = db.User(id=1, login="login", password="pass", avatar="")
+            result = api.update_playlist(
+                playlistId=1, current_user=user, session=self.session_mock
+            )
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 403
