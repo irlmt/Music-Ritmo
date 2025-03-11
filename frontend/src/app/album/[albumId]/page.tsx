@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Tracklist } from "@/widgets/track-list";
@@ -47,8 +47,6 @@ export default function Album() {
 
           const data = await response.json();
           const albumData = data["subsonic-response"]?.album;
-
-          console.log(albumData);
 
           if (albumData) {
             const tracks = albumData.song.map((track: Track) => ({
