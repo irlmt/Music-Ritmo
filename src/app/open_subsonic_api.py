@@ -135,9 +135,10 @@ async def get_playlists(
     return rsp.to_json_rsp()
 
 
-@open_subsonic_router.get("/scroble")
-def scroble(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
-    track = session.exec(select(db.Track).where(db.Track.id == id)).first()
+@open_subsonic_router.get("/scrobble")
+def scrobble(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
+    track_helper = db_helpers.TrackDBHelper(session)
+    track = track_helper.get_track_by_id(id)
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -258,7 +259,7 @@ def get_random_songs(
     service = service_layer.TrackService(session)
     tracks = service.get_random_songs(size, genre, fromYear, toYear)
     if tracks is None:
-        return JSONResponse({"detail": "No page found"}, status_code=404)
+        return JSONResponse({"detail": "Tracks not found"}, status_code=404)
 
     rsp = SubsonicResponse()
     rsp.data["randomSongs"] = OpenSubsonicFormatter.format_tracks(tracks)
@@ -464,7 +465,7 @@ async def start_scan(session: Session = Depends(db.get_session)) -> JSONResponse
     db_loading.scanStatus["scanning"] = True
     db_loading.scanStatus["count"] = 0
 
-    utils.clear_media(session)
+    utils.clear_tables(session)
     asyncio.get_running_loop().run_in_executor(None, db_loading.scan_and_load)
 
     rsp = SubsonicResponse()
@@ -610,30 +611,28 @@ def get_cover_art(
     parsed_id = int(right)
 
     if prefix == "mf":
-        track = session.exec(
-            select(db.Track).where(db.Track.id == parsed_id)
-        ).one_or_none()
+        track_helper = db_helpers.TrackDBHelper(session)
+        track = track_helper.get_track_by_id(parsed_id)
         if track is None:
             return JSONResponse({"detail": "No such track id"}, status_code=404)
-        image_bytes = utils.get_cover_art(track)
+        audio, _ = utils.get_audio_object(track)
+        image_bytes = utils.get_cover_from_audio(audio)
 
     elif prefix == "al":
-        album = session.exec(
-            select(db.Album).where(db.Album.id == parsed_id)
-        ).one_or_none()
+        album_helper = db_helpers.AlbumDBHelper(session)
+        album = album_helper.get_album_by_id(parsed_id)
         if album is None:
             return JSONResponse({"detail": "No such album id"}, status_code=404)
 
-        album_helpers = db_helpers.AlbumDBHelper(session)
-        track = album_helpers.get_first_track(album.id)
+        track = album_helper.get_first_track(album.id)
         if track is None:
             return JSONResponse({"detail": "No such track id"}, status_code=404)
-        image_bytes = utils.get_cover_art(track)
+        audio, _ = utils.get_audio_object(track)
+        image_bytes = utils.get_cover_from_audio(audio)
 
     elif prefix == "ar":
-        artist = session.exec(
-            select(db.Artist).where(db.Artist.id == parsed_id)
-        ).one_or_none()
+        artist_helper = db_helpers.ArtistDBHelper(session)
+        artist = artist_helper.get_artist_by_id(parsed_id)
         if artist is None:
             return JSONResponse({"detail": "No such artist id"}, status_code=404)
 
@@ -642,7 +641,7 @@ def get_cover_art(
 
     image: Image.Image
     if image_bytes is None:
-        image = utils.get_default_cover()
+        image = Image.open(utils.DEFAULT_COVER_PATH)
         image_bytes = utils.image_to_bytes(image)
     else:
         image = utils.bytes_to_image(image_bytes)
