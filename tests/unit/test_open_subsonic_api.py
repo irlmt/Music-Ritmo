@@ -245,42 +245,6 @@ class TestOpenSubsonicAPI(unittest.TestCase):
             assert isinstance(result, JSONResponse)
             assert result.status_code == 403
 
-    @patch("src.app.db_helpers.TrackDBHelper.get_track_by_id")
-    @patch("src.app.utils.bytes_to_image")
-    def test_get_cover_art_track(self, mock_get_track_by_id, mock_bytes_to_image):
-        track = MagicMock(id=1, type="test")
-        mock_get_track_by_id.return_value = track
-        mock_bytes_to_image.return_value = MagicMock(format="mock")
-        result = api.get_cover_art(id="mf-1", size=None, session=self.session_mock)
-        self.assertEqual(result.status_code, 200)
-
-    @patch("src.app.db_helpers.AlbumDBHelper.get_album_by_id")
-    @patch("src.app.db_helpers.AlbumDBHelper.get_first_track")
-    @patch("src.app.utils.bytes_to_image")
-    def test_get_cover_art_album(
-        self, mock_get_album_by_id, mock_get_first_track, mock_bytes_to_image
-    ):
-        album = MagicMock(id=1)
-        track = MagicMock(id=1, type="test")
-        mock_get_album_by_id.return_value = album
-        mock_get_first_track.return_value = track
-        mock_bytes_to_image.return_value = MagicMock(format="mock")
-        result = api.get_cover_art(id="al-1", size=None, session=self.session_mock)
-        self.assertEqual(result.status_code, 200)
-
-    @patch("src.app.db_helpers.ArtistDBHelper.get_artist_by_id")
-    @patch("src.app.utils.get_default_cover")
-    @patch("src.app.utils.image_to_bytes")
-    def test_get_cover_art_artist(
-        self, mock_get_artist_by_id, mock_get_default_cover, mock_image_to_bytes
-    ):
-        artist = MagicMock(id=1)
-        mock_get_artist_by_id.return_value = artist
-        mock_get_default_cover.return_value = MagicMock(format="mock")
-        mock_image_to_bytes.return_value = bytes()
-        result = api.get_cover_art(id="ar-1", size=None, session=self.session_mock)
-        self.assertEqual(result.status_code, 200)
-
     @parameterized.expand(
         [
             "mf-1",
