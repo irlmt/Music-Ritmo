@@ -22,7 +22,7 @@ open_subsonic_router = APIRouter(prefix="/rest")
 
 
 @open_subsonic_router.get("/createUser")
-async def create_user(
+def create_user(
     username: str = Query(...),
     password: str = Query(...),
     email: str = Query(default=""),
@@ -37,7 +37,7 @@ async def create_user(
 
 
 @open_subsonic_router.get("/deleteUser")
-async def delete_user(
+def delete_user(
     username: str = Query(...),
     current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
@@ -51,7 +51,7 @@ async def delete_user(
 
 
 @open_subsonic_router.get("/updateUser")
-async def update_user(
+def update_user(
     username: str = Query(...),
     password: str = "",
     newUsername: str = "",
@@ -59,6 +59,10 @@ async def update_user(
     session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     user = session.exec(select(db.User).where(db.User.login == username)).one_or_none()
+    if username != current_user.login:
+        rsp = SubsonicResponse()
+        rsp.set_error(50, "User can only update their own data")
+        return rsp.to_json_rsp()
     if not user:
         return JSONResponse({"detail": "User not found"}, status_code=404)
     if newUsername:
@@ -71,7 +75,7 @@ async def update_user(
 
 
 @open_subsonic_router.get("/changePassword")
-async def change_password(
+def change_password(
     username: str = Query(...),
     password: str = Query(...),
     current_user: db.User = Depends(authenticate_user),
@@ -90,7 +94,7 @@ async def change_password(
 
 
 @open_subsonic_router.get("/getUser")
-async def get_user(
+def get_user(
     username: str = Query(..., description="Имя пользователя"),
     current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
@@ -104,7 +108,7 @@ async def get_user(
 
 
 @open_subsonic_router.get("/getUsers")
-async def get_users(
+def get_users(
     current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ) -> JSONResponse:
