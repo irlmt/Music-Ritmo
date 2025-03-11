@@ -114,6 +114,24 @@ class TestOpenSubsonicAPI(unittest.TestCase):
             assert isinstance(result, JSONResponse)
             assert result.status_code == 200
 
+    def test_get_lyrics_by_song_id_not_found(self):
+        with patch(
+            "src.app.service_layer.TrackService.extract_lyrics"
+        ) as mock_get_song:
+            mock_get_song.return_value = None
+            result = api.get_lyrics_by_song_id(id=1, session=self.session_mock)
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 404
+
+    def test_get_lyrics_by_song_id_found(self):
+        with patch(
+            "src.app.service_layer.TrackService.extract_lyrics"
+        ) as mock_get_song:
+            mock_get_song.return_value = [{"text": ["Test Line"], "lang": "eng"}]
+            result = api.get_lyrics_by_song_id(id=1, session=self.session_mock)
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 200
+
     def test_get_random_songs_not_found(self):
         with patch(
             "src.app.service_layer.TrackService.get_random_songs"
