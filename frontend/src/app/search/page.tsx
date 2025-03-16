@@ -20,7 +20,7 @@ interface Song {
 
 interface Album {
   id: string;
-  title: string;
+  name: string;
   artist: string;
   coverArt?: string;
 }
@@ -88,11 +88,6 @@ function SearchResultsPage() {
 
               const coverArtsToFetch: { [key: string]: string } = {};
 
-              console.log(
-                "Данные с сервера:",
-                data["subsonic-response"].searchResult3
-              );
-
               data["subsonic-response"].searchResult3.album.forEach(
                 (album: Album) => {
                   if (album.coverArt) {
@@ -108,8 +103,6 @@ function SearchResultsPage() {
                   }
                 }
               );
-
-              console.log("Обложки для альбомов и артистов:", coverArtsToFetch);
 
               setCoverArts(coverArtsToFetch);
               setResults(searchResult);
@@ -150,14 +143,10 @@ function SearchResultsPage() {
           {albums.length > 0 && (
             <div className={styles.album_playlists}>
               {albums.map((album, index) => {
-                console.log(
-                  `Обложка для альбома ${album.title}:`,
-                  coverArts[album.id] || ""
-                );
                 return (
                   <Playlist
                     key={index}
-                    name={album.title}
+                    name={album.name}
                     link={`/album/${album.id}`}
                     showDelete={false}
                     coverArt={coverArts[album.id] || ""}
@@ -172,10 +161,6 @@ function SearchResultsPage() {
           {artist.length > 0 && (
             <div className={styles.album_playlists}>
               {artist.map((artist, index) => {
-                console.log(
-                  `Обложка для артиста ${artist.name}:`,
-                  coverArts[artist.id] || ""
-                );
                 return (
                   <Artist
                     key={index}

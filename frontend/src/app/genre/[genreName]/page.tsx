@@ -73,12 +73,9 @@ export default function TracksGenre() {
           prevTracks.filter((track) => track.id !== trackId)
         );
         window.location.reload();
-      } else {
-        alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
       console.error("Ошибка при изменении статуса избранного:", error);
-      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Playlist } from "@/entities/playlist";
 import { Button } from "@/shared/button";
+import { useAuth } from "@/app/auth-context";
 import styles from "./playlists.module.css";
 
 type PlaylistType = {
@@ -20,6 +21,7 @@ type PlaylistType = {
 
 export default function Playlists() {
   const router = useRouter();
+  const { user, password } = useAuth();
   const [playlists, setPlaylists] = useState<PlaylistType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +29,8 @@ export default function Playlists() {
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const userLogin = "test_user";
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+          `http://localhost:8000/rest/getPlaylists?username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
 

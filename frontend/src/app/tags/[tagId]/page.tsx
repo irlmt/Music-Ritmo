@@ -12,16 +12,6 @@ interface Tag {
 }
 
 interface ServerResponse {
-  album: string;
-  album_artist: string;
-  album_position: number;
-  artists: string;
-  genres: string;
-  title: string;
-  year: string;
-}
-
-interface RequestData extends ServerResponse {
   [key: string]: string | number;
 }
 
@@ -43,20 +33,12 @@ export default function Tags() {
         );
         const data: ServerResponse = await response.json();
 
-        console.log("Полученные данные:", data);
+        const newTags = Object.keys(data).map((key) => ({
+          tag: key,
+          value: data[key]?.toString() || "",
+        }));
 
-        setTags([
-          { tag: "Album", value: data.album || "" },
-          { tag: "Album Artist", value: data.album_artist || "" },
-          { tag: "Title", value: data.title || "" },
-          { tag: "Artists", value: data.artists || "" },
-          { tag: "Genres", value: data.genres || "" },
-          { tag: "Year", value: data.year || "" },
-          {
-            tag: "Album Position",
-            value: data.album_position?.toString() || "",
-          },
-        ]);
+        setTags(newTags);
         setError(null);
       } catch (error) {
         console.error("Ошибка при загрузке тегов:", error);
@@ -94,40 +76,14 @@ export default function Tags() {
     };
     setTags([...tags, newTag]);
   };
+
   const handleSaveTags = async () => {
     try {
-      const requestData: RequestData = {
-        album: tags.find((tag) => tag.tag === "Album")?.value || "",
-        album_artist:
-          tags.find((tag) => tag.tag === "Album Artist")?.value || "",
-        album_position:
-          parseInt(
-            tags.find((tag) => tag.tag === "Album Position")?.value || "0",
-            10
-          ) || 0,
-        artists: tags.find((tag) => tag.tag === "Artists")?.value || "",
-        genres: tags.find((tag) => tag.tag === "Genres")?.value || "",
-        title: tags.find((tag) => tag.tag === "Title")?.value || "",
-        year: tags.find((tag) => tag.tag === "Year")?.value || "",
-      };
+      const requestData: ServerResponse = {};
 
       tags.forEach((tag) => {
-        if (
-          ![
-            "Album",
-            "Album Artist",
-            "Album Position",
-            "Artists",
-            "Genres",
-            "Title",
-            "Year",
-          ].includes(tag.tag)
-        ) {
-          requestData[tag.tag] = tag.value;
-        }
+        requestData[tag.tag] = tag.value;
       });
-
-      console.log("Отправляемые данные на бэкенд:", requestData);
 
       const response = await fetch(
         `http://localhost:8000/specific/updateTags?id=${decodedTagId}`,
@@ -139,8 +95,6 @@ export default function Tags() {
           body: JSON.stringify(requestData),
         }
       );
-
-      console.log("Response status:", response.status);
 
       if (response.ok) {
         console.log("Теги успешно сохранены!");

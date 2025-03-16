@@ -85,7 +85,6 @@ const Modal = ({
         }
       );
       const data = await response.json();
-      console.log(data);
 
       if (data["subsonic-response"].status === "ok") {
         setSuccessMessage(`Трек успешно добавлен в плейлист "${playlistName}"`);
@@ -201,12 +200,13 @@ export default function PlayedTrack() {
       setIsLoading(true);
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/getSong?id=${id}`
+          `http://localhost:8000/rest/getSong?id=${id}&username=${user}&u=${user}&p=${password}`
         );
         if (!response.ok) {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
+        console.log(data);
 
         const track = data?.["subsonic-response"]?.song;
 
@@ -305,12 +305,9 @@ export default function PlayedTrack() {
             ? { ...prev, starred: !isFavourite ? new Date().toISOString() : "" }
             : null
         );
-      } else {
-        alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
       console.error("Ошибка при изменении статуса избранного:", error);
-      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 
@@ -439,7 +436,6 @@ export default function PlayedTrack() {
           `http://localhost:8000/rest/getLyricsBySongId?id=${trackId}`
         );
         const data = await response.json();
-        console.log(data);
         const lines =
           data?.["subsonic-response"]?.lyricsList?.structuredLyrics?.[0]?.line
             ?.map((l: { value: string }) => l.value)
@@ -457,6 +453,8 @@ export default function PlayedTrack() {
     return <div>Загрузка...</div>;
   }
 
+  const previousPageUrl = document.referrer || "/";
+
   return (
     <div className={styles.wrapper}>
       <Container
@@ -467,7 +465,7 @@ export default function PlayedTrack() {
           marginTop: "70px",
         }}
         arrow={true}
-        link_arrow={"/"}
+        link_arrow={previousPageUrl}
         direction="column"
       >
         <div

@@ -47,7 +47,6 @@ export const SearchPanel = () => {
           `http://localhost:8000/rest/search3?query=${query}`
         );
         const data = await response.json();
-        console.log(data);
 
         if (
           data["subsonic-response"] &&
