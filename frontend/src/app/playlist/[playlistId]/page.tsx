@@ -76,9 +76,8 @@ export default function Playlist() {
 
     const fetchPlaylists = async () => {
       try {
-        const userLogin = "test_user";
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+          `http://localhost:8000/rest/getPlaylists?username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
 
