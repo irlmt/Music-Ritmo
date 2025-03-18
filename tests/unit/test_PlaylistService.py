@@ -13,14 +13,14 @@ class TestPlaylistService(unittest.TestCase):
         self.playlist_service.playlist_db_helper.get_all_playlists = MagicMock(
             return_value=[MagicMock(id=i) for i in range(3)]
         )
-        result = self.playlist_service.get_playlists()
+        result = self.playlist_service.get_playlists(None)
         assert len(result) == 3
 
     def test_get_playlists_returns_empty_list(self):
         self.playlist_service.playlist_db_helper.get_all_playlists = MagicMock(
             return_value=[]
         )
-        result = self.playlist_service.get_playlists()
+        result = self.playlist_service.get_playlists(None)
         assert result == []
 
     def test_get_playlist_by_id_found(self):
@@ -29,7 +29,7 @@ class TestPlaylistService(unittest.TestCase):
             return_value=playlist_mock
         )
         with patch("src.app.service_layer.fill_playlist", return_value=playlist_mock):
-            result = self.playlist_service.get_playlist(1)
+            result = self.playlist_service.get_playlist(1, None)
             self.assertIsNotNone(result)
             assert result.id == 1
 
@@ -37,7 +37,7 @@ class TestPlaylistService(unittest.TestCase):
         self.playlist_service.playlist_db_helper.get_playlist = MagicMock(
             return_value=None
         )
-        result = self.playlist_service.get_playlist(999)
+        result = self.playlist_service.get_playlist(999, None)
         self.assertIsNone(result)
 
     def test_create_playlist_success(self):
