@@ -99,7 +99,7 @@ def fill_genre_items(genres: Sequence[db.Genre]) -> List[dto.GenreItem]:
     return list(map(fill_genre_item, genres))
 
 
-def set_track_starred(db_track: db.Track, db_user: db.User | None) -> str | None:
+def set_track_starred(db_track: db.Track, db_user: db.User | None) -> datetime | None:
     if db_user is None:
         return None
     for track in db_track.track_favourites:

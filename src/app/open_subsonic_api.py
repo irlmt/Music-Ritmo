@@ -164,7 +164,7 @@ def get_songs_by_genre(
 ) -> JSONResponse:
     rsp = SubsonicResponse()
     service = service_layer.TrackService(session)
-    tracks = service.get_songs_by_genre(genre, current_user)
+    tracks = service.get_songs_by_genre(genre, db_user=current_user)
     rsp.data["songsByGenre"] = OpenSubsonicFormatter.format_tracks(tracks)
     return rsp.to_json_rsp()
 
