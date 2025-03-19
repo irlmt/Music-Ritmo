@@ -31,8 +31,6 @@ export const Artist = ({ name, link, coverArt }: PlaylistProps) => {
         .catch((error) =>
           console.error("Ошибка при загрузке изображения:", error)
         );
-
-      console.log(coverArt);
     }
   }, [coverArt]);
   return (

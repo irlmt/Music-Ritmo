@@ -44,11 +44,10 @@ export default function Playlist() {
 
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylist?id=${playlistId}`
+          `http://localhost:8000/rest/getPlaylist?id=${playlistId}&username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
-
-        console.log("Fetched playlist data:", data);
+        console.log(data);
 
         if (data["subsonic-response"]?.status === "ok") {
           const playlist: Playlist = {
@@ -77,13 +76,10 @@ export default function Playlist() {
 
     const fetchPlaylists = async () => {
       try {
-        const userLogin = "test_user";
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+          `http://localhost:8000/rest/getPlaylists?username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
-
-        console.log("Fetched playlists:", data);
 
         if (data["subsonic-response"].status === "ok") {
           const fetchedPlaylists: Playlist[] =
@@ -116,19 +112,14 @@ export default function Playlist() {
       const response = await fetch(url);
       const data = await response.json();
 
-      console.log("Favourite toggle response:", data);
-
       if (data["subsonic-response"].status === "ok") {
         setStarredTracks((prevTracks) =>
           prevTracks.filter((track) => track.id !== trackId)
         );
         window.location.reload();
-      } else {
-        alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
       console.error("Error toggling favourite:", error);
-      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 
@@ -162,9 +153,6 @@ export default function Playlist() {
         { method: "GET" }
       );
       const data = await response.json();
-      const albumData = data["subsonic-response"]?.playlist.entry;
-
-      console.log("Updated playlist data:", albumData);
 
       if (data["subsonic-response"].status === "ok") {
         setRenameSuccess(true);
@@ -190,8 +178,6 @@ export default function Playlist() {
       );
       const data = await response.json();
 
-      console.log("Remove track response:", data);
-
       if (data["subsonic-response"].status === "ok") {
         setPlaylistData((prev) => {
           if (prev) {
@@ -202,12 +188,9 @@ export default function Playlist() {
           }
           return prev;
         });
-      } else {
-        alert("Ошибка при удалении трека");
       }
     } catch (error) {
       console.error("Ошибка при удалении трека:", error);
-      alert("Произошла ошибка при удалении трека");
     }
 
     setIsRemoveModalOpen(false);

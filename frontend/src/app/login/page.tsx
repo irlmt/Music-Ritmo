@@ -78,7 +78,6 @@ export default function Login() {
         data["subsonic-response"]?.status === "ok" &&
         data["subsonic-response"]?.user
       ) {
-        console.log("Login successful, calling mockLogin"); // Отладочное сообщение
         login(username, password);
         router.push("/");
       } else {

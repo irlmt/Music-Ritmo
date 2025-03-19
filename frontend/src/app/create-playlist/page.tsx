@@ -31,9 +31,8 @@ export default function CreatePlaylist() {
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const userLogin = "test_user";
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+          `http://localhost:8000/rest/getPlaylists?username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
 
@@ -65,13 +64,10 @@ export default function CreatePlaylist() {
     setError(null);
 
     try {
-      const userLogin = "test_user";
       const response = await fetch(
         `http://localhost:8000/rest/createPlaylist?name=${encodeURIComponent(
           playlistName
-        )}&u=${encodeURIComponent(
-          userLogin
-        )}?username=${user}&u=${user}&p=${password}`,
+        )}&username=${user}&u=${user}&p=${password}`,
         {
           method: "GET",
         }

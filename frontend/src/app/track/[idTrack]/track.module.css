@@ -1,3 +1,8 @@
+.wrapper {
+  display: flex;
+  flex-direction: row;
+}
+
 .track__avatar {
   display: flex;
   width: 80%;
@@ -232,4 +237,11 @@
   font-family: "SteticaLight";
   background-color: rgba(255, 255, 255, 0.5);
   border-radius: 0 0 40px 40px;
+}
+
+.lirics {
+  white-space: pre-line;
+  overflow-y: auto;
+  max-height: 100%;
+  padding: 10px;
 }
