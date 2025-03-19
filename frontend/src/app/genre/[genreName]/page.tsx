@@ -32,7 +32,7 @@ export default function TracksGenre() {
     const fetchTracks = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}`
+          `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}&username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
         const songs = data["subsonic-response"]?.songsByGenre?.song;

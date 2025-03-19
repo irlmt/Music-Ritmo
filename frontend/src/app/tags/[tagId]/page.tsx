@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Container } from "@/shared/container";
 import { Button } from "@/shared/button";
@@ -22,6 +22,7 @@ export default function Tags() {
 
   const [tags, setTags] = useState<Tag[]>([]);
   const [, setError] = useState<string | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (!decodedTagId) return;
@@ -52,11 +53,15 @@ export default function Tags() {
   const handleTagChange = (
     tag: Tag,
     field: "tag" | "value",
-    newValue: string
+    newValue: string,
+    index: number
   ) => {
     setTags((prevTags) =>
       prevTags.map((t) => (t.tag === tag.tag ? { ...t, [field]: newValue } : t))
     );
+    setTimeout(() => {
+      inputRefs.current[index]?.focus();
+    }, 0);
   };
 
   const handleDeleteTag = (tag: Tag) => {
@@ -125,16 +130,19 @@ export default function Tags() {
 
           <table className={styles.tags_table}>
             <tbody>
-              {tags.map((tag) => (
+              {tags.map((tag, index) => (
                 <tr key={tag.tag} className={styles.tagRow}>
                   <td>
                     <input
                       type="text"
                       value={tag.tag}
                       onChange={(e) =>
-                        handleTagChange(tag, "tag", e.target.value)
+                        handleTagChange(tag, "tag", e.target.value, index)
                       }
                       className={styles.inputTag}
+                      ref={(el) => {
+                        inputRefs.current[index] = el;
+                      }}
                     />
                   </td>
                   <td>
@@ -142,7 +150,7 @@ export default function Tags() {
                       type="text"
                       value={tag.value}
                       onChange={(e) =>
-                        handleTagChange(tag, "value", e.target.value)
+                        handleTagChange(tag, "value", e.target.value, index)
                       }
                       className={styles.inputValue}
                     />

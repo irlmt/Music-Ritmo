@@ -7,6 +7,7 @@ import { Playlist } from "@/entities/playlist";
 import { Artist } from "@/entities/artist";
 import styles from "./search.module.css";
 import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/app/auth-context";
 
 interface Song {
   id: string;
@@ -45,6 +46,7 @@ function SearchResultsPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [query, setQuery] = useState<string>("");
   const [coverArts, setCoverArts] = useState<{ [key: string]: string }>({});
+  const { user, password } = useAuth();
 
   const searchParams = useSearchParams();
   const queryParam = searchParams.get("query");
@@ -57,7 +59,7 @@ function SearchResultsPage() {
         if (queryParam && queryParam.length > 0) {
           try {
             const response = await fetch(
-              `http://localhost:8000/rest/search3?query=${queryParam}&songCount=100&albumCount=100&artistCount=100&songOffset=0&albumOffset=0&artistOffset=0`
+              `http://localhost:8000/rest/search3?query=${queryParam}&songCount=100&albumCount=100&artistCount=100&songOffset=0&albumOffset=0&artistOffset=0&username=${user}&u=${user}&p=${password}`
             );
             const data = await response.json();
 

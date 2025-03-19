@@ -34,7 +34,7 @@ export default function Album() {
       const fetchAlbumData = async () => {
         try {
           const response = await fetch(
-            `http://localhost:8000/rest/getAlbum?id=${albumId}`
+            `http://localhost:8000/rest/getAlbum?id=${albumId}&username=${user}&u=${user}&p=${password}`
           );
 
           if (!response.ok) {
