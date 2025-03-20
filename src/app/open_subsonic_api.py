@@ -504,8 +504,12 @@ async def start_scan(session: Session = Depends(db.get_session)) -> JSONResponse
     db_loading.scanStatus["scanning"] = True
     db_loading.scanStatus["count"] = 0
 
+    starred_data = utils.get_user_starred_data(session)
+
     utils.clear_tables(session)
-    asyncio.get_running_loop().run_in_executor(None, db_loading.scan_and_load)
+    asyncio.get_running_loop().run_in_executor(
+        None, db_loading.scan_and_load, "./tracks/", starred_data
+    )
 
     rsp = SubsonicResponse()
     rsp.data["scanStatus"] = db_loading.scanStatus

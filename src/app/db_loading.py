@@ -3,6 +3,7 @@ import os
 import re
 
 from pathlib import Path
+from typing import Any
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 from sqlmodel import Session, select
@@ -272,12 +273,73 @@ def load_audio_data(audio_info: AudioInfo, session: Session) -> None:
     session.refresh(track)
 
 
-def scan_and_load(directory_path: str = "./tracks/") -> None:
+def load_starred_data(starred_data: list[Any], session: Session) -> None:
+    for (
+        user_id,
+        starred_tracks,
+        starred_artists,
+        starred_albums,
+        starred_playlists,
+    ) in starred_data:
+        for title, added_at in starred_tracks:
+            track = session.exec(
+                select(db.Track).where(db.Track.title == title)
+            ).one_or_none()
+            if track is not None:
+                session.add(
+                    db.FavouriteTrack(
+                        user_id=user_id, track_id=track.id, added_at=added_at
+                    )
+                )
+
+        for name, added_at in starred_artists:
+            artist = session.exec(
+                select(db.Artist).where(db.Artist.name == name)
+            ).one_or_none()
+            if artist is not None:
+                session.add(
+                    db.FavouriteArtist(
+                        user_id=user_id, artist_id=artist.id, added_at=added_at
+                    )
+                )
+
+        for name, added_at in starred_albums:
+            album = session.exec(
+                select(db.Album).where(db.Album.name == name)
+            ).one_or_none()
+            if album is not None:
+                session.add(
+                    db.FavouriteAlbum(
+                        user_id=user_id, album_id=album.id, added_at=added_at
+                    )
+                )
+
+        for name, added_at in starred_playlists:
+            playlist = session.exec(
+                select(db.Playlist).where(db.Playlist.name == name)
+            ).one_or_none()
+            if playlist is not None:
+                session.add(
+                    db.FavouritePlaylist(
+                        user_id=user_id, playlist_id=playlist.id, added_at=added_at
+                    )
+                )
+
+    session.commit()
+
+
+def scan_and_load(
+    directory_path: str = "./tracks/",
+    starred_data: list[Any] | None = None,
+) -> None:
     audio_files = scan_directory_for_audio_files(directory_path)
 
     with Session(db.engine) as session:
         for file in audio_files:
             load_audio_data(file, session)
             scanStatus["count"] = scanStatus["count"] + 1
+
+        if starred_data is not None:
+            load_starred_data(starred_data, session)
 
     scanStatus["scanning"] = False
