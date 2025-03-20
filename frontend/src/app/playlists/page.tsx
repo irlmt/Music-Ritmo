@@ -27,6 +27,12 @@ export default function Playlists() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user || !password) {
+      setError("Ошибка авторизации. Войдите в систему.");
+      setLoading(false);
+      return;
+    }
+
     const fetchPlaylists = async () => {
       try {
         const response = await fetch(
@@ -54,7 +60,7 @@ export default function Playlists() {
     };
 
     fetchPlaylists();
-  }, []);
+  }, [user, password]);
 
   const handleDelete = (id: string) => {
     setPlaylists(playlists.filter((playlist) => playlist.id !== id));

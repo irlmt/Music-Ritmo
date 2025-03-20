@@ -32,13 +32,19 @@ export default function Playlist() {
   const [playlistName, setPlaylistName] = useState<string>("");
   const [existingPlaylists, setExistingPlaylists] = useState<string[]>([]);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [trackToRemove, setTrackToRemove] = useState<number | null>(null);
+  const [trackToRemove, setTrackToRemove] = useState<string | null>(null);
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
   const [renameSuccess, setRenameSuccess] = useState(false);
   const { user, password } = useAuth();
   const [, setStarredTracks] = useState<Track[]>([]);
+  const [, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user || !password) {
+      setError("Ошибка авторизации. Войдите в систему.");
+      return;
+    }
+
     const fetchPlaylistData = async () => {
       if (!playlistId) return;
 
@@ -47,22 +53,23 @@ export default function Playlist() {
           `http://localhost:8000/rest/getPlaylist?id=${playlistId}&username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
-        console.log(data);
 
         if (data["subsonic-response"]?.status === "ok") {
           const playlist: Playlist = {
             id: data["subsonic-response"].playlist.id,
             name: data["subsonic-response"].playlist.name,
-            entry: data["subsonic-response"].playlist.entry.map(
-              (track: Track) => ({
-                id: track.id,
-                title: track.title,
-                artist: track.artist,
-                artistId: track.artistId,
-                starred: track.starred,
-                duration: track.duration,
-              })
-            ),
+            entry: Array.isArray(data["subsonic-response"].playlist.entry)
+              ? data["subsonic-response"].playlist.entry.map(
+                  (track: Track) => ({
+                    id: track.id,
+                    title: track.title,
+                    artist: track.artist,
+                    artistId: track.artistId,
+                    starred: track.starred,
+                    duration: track.duration,
+                  })
+                )
+              : [],
           };
           setPlaylistData(playlist);
           setPlaylistName(playlist.name);
@@ -97,7 +104,7 @@ export default function Playlist() {
 
     fetchPlaylistData();
     fetchPlaylists();
-  }, [playlistId]);
+  }, [playlistId, user, password]);
 
   const handleFavouriteToggle = async (
     trackId: string,
@@ -168,12 +175,14 @@ export default function Playlist() {
   const confirmRemoveTrack = async () => {
     if (trackToRemove === null) return;
 
-    const trackToDelete = playlistData?.entry[trackToRemove];
+    const trackToDelete = playlistData?.entry.find(
+      (track) => track.id === trackToRemove
+    );
     if (!trackToDelete) return;
 
     try {
       const response = await fetch(
-        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIndexToRemove=${trackToRemove}&username=${user}&u=${user}&p=${password}`,
+        `http://localhost:8000/rest/updatePlaylist?playlistId=${playlistId}&songIdToRemove=${trackToRemove}&username=${user}&u=${user}&p=${password}`,
         { method: "GET" }
       );
       const data = await response.json();
@@ -182,7 +191,7 @@ export default function Playlist() {
         setPlaylistData((prev) => {
           if (prev) {
             const updatedEntries = prev.entry.filter(
-              (track, index) => index !== trackToRemove
+              (track) => track.id !== trackToRemove
             );
             return { ...prev, entry: updatedEntries };
           }
@@ -197,8 +206,8 @@ export default function Playlist() {
     setTrackToRemove(null);
   };
 
-  const handleRemoveTrack = (index: number) => {
-    setTrackToRemove(index);
+  const handleRemoveTrack = (trackId: string) => {
+    setTrackToRemove(trackId);
     setIsRemoveModalOpen(true);
   };
 
@@ -221,8 +230,8 @@ export default function Playlist() {
       >
         <h1 className={styles.playlist__title}>{playlistData.name}</h1>
         <div className={styles.playlist}>
-          {playlistData.entry.map((track, index) => {
-            return (
+          {playlistData.entry.length > 0 ? (
+            playlistData.entry.map((track) => (
               <Tracklist
                 key={track.id}
                 name={track.title}
@@ -232,13 +241,15 @@ export default function Playlist() {
                 favourite={track.starred}
                 time={track.duration}
                 showRemoveButton={true}
-                onRemove={() => handleRemoveTrack(index)}
+                onRemove={() => handleRemoveTrack(track.id)}
                 onFavouriteToggle={() =>
                   handleFavouriteToggle(track.id, track.starred)
                 }
               />
-            );
-          })}
+            ))
+          ) : (
+            <div className={styles.emptyPlaylistMessage}>Плейлист пустой</div>
+          )}
         </div>
       </Container>
 

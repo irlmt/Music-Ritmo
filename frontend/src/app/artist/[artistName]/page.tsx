@@ -43,8 +43,6 @@ export default function Artist() {
     return <div>Загрузка...</div>;
   }
 
-  const previousPageUrl = document.referrer || "/";
-
   return (
     <>
       <Container
@@ -56,15 +54,14 @@ export default function Artist() {
         }}
         direction="column"
         arrow={true}
-        link_arrow={previousPageUrl}
       >
         <h1 className={styles.playlist__title}>{artist.name}</h1>
 
         <div className={styles.playlist}>
           <div className={styles.album_playlists}>
-            {artist.album.map((album, index) => (
+            {artist.album?.map((album) => (
               <Playlist
-                key={index}
+                key={album.id}
                 name={album.name}
                 link={`/album/${album.id}`}
                 coverArt={album.coverArt}

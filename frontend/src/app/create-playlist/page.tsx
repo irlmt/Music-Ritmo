@@ -29,6 +29,9 @@ export default function CreatePlaylist() {
   const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user || !password) {
+      return;
+    }
     const fetchPlaylists = async () => {
       try {
         const response = await fetch(
@@ -52,7 +55,7 @@ export default function CreatePlaylist() {
     };
 
     fetchPlaylists();
-  }, []);
+  }, [user, password]);
 
   const handleCreatePlaylist = async () => {
     if (!playlistName) {
@@ -127,15 +130,18 @@ export default function CreatePlaylist() {
         {nameError && <div className={styles.error}>{nameError}</div>}
 
         {error && <div className={styles.error}>{error}</div>}
-
-        <Button
-          type="normal"
-          color="green"
-          disabled={loading || isNameTooShort || isNameAlreadyExists}
-          onClick={handleCreatePlaylist}
+        <div
+          style={{ display: "flex", width: "100%", justifyContent: "center" }}
         >
-          {loading ? "Создание..." : "Создать плейлист"}
-        </Button>
+          <Button
+            type="normal"
+            color="green"
+            disabled={loading || isNameTooShort || isNameAlreadyExists}
+            onClick={handleCreatePlaylist}
+          >
+            {loading ? "Создание..." : "Создать плейлист"}
+          </Button>
+        </div>
       </Container>
     </>
   );

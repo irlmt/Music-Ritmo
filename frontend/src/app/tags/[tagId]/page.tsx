@@ -21,7 +21,7 @@ export default function Tags() {
     typeof tagId === "string" ? decodeURIComponent(tagId) : "";
 
   const [tags, setTags] = useState<Tag[]>([]);
-  const [, setError] = useState<string | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -40,10 +40,8 @@ export default function Tags() {
         }));
 
         setTags(newTags);
-        setError(null);
       } catch (error) {
         console.error("Ошибка при загрузке тегов:", error);
-        setError("Ошибка при загрузке тегов.");
       }
     };
 
@@ -59,14 +57,18 @@ export default function Tags() {
     setTags((prevTags) =>
       prevTags.map((t) => (t.tag === tag.tag ? { ...t, [field]: newValue } : t))
     );
+
     setTimeout(() => {
-      inputRefs.current[index]?.focus();
+      if (field === "tag") {
+        inputRefs.current[index]?.focus();
+      } else {
+        inputRefs.current[index + tags.length]?.focus();
+      }
     }, 0);
   };
 
-  const handleDeleteTag = (tag: Tag) => {
-    if (tags.indexOf(tag) < 7) return;
-    setTags((prevTags) => prevTags.filter((t) => t.tag !== tag.tag));
+  const handleDeleteTag = (index: number) => {
+    setTags((prevTags) => prevTags.filter((_, i) => i !== index));
   };
 
   const handleClearTags = () => {
@@ -113,90 +115,76 @@ export default function Tags() {
   };
 
   return (
-    <>
-      <Container
-        style={{
-          height: "65vh",
-          width: "60vw",
-          margin: "auto",
-          marginTop: "50px",
-        }}
-        direction="column"
-        arrow={true}
-        link_arrow={`/track/${decodedTagId}`}
-      >
-        <div className={styles.tags}>
-          <h1>Теги</h1>
+    <Container
+      style={{
+        height: "65vh",
+        width: "60vw",
+        margin: "auto",
+        marginTop: "50px",
+      }}
+      direction="column"
+      arrow={true}
+      link_arrow={`/track/${decodedTagId}`}
+    >
+      <div className={styles.tags}>
+        <h1>Теги</h1>
 
-          <table className={styles.tags_table}>
-            <tbody>
-              {tags.map((tag, index) => (
-                <tr key={tag.tag} className={styles.tagRow}>
-                  <td>
-                    <input
-                      type="text"
-                      value={tag.tag}
-                      onChange={(e) =>
-                        handleTagChange(tag, "tag", e.target.value, index)
-                      }
-                      className={styles.inputTag}
-                      ref={(el) => {
-                        inputRefs.current[index] = el;
-                      }}
-                    />
+        <table className={styles.tags_table}>
+          <tbody>
+            {tags.map((tag, index) => (
+              <tr
+                key={tag.tag}
+                className={styles.tagRow}
+                onMouseEnter={() => index >= 7 && setHoveredRow(index)}
+                onMouseLeave={() => setHoveredRow(null)}
+              >
+                <td>
+                  <input
+                    type="text"
+                    value={tag.tag}
+                    onChange={(e) =>
+                      handleTagChange(tag, "tag", e.target.value, index)
+                    }
+                    className={styles.inputTag}
+                    ref={(el) => {
+                      inputRefs.current[index] = el;
+                    }}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    value={tag.value}
+                    onChange={(e) =>
+                      handleTagChange(tag, "value", e.target.value, index)
+                    }
+                    className={styles.inputValue}
+                  />
+                </td>
+                {index >= 7 && hoveredRow === index && (
+                  <td
+                    className={styles.deleteIconWrapper}
+                    onClick={() => handleDeleteTag(index)}
+                  >
+                    <i className={`fa-solid fa-xmark ${styles.deleteIcon}`}></i>
                   </td>
-                  <td>
-                    <input
-                      type="text"
-                      value={tag.value}
-                      onChange={(e) =>
-                        handleTagChange(tag, "value", e.target.value, index)
-                      }
-                      className={styles.inputValue}
-                    />
-                  </td>
-                  {tags.indexOf(tag) >= 7 && (
-                    <td
-                      className={styles.deleteIconWrapper}
-                      onClick={() => handleDeleteTag(tag)}
-                    >
-                      <i
-                        className={`fa-solid fa-xmark ${styles.deleteIcon}`}
-                      ></i>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className={styles.tags_button}>
-          <Button
-            type="normal"
-            color="green"
-            disabled={false}
-            onClick={handleAddTag}
-          >
-            добавить тег
-          </Button>
-          <Button
-            type="normal"
-            color="white"
-            disabled={false}
-            onClick={handleClearTags}
-          >
-            очистить все
-          </Button>
-          <Button
-            type="normal"
-            color="green"
-            disabled={false}
-            onClick={handleSaveTags}
-          >
-            сохранить
-          </Button>
-        </div>
-      </Container>
-    </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.tags_button}>
+        <Button type="normal" color="green" onClick={handleAddTag}>
+          добавить тег
+        </Button>
+        <Button type="normal" color="white" onClick={handleClearTags}>
+          очистить все
+        </Button>
+        <Button type="normal" color="green" onClick={handleSaveTags}>
+          сохранить
+        </Button>
+      </div>
+    </Container>
   );
 }

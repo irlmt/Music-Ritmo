@@ -12,8 +12,8 @@
 
 .playlists__title {
   display: flex;
-  justify-content: center;
-  text-align: center;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .playlists_button {

@@ -43,7 +43,6 @@ export default function FavouriteTrack() {
         }
 
         const data = await response.json();
-        console.log(data);
 
         if (data["subsonic-response"]?.status === "ok") {
           const starred2 = data["subsonic-response"]["starred2"];

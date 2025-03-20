@@ -452,8 +452,6 @@ export default function PlayedTrack() {
     return <div>Загрузка...</div>;
   }
 
-  const previousPageUrl = document.referrer || "/";
-
   return (
     <div className={styles.wrapper}>
       <Container
@@ -464,7 +462,6 @@ export default function PlayedTrack() {
           marginTop: "70px",
         }}
         arrow={true}
-        link_arrow={previousPageUrl}
         direction="column"
       >
         <div

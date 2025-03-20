@@ -22,18 +22,30 @@ export default function TracksGenre() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const { user, password } = useAuth();
   const [, setStarredTracks] = useState<Track[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const decodedGenreName =
     typeof genreName === "string" ? decodeURIComponent(genreName) : "";
 
   useEffect(() => {
-    if (!genreName) return;
+    if (!genreName || !user || !password) {
+      return;
+    }
 
     const fetchTracks = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
         const response = await fetch(
           `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}&username=${user}&u=${user}&p=${password}`
         );
+
+        if (!response.ok) {
+          throw new Error("Ошибка авторизации или загрузки данных");
+        }
+
         const data = await response.json();
         const songs = data["subsonic-response"]?.songsByGenre?.song;
 
@@ -45,15 +57,18 @@ export default function TracksGenre() {
 
           setTracks(tracksData);
         } else {
-          console.error("Треки не найдены в ответе сервера");
+          setError("Треки не найдены");
         }
       } catch (error) {
         console.error("Ошибка при загрузке треков:", error);
+        setError("Ошибка загрузки треков");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchTracks();
-  }, [genreName]);
+  }, [genreName, user, password]);
 
   const handleFavouriteToggle = async (
     trackId: string,
@@ -79,6 +94,10 @@ export default function TracksGenre() {
     }
   };
 
+  if (loading) {
+    return <p>Загрузка...</p>;
+  }
+
   return (
     <Container
       style={{
@@ -93,7 +112,9 @@ export default function TracksGenre() {
     >
       <h1 className={styles.playlist__title}>{decodedGenreName}</h1>
       <div className={styles.playlist}>
-        {tracks.length > 0 ? (
+        {error ? (
+          <p>{error}</p>
+        ) : tracks.length > 0 ? (
           tracks.map((track) => (
             <Tracklist
               key={track.id}
