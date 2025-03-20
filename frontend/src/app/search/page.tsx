@@ -16,6 +16,7 @@ interface Song {
   album: string;
   genre: string;
   starred: string;
+  duration: number;
   additionalData?: Record<string, unknown>;
 }
 
@@ -40,6 +41,7 @@ interface SearchResult {
   starred: string;
   name: string;
   type: "song" | "album" | "artist";
+  duration: number;
 }
 
 function SearchResultsPage() {
@@ -179,15 +181,15 @@ function SearchResultsPage() {
         <div className={styles.tracklist}>
           {songs.length > 0 && (
             <div>
-              {songs.map((song, index) => (
+              {songs.map((song) => (
                 <Tracklist
-                  key={index}
+                  key={song.id}
                   name={song.title}
                   name_link={`/track/${song.id}`}
                   artist={song.artist}
                   artist_link={`/artist/${song.artist}`}
                   favourite={song.starred}
-                  time={0}
+                  time={song.duration}
                   showRemoveButton={false}
                   onFavouriteToggle={() => {}}
                 />

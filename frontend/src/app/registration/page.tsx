@@ -15,7 +15,7 @@ export default function Registration() {
   const [user, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [, setSuccessMessage] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -145,6 +145,7 @@ export default function Registration() {
             }}
           />
           {passwordError && <div className={styles.error}>{passwordError}</div>}
+          {errorMessage && <div className={styles.error}>{errorMessage}</div>}
 
           <div className={styles.registration__content_button}>
             <Button

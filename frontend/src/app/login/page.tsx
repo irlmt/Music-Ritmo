@@ -14,10 +14,21 @@ export default function Login() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [serverError, setServerError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+
+  const translations: { [key: string]: string } = {
+    "Wrong username or password": "Неверно введенный логин или пароль",
+    "User not found": "Пользователь не найден",
+    "Invalid password": "Неверный пароль",
+  };
+
+  const translateError = (message: string) => {
+    return translations[message] || "Ошибка входа";
+  };
 
   const validateFields = () => {
     if (!username || !password) {
@@ -27,29 +38,9 @@ export default function Login() {
     }
   };
 
-  const validateUsername = (value: string) => {
-    if (!value) {
-      setUsernameError("Пожалуйста, введите логин.");
-    } else if (value.length < 5 || value.length > 64) {
-      setUsernameError("Логин должен быть от 5 до 64 символов.");
-    } else {
-      setUsernameError("");
-    }
-  };
-
-  const validatePassword = (value: string) => {
-    if (!value) {
-      setPasswordError("Пожалуйста, введите пароль.");
-    } else if (value.length < 5 || value.length > 64) {
-      setPasswordError("Пароль должен быть от 5 до 64 символов.");
-    } else {
-      setPasswordError("");
-    }
-  };
-
   useEffect(() => {
     validateFields();
-  }, [validateFields]);
+  }, [username, password]);
 
   const handleSubmit = async () => {
     if (usernameError || passwordError || !username || !password) {
@@ -59,36 +50,41 @@ export default function Login() {
 
     setLoading(true);
     setErrorMessage("");
+    setServerError("");
 
-    try {
-      const response = await fetch(
-        `http://localhost:8000/rest/getUser?username=${username}&u=${username}&p=${password}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (
-        response.status === 200 &&
-        data["subsonic-response"]?.status === "ok" &&
-        data["subsonic-response"]?.user
-      ) {
-        login(username, password);
-        router.push("/");
-      } else {
-        setErrorMessage("Неверные данные для входа. Попробуйте снова.");
+    const response = await fetch(
+      `http://localhost:8000/rest/getUser?username=${username}&u=${username}&p=${password}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-    } catch (error) {
-      setErrorMessage("Ошибка сети. Пожалуйста, попробуйте позже.");
-      console.error("Network error:", error);
-    } finally {
-      setLoading(false);
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errorText = translateError(data.detail || "Ошибка входа");
+      setServerError(errorText);
+      return;
     }
+
+    if (data["subsonic-response"]?.status !== "ok") {
+      const errorText = translateError(
+        data["subsonic-response"]?.error?.message || "Ошибка входа"
+      );
+      setServerError(errorText);
+      return;
+    }
+
+    if (!data["subsonic-response"]?.user) {
+      setServerError("Неверные данные для входа. Попробуйте снова.");
+      return;
+    }
+
+    login(username, password);
+    router.push("/");
   };
 
   return (
@@ -105,8 +101,11 @@ export default function Login() {
             value={username}
             onChange={(e) => {
               setUsername(e.target.value);
-              validateUsername(e.target.value);
-              validateFields();
+              setUsernameError(
+                e.target.value.length < 5 || e.target.value.length > 64
+                  ? "Логин должен быть от 5 до 64 символов."
+                  : ""
+              );
             }}
           />
           {usernameError && <div className={styles.error}>{usernameError}</div>}
@@ -117,36 +116,34 @@ export default function Login() {
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              validatePassword(e.target.value);
-              validateFields();
+              setPasswordError(
+                e.target.value.length < 5 || e.target.value.length > 64
+                  ? "Пароль должен быть от 5 до 64 символов."
+                  : ""
+              );
             }}
           />
           {passwordError && <div className={styles.error}>{passwordError}</div>}
+
           {errorMessage && <div className={styles.error}>{errorMessage}</div>}
+
+          {serverError && <div className={styles.error}>{serverError}</div>}
 
           <div className={styles.login__content_button}>
             <Button
               type="normal"
               color="green"
-              disabled={Boolean(
-                loading ||
-                  usernameError ||
-                  passwordError ||
-                  !username ||
-                  !password
-              )}
+              disabled={!username || !password}
               onClick={handleSubmit}
             >
-              {loading ? "Загружается..." : "Войти"}
+              Войти
             </Button>
           </div>
         </Container>
         <Button
           type="transparent"
           color="green-text"
-          onClick={() => {
-            router.push("/registration");
-          }}
+          onClick={() => router.push("/registration")}
         >
           регистрация
         </Button>

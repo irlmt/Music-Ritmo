@@ -43,7 +43,7 @@ export default function Artist() {
     return <div>Загрузка...</div>;
   }
 
-  const previousPageUrl = document.referrer || "/";
+  const previousPageUrl = document.referrer;
 
   return (
     <>
@@ -62,9 +62,9 @@ export default function Artist() {
 
         <div className={styles.playlist}>
           <div className={styles.album_playlists}>
-            {artist.album.map((album, index) => (
+            {artist.album?.map((album) => (
               <Playlist
-                key={index}
+                key={album.id}
                 name={album.name}
                 link={`/album/${album.id}`}
                 coverArt={album.coverArt}
