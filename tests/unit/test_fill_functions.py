@@ -51,7 +51,7 @@ class TestMusicFunctions(unittest.TestCase):
         mock_track.file_size = 12345
         mock_track.file_path = "audio/mpeg"
         mock_track.duration = 180
-        mock_track.bit_rate = 320
+        mock_track.bit_rate = 320 * 1024
         return mock_track
 
     def create_mock_playlist(self, id=1, name="My Playlist", total_tracks=2, tracks=[]):

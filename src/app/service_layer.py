@@ -124,7 +124,7 @@ def fill_track(db_track: db.Track, db_user: db.User | None) -> dto.Track:
         file_size=db_track.file_size,
         content_type=db_track.type,
         duration=int(db_track.duration),
-        bit_rate=db_track.bit_rate,
+        bit_rate=int(round(db_track.bit_rate / 1024)),
         sampling_rate=db_track.sample_rate,
         bit_depth=db_track.bits_per_sample,
         channel_count=db_track.channels,
