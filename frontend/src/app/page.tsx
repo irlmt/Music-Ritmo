@@ -7,6 +7,7 @@ import { SearchPanel } from "@/features/search-panel";
 import { Button } from "@/shared/button";
 import { Playlist } from "@/entities/playlist";
 import styles from "./page.module.css";
+import { useAuth } from "@/app/auth-context";
 
 interface Genre {
   songCount: number;
@@ -22,7 +23,7 @@ interface GenresResponse {
     serverVersion: string;
     openSubsonic: boolean;
     genres: {
-      "genre": Genre[];
+      genre: Genre[];
     };
   };
 }
@@ -32,8 +33,12 @@ const GenreList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user, password } = useAuth();
 
   useEffect(() => {
+    if (!user || !password) {
+      return;
+    }
     const fetchGenres = async () => {
       try {
         const response = await fetch("http://localhost:8000/rest/getGenres");
@@ -52,7 +57,7 @@ const GenreList = () => {
     };
 
     fetchGenres();
-  }, []);
+  }, [user, password]);
 
   if (loading) {
     return <div>Загрузка...</div>;

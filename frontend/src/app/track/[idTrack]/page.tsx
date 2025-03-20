@@ -205,7 +205,6 @@ export default function PlayedTrack() {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
-        console.log(data);
 
         const track = data?.["subsonic-response"]?.song;
 
@@ -438,7 +437,7 @@ export default function PlayedTrack() {
         const lines =
           data?.["subsonic-response"]?.lyricsList?.structuredLyrics?.[0]?.line
             ?.map((l: { value: string }) => l.value)
-            .join("\n") || "Текст песни не найден";
+            .join("\n") || "У трека нет текста";
 
         setLyrics(lines);
       } catch (error) {

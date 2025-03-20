@@ -59,8 +59,13 @@ export default function Tags() {
     setTags((prevTags) =>
       prevTags.map((t) => (t.tag === tag.tag ? { ...t, [field]: newValue } : t))
     );
+
     setTimeout(() => {
-      inputRefs.current[index]?.focus();
+      if (field === "tag") {
+        inputRefs.current[index]?.focus();
+      } else {
+        inputRefs.current[index + tags.length]?.focus();
+      }
     }, 0);
   };
 

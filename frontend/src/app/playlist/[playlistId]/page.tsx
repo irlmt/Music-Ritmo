@@ -186,7 +186,6 @@ export default function Playlist() {
         { method: "GET" }
       );
       const data = await response.json();
-      console.log(trackToRemove);
 
       if (data["subsonic-response"].status === "ok") {
         setPlaylistData((prev) => {

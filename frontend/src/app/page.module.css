@@ -4,6 +4,9 @@
   gap: 20px;
   justify-content: center;
   margin: 0 auto;
+  margin-bottom: 80px;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .home_button {

@@ -121,6 +121,10 @@ export default function Settings() {
   };
 
   useEffect(() => {
+    if (!user || !password) {
+      return;
+    }
+
     const fetchAvatar = async () => {
       try {
         const response = await fetch(
