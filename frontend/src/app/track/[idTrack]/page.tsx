@@ -205,6 +205,7 @@ export default function PlayedTrack() {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
+        console.log(data);
 
         const track = data?.["subsonic-response"]?.song;
 
@@ -437,7 +438,7 @@ export default function PlayedTrack() {
         const lines =
           data?.["subsonic-response"]?.lyricsList?.structuredLyrics?.[0]?.line
             ?.map((l: { value: string }) => l.value)
-            .join("\n") || "У трека нет текста";
+            .join("\n") || "Текст песни не найден";
 
         setLyrics(lines);
       } catch (error) {
@@ -451,8 +452,6 @@ export default function PlayedTrack() {
     return <div>Загрузка...</div>;
   }
 
-  const previousPageUrl = document.referrer || "/";
-
   return (
     <div className={styles.wrapper}>
       <Container
@@ -463,7 +462,6 @@ export default function PlayedTrack() {
           marginTop: "70px",
         }}
         arrow={true}
-        link_arrow={previousPageUrl}
         direction="column"
       >
         <div

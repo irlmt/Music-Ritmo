@@ -111,8 +111,6 @@ export default function Album() {
     return <div>Ошибка загрузки альбома</div>;
   }
 
-  const previousPageUrl = document.referrer;
-
   return (
     <Container
       style={{
@@ -123,7 +121,6 @@ export default function Album() {
       }}
       direction="column"
       arrow={true}
-      link_arrow={previousPageUrl}
     >
       <h1 className={styles.playlist__title}>{album.name}</h1>
       <div className={styles.playlist}>
