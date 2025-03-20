@@ -602,7 +602,7 @@ class PlaylistService:
         return None
 
     def get_playlists(self, db_user: db.User | None) -> List[dto.Playlist]:
-        db_playlists = self.playlist_db_helper.get_all_playlists()
+        db_playlists = self.playlist_db_helper.get_all_playlists(db_user)
         return fill_playlists(db_playlists, db_user, with_songs=False)
 
 
