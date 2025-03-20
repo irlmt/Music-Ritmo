@@ -32,7 +32,7 @@ export default function TracksGenre() {
     const fetchTracks = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}`
+          `http://localhost:8000/rest/getSongsByGenre?genre=${genreName}&username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
         const songs = data["subsonic-response"]?.songsByGenre?.song;
@@ -73,12 +73,9 @@ export default function TracksGenre() {
           prevTracks.filter((track) => track.id !== trackId)
         );
         window.location.reload();
-      } else {
-        alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
       console.error("Ошибка при изменении статуса избранного:", error);
-      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 

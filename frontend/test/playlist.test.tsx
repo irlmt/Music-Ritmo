@@ -2,6 +2,15 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Playlist } from "@/entities/playlist";
 
+jest.mock("../src/app/auth-context", () => ({
+  useAuth: () => ({
+    user: "testUser",
+    password: "testPassword",
+    setUser: jest.fn(),
+    setPassword: jest.fn(),
+  }),
+}));
+
 jest.mock("../src/shared/button", () => ({
   Button: jest.fn(({ children, onClick }) => (
     <button onClick={onClick}>{children}</button>

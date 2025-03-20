@@ -407,8 +407,13 @@ class PlaylistDBHelper:
             select(db.Playlist).where(db.Playlist.id == id)
         ).one_or_none()
 
-    def get_all_playlists(self) -> Sequence[db.Playlist]:
-        return self.session.exec(select(db.Playlist)).all()
+    def get_all_playlists(self, db_user: db.User | None) -> Sequence[db.Playlist]:
+        if db_user is None:
+            return self.session.exec(select(db.Playlist)).all()
+        else:
+            return self.session.exec(
+                select(db.Playlist).where(db.Playlist.user_id == db_user.id)
+            ).all()
 
 
 class UserDBHelper:

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/shared/button";
 import Image from "next/image";
 import styles from "./playlist.module.css";
+import { useAuth } from "@/app/auth-context";
 import Link from "next/link";
 
 interface PlaylistProps {
@@ -24,6 +25,7 @@ export const Playlist = ({
   const colorOptions = ["#949E7B", "#B3BF7D", "#758934", "#A1BA65", "#405A01"];
   const [randomColor, setRandomColor] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
+  const { user, password } = useAuth();
   const [, setDeleteStatus] = useState<string>("");
   const [image, setImage] = useState<string | null>(null);
 
@@ -60,7 +62,7 @@ export const Playlist = ({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/rest/deletePlaylist?id=${playlist_id}`
+        `http://localhost:8000/rest/deletePlaylist?id=${playlist_id}&username=${user}&u=${user}&p=${password}`
       );
       const data = await response.json();
 

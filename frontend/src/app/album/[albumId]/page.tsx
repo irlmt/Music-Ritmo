@@ -34,7 +34,7 @@ export default function Album() {
       const fetchAlbumData = async () => {
         try {
           const response = await fetch(
-            `http://localhost:8000/rest/getAlbum?id=${albumId}`
+            `http://localhost:8000/rest/getAlbum?id=${albumId}&username=${user}&u=${user}&p=${password}`
           );
 
           if (!response.ok) {
@@ -91,18 +91,17 @@ export default function Album() {
           prevTracks.filter((track) => track.id !== trackId)
         );
         window.location.reload();
-      } else {
-        alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
       console.error("Ошибка при изменении статуса избранного:", error);
-      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 
   if (!album) {
     return <div>Загрузка...</div>;
   }
+
+  const previousPageUrl = document.referrer || "/";
 
   return (
     <Container
@@ -114,7 +113,7 @@ export default function Album() {
       }}
       direction="column"
       arrow={true}
-      link_arrow="/"
+      link_arrow={previousPageUrl}
     >
       <h1 className={styles.playlist__title}>{album.name}</h1>
       <div className={styles.playlist}>

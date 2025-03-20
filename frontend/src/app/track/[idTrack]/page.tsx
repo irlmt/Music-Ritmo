@@ -43,9 +43,8 @@ const Modal = ({
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const userLogin = "test_user";
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+          `http://localhost:8000/rest/getPlaylists?username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
 
@@ -85,7 +84,6 @@ const Modal = ({
         }
       );
       const data = await response.json();
-      console.log(data);
 
       if (data["subsonic-response"].status === "ok") {
         setSuccessMessage(`Трек успешно добавлен в плейлист "${playlistName}"`);
@@ -165,6 +163,9 @@ export default function PlayedTrack() {
   const [trackData, setTrackData] = useState<TrackData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  const [lyrics, setLyrics] = useState<string | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -198,12 +199,13 @@ export default function PlayedTrack() {
       setIsLoading(true);
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/getSong?id=${id}`
+          `http://localhost:8000/rest/getSong?id=${id}&username=${user}&u=${user}&p=${password}`
         );
         if (!response.ok) {
           throw new Error("Ошибка при получении данных о треке");
         }
         const data = await response.json();
+        console.log(data);
 
         const track = data?.["subsonic-response"]?.song;
 
@@ -302,12 +304,9 @@ export default function PlayedTrack() {
             ? { ...prev, starred: !isFavourite ? new Date().toISOString() : "" }
             : null
         );
-      } else {
-        alert("Ошибка при изменении статуса избранного");
       }
     } catch (error) {
       console.error("Ошибка при изменении статуса избранного:", error);
-      alert("Произошла ошибка при изменении статуса избранного");
     }
   };
 
@@ -420,12 +419,43 @@ export default function PlayedTrack() {
     }
   }, []);
 
+  useEffect(() => {
+    const idFromUrl = pathname?.split("/")[2];
+    if (idFromUrl) {
+      setTrackId(parseInt(idFromUrl));
+    }
+  }, [pathname]);
+
+  const toggleLyrics = async () => {
+    setIsLyricsOpen(!isLyricsOpen);
+
+    if (!isLyricsOpen && trackId) {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/rest/getLyricsBySongId?id=${trackId}`
+        );
+        const data = await response.json();
+        const lines =
+          data?.["subsonic-response"]?.lyricsList?.structuredLyrics?.[0]?.line
+            ?.map((l: { value: string }) => l.value)
+            .join("\n") || "Текст песни не найден";
+
+        setLyrics(lines);
+      } catch (error) {
+        console.error("Ошибка загрузки текста песни:", error);
+        setLyrics("Ошибка загрузки текста песни");
+      }
+    }
+  };
+
   if (isLoading) {
     return <div>Загрузка...</div>;
   }
 
+  const previousPageUrl = document.referrer || "/";
+
   return (
-    <div>
+    <div className={styles.wrapper}>
       <Container
         style={{
           height: "70vh",
@@ -434,7 +464,7 @@ export default function PlayedTrack() {
           marginTop: "70px",
         }}
         arrow={true}
-        link_arrow={"/"}
+        link_arrow={previousPageUrl}
         direction="column"
       >
         <div
@@ -459,7 +489,7 @@ export default function PlayedTrack() {
             </p>
           </Link>
 
-          <Link href="/track-info">
+          <Link href={`/tags/${trackId}`}>
             <i className={`fa-solid fa-info ${styles.track__infoIcon}`}></i>
           </Link>
         </div>
@@ -545,9 +575,28 @@ export default function PlayedTrack() {
             className={`fa-solid fa-share ${styles.track__controlIcon}`}
             onClick={toggleModal}
           ></i>
-          <i className={`fa-solid fa-list-ul ${styles.track__controlIcon}`}></i>
+          <i
+            className={`fa-solid fa-list-ul ${styles.track__controlIcon}`}
+            onClick={toggleLyrics}
+          ></i>
         </div>
       </Container>
+
+      {isLyricsOpen && (
+        <Container
+          style={{
+            height: "70vh",
+            width: "21vw",
+            position: "fixed",
+            right: "25px",
+            top: "70px",
+          }}
+          arrow={false}
+          direction="column"
+        >
+          <p className={styles.lirics}>{lyrics || "Загрузка..."}</p>
+        </Container>
+      )}
 
       {audioUrl && (
         <audio
