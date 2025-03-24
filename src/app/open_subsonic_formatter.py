@@ -10,6 +10,11 @@ def add_if_not_none(rsp: Dict[str, Any], attr: str, val: Any) -> None:
         rsp[attr] = val
 
 
+def add_to_str_if_not_none(rsp: Dict[str, Any], attr: str, val: Any) -> None:
+    if val is not None:
+        rsp[attr] = str(val)
+
+
 def add_str_if_not_empty(rsp: Dict[str, Any], attr: str, val: str) -> None:
     if val != "":
         rsp[attr] = val
@@ -60,7 +65,7 @@ class OpenSubsonicFormatter:
 
     @staticmethod
     def format_artist_item(artist_item: ArtistItem) -> dict[str, Any]:
-        result = {"id": artist_item.id, "name": artist_item.name}
+        result = {"id": str(artist_item.id), "name": artist_item.name}
 
         add_if_not_none(result, "albumCount", artist_item.album_count)
         add_if_not_none(result, "coverArt", artist_item.cover_art_id)
@@ -70,14 +75,19 @@ class OpenSubsonicFormatter:
 
     @staticmethod
     def format_track(track: Track) -> dict[str, Any]:
-        result = {"id": track.id, "isDir": False, "title": track.title, "type": "music"}
+        result = {
+            "id": str(track.id),
+            "isDir": False,
+            "title": track.title,
+            "type": "music",
+        }
 
         add_if_not_none(result, "album", track.album)
-        add_if_not_none(result, "albumId", track.album_id)
-        add_if_not_none(result, "parent", track.album_id)
+        add_to_str_if_not_none(result, "albumId", track.album_id)
+        add_to_str_if_not_none(result, "parent", track.album_id)
 
         add_if_not_none(result, "artist", track.artist)
-        add_if_not_none(result, "artistId", track.artist_id)
+        add_to_str_if_not_none(result, "artistId", track.artist_id)
 
         add_if_not_none(result, "track", track.track_number)
         add_if_not_none(result, "discNumber", track.disc_number)
@@ -126,7 +136,7 @@ class OpenSubsonicFormatter:
     @staticmethod
     def format_album(album: Album) -> dict[str, Any]:
         result = {
-            "id": album.id,
+            "id": str(album.id),
             "name": album.name,
             "songCount": album.song_count,
             "duration": album.duration,
@@ -135,7 +145,7 @@ class OpenSubsonicFormatter:
         add_datetime_if_not_none(result, "created", album.created)
 
         add_if_not_none(result, "artist", album.artist)
-        add_if_not_none(result, "artistId", album.artist_id)
+        add_to_str_if_not_none(result, "artistId", album.artist_id)
 
         add_if_not_none(
             result,
@@ -171,7 +181,7 @@ class OpenSubsonicFormatter:
     @staticmethod
     def format_artist(artist: Artist) -> dict[str, Any]:
         result = {
-            "id": artist.id,
+            "id": str(artist.id),
             "name": artist.name,
         }
 
@@ -264,7 +274,7 @@ class OpenSubsonicFormatter:
     @staticmethod
     def format_playlist(playlist: Playlist) -> dict[str, Any]:
         result = {
-            "id": playlist.id,
+            "id": str(playlist.id),
             "name": playlist.name,
             "songCount": playlist.song_count,
             "duration": playlist.duration,
