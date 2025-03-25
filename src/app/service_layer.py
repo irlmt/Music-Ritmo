@@ -58,7 +58,7 @@ def fill_album(
         artist=join_artist_names(db_album.artists),
         artist_id=get_album_artist_id_by_album(db_album),
         cover_art_id=db_album.id,
-        play_count=None,
+        play_count=db_album.play_count,
         starred=None,
         year=extract_year(db_album.year),
         genre=join_genre_names(album_genres),
@@ -289,13 +289,13 @@ class AlbumService:
                 result = self.album_db_helper.get_sorted_by_year_albums(
                     min_year, max_year, size, offset, reversed_order
                 )
-            case (
-                RequestType.NEWEST
-                | RequestType.HIGHEST
-                | RequestType.FREQUENT
-                | RequestType.RECENT
-                | RequestType.BY_GENRE
-            ):
+            case RequestType.BY_GENRE if genre is not None:
+                result = self.album_db_helper.get_albums_by_genre(genre, size, offset)
+            case RequestType.FREQUENT:
+                result = self.album_db_helper.get_sorted_albums_by_frequency(
+                    size, offset
+                )
+            case RequestType.NEWEST | RequestType.HIGHEST | RequestType.RECENT:
                 raise NotImplementedError()
             case _:  # validation error
                 return None

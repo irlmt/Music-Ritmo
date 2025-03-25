@@ -163,6 +163,7 @@ class Album(SQLModel, table=True):
     total_tracks: int
     year: str | None
     cover: bytes | None
+    play_count: int = Field(default=0)
 
     tracks: list["Track"] = Relationship(back_populates="album")
     artists: list["Artist"] = Relationship(

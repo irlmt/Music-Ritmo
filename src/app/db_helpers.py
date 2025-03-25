@@ -114,6 +114,32 @@ class AlbumDBHelper:
             .offset(offset)
         ).all()
 
+    def get_albums_by_genre(
+        self, genre: str, size: int, offset: int
+    ) -> Sequence[db.Album]:
+        return self.session.exec(
+            select(db.Album)
+            .distinct()
+            .join(db.Track, db.Track.album_id == db.Album.id)  # type: ignore
+            .join(db.GenreTrack, db.GenreTrack.track_id == db.Track.id)  # type: ignore
+            .join(db.Genre, db.Genre.id == db.GenreTrack.genre_id)  # type: ignore
+            .where(func.lower(db.Genre.name).like(genre))
+            .order_by(db.Album.name)
+            .limit(size)
+            .offset(offset)
+        ).all()
+
+    def get_sorted_albums_by_frequency(
+        self, size: int, offset: int
+    ) -> Sequence[db.Album]:
+        return self.session.exec(
+            select(db.Album)
+            .order_by(desc(db.Album.play_count))  # type: ignore
+            .order_by(db.Album.name)
+            .limit(size)
+            .offset(offset)
+        ).all()
+
 
 class TrackDBHelper:
     def __init__(self, session: Session):
