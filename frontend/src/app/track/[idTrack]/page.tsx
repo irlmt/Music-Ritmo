@@ -32,7 +32,7 @@ const Modal = ({
   trackId,
 }: {
   onClose: () => void;
-  trackId: number;
+  trackId: string;
 }) => {
   const [playlists, setPlaylists] = useState<PlaylistType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -142,7 +142,7 @@ const Modal = ({
 
 export default function PlayedTrack() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [trackId, setTrackId] = useState<number>(0);
+  const [trackId, setTrackId] = useState<string>("");
   const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
   const { user, password } = useAuth();
 
@@ -174,12 +174,12 @@ export default function PlayedTrack() {
   useEffect(() => {
     const idFromUrl = pathname?.split("/")[2];
     if (idFromUrl) {
-      setTrackId(parseInt(idFromUrl));
+      setTrackId(idFromUrl);
     }
   }, [pathname]);
 
   useEffect(() => {
-    const fetchTrack = async (id: number) => {
+    const fetchTrack = async (id: string) => {
       try {
         const response = await fetch(
           `http://localhost:8000/rest/stream?id=${id}`
@@ -195,7 +195,7 @@ export default function PlayedTrack() {
       }
     };
 
-    const fetchTrackData = async (id: number) => {
+    const fetchTrackData = async (id: string) => {
       setIsLoading(true);
       try {
         const response = await fetch(
@@ -311,20 +311,21 @@ export default function PlayedTrack() {
   };
 
   const handleForward = () => {
+    const trackIdNum = parseInt(trackId)
     switch (true) {
       case isRepeat:
-        if (trackId < totalTracks) {
-          setTrackId(trackId + 1);
+        if (trackIdNum < totalTracks) {
+          setTrackId(String(trackIdNum + 1));
           router.push(`/track/${trackId + 1}`);
         } else {
-          setTrackId(1);
+          setTrackId("1");
           router.push(`/track/1`);
         }
         break;
 
       case isShuffle:
         const randomTrackId = Math.floor(Math.random() * totalTracks) + 1;
-        setTrackId(randomTrackId);
+        setTrackId(String(randomTrackId));
         router.push(`/track/${randomTrackId}`);
         break;
 
@@ -333,8 +334,8 @@ export default function PlayedTrack() {
         break;
 
       case isRightLong:
-        if (trackId < totalTracks) {
-          setTrackId(trackId + 1);
+        if (trackIdNum < totalTracks) {
+          setTrackId(String(trackIdNum + 1));
           router.push(`/track/${trackId + 1}`);
         }
         break;
@@ -342,20 +343,21 @@ export default function PlayedTrack() {
   };
 
   const handleBackward = () => {
+    const trackIdNum = parseInt(trackId)
     switch (true) {
       case isRepeat:
-        if (trackId > 1) {
-          setTrackId(trackId - 1);
-          router.push(`/track/${trackId - 1}`);
+        if (trackIdNum > 1) {
+          setTrackId(String(trackIdNum - 1));
+          router.push(`/track/${trackIdNum - 1}`);
         } else {
-          setTrackId(totalTracks);
+          setTrackId(String(totalTracks));
           router.push(`/track/${totalTracks}`);
         }
         break;
 
       case isShuffle:
         const randomTrackId = Math.floor(Math.random() * totalTracks) + 1;
-        setTrackId(randomTrackId);
+        setTrackId(String(randomTrackId));
         router.push(`/track/${randomTrackId}`);
         break;
 
@@ -364,9 +366,9 @@ export default function PlayedTrack() {
         break;
 
       case isRightLong:
-        if (trackId > 1) {
-          setTrackId(trackId - 1);
-          router.push(`/track/${trackId - 1}`);
+        if (trackIdNum > 1) {
+          setTrackId(String(trackIdNum - 1));
+          router.push(`/track/${trackIdNum - 1}`);
         }
         break;
     }
@@ -422,7 +424,7 @@ export default function PlayedTrack() {
   useEffect(() => {
     const idFromUrl = pathname?.split("/")[2];
     if (idFromUrl) {
-      setTrackId(parseInt(idFromUrl));
+      setTrackId(idFromUrl);
     }
   }, [pathname]);
 
