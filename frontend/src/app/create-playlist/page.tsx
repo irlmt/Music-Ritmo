@@ -29,11 +29,13 @@ export default function CreatePlaylist() {
   const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user || !password) {
+      return;
+    }
     const fetchPlaylists = async () => {
       try {
-        const userLogin = "test_user";
         const response = await fetch(
-          `http://localhost:8000/rest/getPlaylists?username=${userLogin}`
+          `http://localhost:8000/rest/getPlaylists?username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
 
@@ -53,7 +55,7 @@ export default function CreatePlaylist() {
     };
 
     fetchPlaylists();
-  }, []);
+  }, [user, password]);
 
   const handleCreatePlaylist = async () => {
     if (!playlistName) {
@@ -65,13 +67,10 @@ export default function CreatePlaylist() {
     setError(null);
 
     try {
-      const userLogin = "test_user";
       const response = await fetch(
         `http://localhost:8000/rest/createPlaylist?name=${encodeURIComponent(
           playlistName
-        )}&u=${encodeURIComponent(
-          userLogin
-        )}?username=${user}&u=${user}&p=${password}`,
+        )}&username=${user}&u=${user}&p=${password}`,
         {
           method: "GET",
         }
@@ -131,15 +130,18 @@ export default function CreatePlaylist() {
         {nameError && <div className={styles.error}>{nameError}</div>}
 
         {error && <div className={styles.error}>{error}</div>}
-
-        <Button
-          type="normal"
-          color="green"
-          disabled={loading || isNameTooShort || isNameAlreadyExists}
-          onClick={handleCreatePlaylist}
+        <div
+          style={{ display: "flex", width: "100%", justifyContent: "center" }}
         >
-          {loading ? "Создание..." : "Создать плейлист"}
-        </Button>
+          <Button
+            type="normal"
+            color="green"
+            disabled={loading || isNameTooShort || isNameAlreadyExists}
+            onClick={handleCreatePlaylist}
+          >
+            {loading ? "Создание..." : "Создать плейлист"}
+          </Button>
+        </div>
       </Container>
     </>
   );

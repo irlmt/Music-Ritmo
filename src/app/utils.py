@@ -188,8 +188,51 @@ def update_tags(track: db.Track, tags: dict[str, Any]) -> tuple[MP3 | FLAC, Audi
     return audio, audio_type
 
 
+def get_user_starred_data(session: Session) -> list[Any]:
+    starred_data: list[Any] = []
+    for user in session.exec(select(db.User)).all():
+        starred_data.append(
+            (
+                user.id,
+                [
+                    (
+                        favourite_track.track.title,
+                        favourite_track.added_at,
+                    )
+                    for favourite_track in user.favourite_tracks
+                ],
+                [
+                    (
+                        favourite_artist.artist.name,
+                        favourite_artist.added_at,
+                    )
+                    for favourite_artist in user.favourite_artists
+                ],
+                [
+                    (
+                        favourite_album.album.name,
+                        favourite_album.added_at,
+                    )
+                    for favourite_album in user.favourite_albums
+                ],
+                [
+                    (
+                        favourite_playlist.playlist.name,
+                        favourite_playlist.added_at,
+                    )
+                    for favourite_playlist in user.favourite_playlists
+                ],
+            )
+        )
+    return starred_data
+
+
 def clear_tables(session: Session) -> None:
     for table in [
+        db.FavouriteTrack,
+        db.FavouriteArtist,
+        db.FavouriteAlbum,
+        db.FavouritePlaylist,
         db.Album,
         db.Playlist,
         db.Genre,

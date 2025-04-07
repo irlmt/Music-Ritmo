@@ -7,6 +7,7 @@ import { Playlist } from "@/entities/playlist";
 import { Artist } from "@/entities/artist";
 import styles from "./search.module.css";
 import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/app/auth-context";
 
 interface Song {
   id: string;
@@ -15,12 +16,13 @@ interface Song {
   album: string;
   genre: string;
   starred: string;
+  duration: number;
   additionalData?: Record<string, unknown>;
 }
 
 interface Album {
   id: string;
-  title: string;
+  name: string;
   artist: string;
   coverArt?: string;
 }
@@ -39,12 +41,14 @@ interface SearchResult {
   starred: string;
   name: string;
   type: "song" | "album" | "artist";
+  duration: number;
 }
 
 function SearchResultsPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [query, setQuery] = useState<string>("");
   const [coverArts, setCoverArts] = useState<{ [key: string]: string }>({});
+  const { user, password } = useAuth();
 
   const searchParams = useSearchParams();
   const queryParam = searchParams.get("query");
@@ -57,7 +61,7 @@ function SearchResultsPage() {
         if (queryParam && queryParam.length > 0) {
           try {
             const response = await fetch(
-              `http://localhost:8000/rest/search3?query=${queryParam}&songCount=100&albumCount=100&artistCount=100&songOffset=0&albumOffset=0&artistOffset=0`
+              `http://localhost:8000/rest/search3?query=${queryParam}&songCount=100&albumCount=100&artistCount=100&songOffset=0&albumOffset=0&artistOffset=0&username=${user}&u=${user}&p=${password}`
             );
             const data = await response.json();
 
@@ -88,11 +92,6 @@ function SearchResultsPage() {
 
               const coverArtsToFetch: { [key: string]: string } = {};
 
-              console.log(
-                "Данные с сервера:",
-                data["subsonic-response"].searchResult3
-              );
-
               data["subsonic-response"].searchResult3.album.forEach(
                 (album: Album) => {
                   if (album.coverArt) {
@@ -108,8 +107,6 @@ function SearchResultsPage() {
                   }
                 }
               );
-
-              console.log("Обложки для альбомов и артистов:", coverArtsToFetch);
 
               setCoverArts(coverArtsToFetch);
               setResults(searchResult);
@@ -150,14 +147,10 @@ function SearchResultsPage() {
           {albums.length > 0 && (
             <div className={styles.album_playlists}>
               {albums.map((album, index) => {
-                console.log(
-                  `Обложка для альбома ${album.title}:`,
-                  coverArts[album.id] || ""
-                );
                 return (
                   <Playlist
                     key={index}
-                    name={album.title}
+                    name={album.name}
                     link={`/album/${album.id}`}
                     showDelete={false}
                     coverArt={coverArts[album.id] || ""}
@@ -172,10 +165,6 @@ function SearchResultsPage() {
           {artist.length > 0 && (
             <div className={styles.album_playlists}>
               {artist.map((artist, index) => {
-                console.log(
-                  `Обложка для артиста ${artist.name}:`,
-                  coverArts[artist.id] || ""
-                );
                 return (
                   <Artist
                     key={index}
@@ -192,15 +181,15 @@ function SearchResultsPage() {
         <div className={styles.tracklist}>
           {songs.length > 0 && (
             <div>
-              {songs.map((song, index) => (
+              {songs.map((song) => (
                 <Tracklist
-                  key={index}
+                  key={song.id}
                   name={song.title}
                   name_link={`/track/${song.id}`}
                   artist={song.artist}
                   artist_link={`/artist/${song.artist}`}
                   favourite={song.starred}
-                  time={0}
+                  time={song.duration}
                   showRemoveButton={false}
                   onFavouriteToggle={() => {}}
                 />

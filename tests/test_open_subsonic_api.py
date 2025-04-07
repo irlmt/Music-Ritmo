@@ -1,4 +1,4 @@
-from src.app.main import app
+from src.app.app import app
 from src.app import database as db
 from fastapi.testclient import TestClient
 from sqlmodel import Session

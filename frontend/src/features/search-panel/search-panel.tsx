@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import styles from "./search-panel.module.css";
 import { Button } from "@/shared/button";
 import { Artist } from "@/entities/artist";
+import { useAuth } from "@/app/auth-context";
 
 interface Song {
   id: string;
@@ -38,16 +39,16 @@ export const SearchPanel = () => {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchClicked, setSearchClicked] = useState<boolean>(false);
+  const { user, password } = useAuth();
 
   const handleSearch = async () => {
     setSearchClicked(true);
     if (query.length > 0) {
       try {
         const response = await fetch(
-          `http://localhost:8000/rest/search3?query=${query}`
+          `http://localhost:8000/rest/search3?query=${query}&username=${user}&u=${user}&p=${password}`
         );
         const data = await response.json();
-        console.log(data);
 
         if (
           data["subsonic-response"] &&

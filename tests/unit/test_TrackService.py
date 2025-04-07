@@ -43,7 +43,7 @@ class TestTrackService(unittest.TestCase):
         self.track_service.track_db_helper.get_track_by_id = MagicMock(
             return_value=None
         )
-        result = self.track_service.get_song_by_id(1)
+        result = self.track_service.get_song_by_id(1, None)
         assert result is None
 
     def test_get_song_by_id_song_found(self):
@@ -51,7 +51,7 @@ class TestTrackService(unittest.TestCase):
         self.track_service.track_db_helper.get_track_by_id = MagicMock(
             return_value=song
         )
-        result = self.track_service.get_song_by_id(1)
+        result = self.track_service.get_song_by_id(1, None)
         assert result is not None
         assert isinstance(result, dto.Track)
         assert result.id == song.id

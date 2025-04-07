@@ -271,6 +271,12 @@ def is_iso8601(str: str) -> bool:
     return datetime.fromisoformat(str) is not None
 
 
+def to_str_or_none(val: Any) -> str | None:
+    if val is not None:
+        return str(val)
+    return None
+
+
 class TestOpenSubsonicFormatter(unittest.TestCase):
     @parameterized.expand(GENRES)
     def test_format_genre(self, genre: dto.Genre):
@@ -428,10 +434,10 @@ class TestOpenSubsonicFormatter(unittest.TestCase):
         self.assertEqual(encoded.get("albumCount"), genre.albumCount)
 
     def check_artist_item(self, encoded: dict[str, Any], artist_item: dto.ArtistItem):
-        self.assertIsInstance(encoded.get("id"), int)
+        self.assertIsInstance(encoded.get("id"), str)
         self.assertIsInstance(encoded.get("name"), str)
 
-        self.assertEqual(encoded.get("id"), artist_item.id)
+        self.assertEqual(encoded.get("id"), str(artist_item.id))
         self.assertEqual(encoded.get("name"), artist_item.name)
 
         self.check_cover_art(encoded, artist_item.cover_art_id)
@@ -442,16 +448,22 @@ class TestOpenSubsonicFormatter(unittest.TestCase):
 
     # https://opensubsonic.netlify.app/docs/responses/child/
     def check_track(self, encoded: dict[str, Any], track: dto.Track):
-        self.check_strict(encoded, "id", int, track.id)
+        self.check_strict(encoded, "id", str, str(track.id))
         self.check_strict(encoded, "isDir", bool, False)
         self.check_strict(encoded, "title", str, track.title)
 
         self.check_optional_strict(encoded, "type", str, "music")
 
-        self.check_optional_strict(encoded, "parent", int, track.album_id)
-        self.check_optional_strict(encoded, "albumId", int, track.album_id)
+        self.check_optional_strict(
+            encoded, "parent", str, to_str_or_none(track.album_id)
+        )
+        self.check_optional_strict(
+            encoded, "albumId", str, to_str_or_none(track.album_id)
+        )
         self.check_optional_strict(encoded, "album", str, track.album)
-        self.check_optional_strict(encoded, "artistId", int, track.artist_id)
+        self.check_optional_strict(
+            encoded, "artistId", str, to_str_or_none(track.artist_id)
+        )
         self.check_optional_strict(encoded, "artist", str, track.artist)
         self.check_optional_strict(encoded, "track", int, track.track_number)
         self.check_optional_strict(encoded, "year", int, track.year)
@@ -496,7 +508,7 @@ class TestOpenSubsonicFormatter(unittest.TestCase):
 
     # https://opensubsonic.netlify.app/docs/responses/albumid3withsongs/
     def check_album(self, encoded: dict[str, Any], album: dto.Album):
-        self.check_strict(encoded, "id", int, album.id)
+        self.check_strict(encoded, "id", str, str(album.id))
         self.check_strict(encoded, "name", str, album.name)
         self.check_strict(encoded, "songCount", int, album.song_count)
         self.check_strict(encoded, "duration", int, album.duration)
@@ -505,7 +517,9 @@ class TestOpenSubsonicFormatter(unittest.TestCase):
         self.assertTrue(is_iso8601(encoded.get("created")))
 
         self.check_optional_strict(encoded, "artist", str, album.artist)
-        self.check_optional_strict(encoded, "artistId", int, album.artist_id)
+        self.check_optional_strict(
+            encoded, "artistId", str, to_str_or_none(album.artist_id)
+        )
 
         self.check_cover_art(encoded, album.cover_art_id)
 
@@ -535,7 +549,7 @@ class TestOpenSubsonicFormatter(unittest.TestCase):
 
     # https://opensubsonic.netlify.app/docs/responses/artist/
     def check_artist(self, encoded: dict[str, Any], artist: dto.Artist):
-        self.check_strict(encoded, "id", int, artist.id)
+        self.check_strict(encoded, "id", str, str(artist.id))
         self.check_strict(encoded, "name", str, artist.name)
 
         self.check_optional_strict(
@@ -594,7 +608,7 @@ class TestOpenSubsonicFormatter(unittest.TestCase):
 
     # https://opensubsonic.netlify.app/docs/responses/playlistwithsongs/
     def check_playlist(self, encoded: dict[str, Any], playlist: dto.Playlist):
-        self.check_strict(encoded, "id", int, playlist.id)
+        self.check_strict(encoded, "id", str, str(playlist.id))
         self.check_strict(encoded, "name", str, playlist.name)
         self.check_strict(encoded, "songCount", int, playlist.song_count)
         self.check_strict(encoded, "duration", int, playlist.duration)

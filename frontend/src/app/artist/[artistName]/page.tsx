@@ -7,7 +7,7 @@ import { Playlist } from "@/entities/playlist";
 import styles from "./artist.module.css";
 
 interface Album {
-  album: string;
+  name: string;
   id: string;
   genre: string;
   year: string;
@@ -54,16 +54,15 @@ export default function Artist() {
         }}
         direction="column"
         arrow={true}
-        link_arrow="/"
       >
         <h1 className={styles.playlist__title}>{artist.name}</h1>
 
         <div className={styles.playlist}>
           <div className={styles.album_playlists}>
-            {artist.album.map((album, index) => (
+            {artist.album?.map((album) => (
               <Playlist
-                key={index}
-                name={album.album}
+                key={album.id}
+                name={album.name}
                 link={`/album/${album.id}`}
                 coverArt={album.coverArt}
                 showDelete={false}

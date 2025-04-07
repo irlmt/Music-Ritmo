@@ -129,10 +129,12 @@ async def ping() -> JSONResponse:
 
 @open_subsonic_router.get("/getPlaylists")
 async def get_playlists(
-    username: str = "", session: Session = Depends(db.get_session)
+    username: str = "",
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     service = service_layer.PlaylistService(session)
-    playlists = service.get_playlists()
+    playlists = service.get_playlists(current_user)
 
     rsp = SubsonicResponse()
     rsp.data["playlists"] = OpenSubsonicFormatter.format_playlists(playlists)
@@ -147,6 +149,7 @@ def scrobble(id: int, session: Session = Depends(db.get_session)) -> JSONRespons
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
     track.plays_count += 1
+    track.album.play_count += 1
     session.add(track)
     session.commit()
 
@@ -156,11 +159,13 @@ def scrobble(id: int, session: Session = Depends(db.get_session)) -> JSONRespons
 
 @open_subsonic_router.get("/getSongsByGenre")
 def get_songs_by_genre(
-    genre: str, session: Session = Depends(db.get_session)
+    genre: str,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     rsp = SubsonicResponse()
     service = service_layer.TrackService(session)
-    tracks = service.get_songs_by_genre(genre)
+    tracks = service.get_songs_by_genre(genre, db_user=current_user)
     rsp.data["songsByGenre"] = OpenSubsonicFormatter.format_tracks(tracks)
     return rsp.to_json_rsp()
 
@@ -192,11 +197,19 @@ async def search2(
     albumOffset: int = Query(default=0),
     songCount: int = Query(default=20),
     songOffset: int = Query(default=0),
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     service = service_layer.SearchService(session)
     artists, albums, tracks = service.search2(
-        query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
+        query,
+        artistCount,
+        artistOffset,
+        albumCount,
+        albumOffset,
+        songCount,
+        songOffset,
+        current_user,
     )
     rsp = SubsonicResponse()
     rsp.data["searchResult2"] = OpenSubsonicFormatter.format_combination(
@@ -215,11 +228,19 @@ async def search3(
     albumOffset: int = Query(default=0),
     songCount: int = Query(default=20),
     songOffset: int = Query(default=0),
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     service = service_layer.SearchService(session)
     artists, albums, tracks = service.search3(
-        query, artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset
+        query,
+        artistCount,
+        artistOffset,
+        albumCount,
+        albumOffset,
+        songCount,
+        songOffset,
+        current_user,
     )
     rsp = SubsonicResponse()
     rsp.data["searchResult3"] = OpenSubsonicFormatter.format_combination(
@@ -241,9 +262,13 @@ async def get_genres(session: Session = Depends(db.get_session)) -> JSONResponse
 
 
 @open_subsonic_router.get("/getSong")
-def get_song(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
+def get_song(
+    id: int,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+) -> JSONResponse:
     service = service_layer.TrackService(session)
-    track: Optional[dto.Track] = service.get_song_by_id(id)
+    track: Optional[dto.Track] = service.get_song_by_id(id, current_user)
     if track is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -258,10 +283,13 @@ def get_random_songs(
     genre: Optional[str] = None,
     fromYear: Optional[str] = None,
     toYear: Optional[str] = None,
+    current_user: db.User = Depends(authenticate_user),
     session: Session = Depends(db.get_session),
 ) -> JSONResponse:
     service = service_layer.TrackService(session)
-    tracks = service.get_random_songs(size, genre, fromYear, toYear)
+    tracks = service.get_random_songs(
+        size, genre, fromYear, toYear, db_user=current_user
+    )
     if tracks is None:
         return JSONResponse({"detail": "Tracks not found"}, status_code=404)
 
@@ -283,9 +311,13 @@ def get_artist(id: int, session: Session = Depends(db.get_session)) -> JSONRespo
 
 
 @open_subsonic_router.get("/getAlbum")
-def get_album(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
+def get_album(
+    id: int,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+) -> JSONResponse:
     service = service_layer.AlbumService(session)
-    album = service.get_album_by_id(id)
+    album = service.get_album_by_id(id, current_user)
     if album is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -295,9 +327,13 @@ def get_album(id: int, session: Session = Depends(db.get_session)) -> JSONRespon
 
 
 @open_subsonic_router.get("/getPlaylist")
-def get_playlist(id: int, session: Session = Depends(db.get_session)) -> JSONResponse:
+def get_playlist(
+    id: int,
+    current_user: db.User = Depends(authenticate_user),
+    session: Session = Depends(db.get_session),
+) -> JSONResponse:
     service = service_layer.PlaylistService(session)
-    playlist: dto.Playlist | None = service.get_playlist(id)
+    playlist: dto.Playlist | None = service.get_playlist(id, current_user)
     if playlist is None:
         return JSONResponse({"detail": "No such id"}, status_code=404)
 
@@ -469,8 +505,12 @@ async def start_scan(session: Session = Depends(db.get_session)) -> JSONResponse
     db_loading.scanStatus["scanning"] = True
     db_loading.scanStatus["count"] = 0
 
+    starred_data = utils.get_user_starred_data(session)
+
     utils.clear_tables(session)
-    asyncio.get_running_loop().run_in_executor(None, db_loading.scan_and_load)
+    asyncio.get_running_loop().run_in_executor(
+        None, db_loading.scan_and_load, "./tracks/", starred_data
+    )
 
     rsp = SubsonicResponse()
     rsp.data["scanStatus"] = db_loading.scanStatus
@@ -507,7 +547,11 @@ def get_album_list(
             request_type = service_layer.RequestType.BY_ARTIST
         case "byYear":
             request_type = service_layer.RequestType.BY_YEAR
-        case "newest" | "highest" | "frequent" | "recent" | "byGenre":
+        case "byGenre":
+            request_type = service_layer.RequestType.BY_GENRE
+        case "frequent":
+            request_type = service_layer.RequestType.FREQUENT
+        case "newest" | "highest" | "recent":
             # Not implemented
             request_type = service_layer.RequestType.BY_NAME
         case _:
@@ -547,7 +591,11 @@ def get_album_list2(
             request_type = service_layer.RequestType.BY_ARTIST
         case "byYear":
             request_type = service_layer.RequestType.BY_YEAR
-        case "newest" | "highest" | "frequent" | "recent" | "byGenre":
+        case "byGenre":
+            request_type = service_layer.RequestType.BY_GENRE
+        case "frequent":
+            request_type = service_layer.RequestType.FREQUENT
+        case "newest" | "highest" | "recent":
             # Not implemented
             request_type = service_layer.RequestType.BY_NAME
         case _:

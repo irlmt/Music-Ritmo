@@ -1,11 +1,13 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import Artist from "@/app/artist/[artistName]/page";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import "@testing-library/jest-dom";
+import { AuthProvider } from "@/app/auth-context";
 
 jest.mock("next/navigation", () => ({
   useParams: jest.fn(),
+  useRouter: jest.fn(),
 }));
 
 global.fetch = jest.fn(() =>
@@ -20,11 +22,24 @@ describe("Artist Component", () => {
 
   beforeEach(() => {
     (useParams as jest.Mock).mockReturnValue({ artistName: mockArtistName });
+
+    (useRouter as jest.Mock).mockReturnValue({
+      push: jest.fn(),
+      replace: jest.fn(),
+      pathname: "/",
+      query: {},
+      asPath: "/",
+    });
+
     jest.clearAllMocks();
   });
 
   test("shows loading state initially", () => {
-    render(<Artist />);
+    render(
+      <AuthProvider>
+        <Artist />
+      </AuthProvider>
+    );
     expect(screen.getByText("Загрузка...")).toBeInTheDocument();
   });
 
@@ -41,7 +56,7 @@ describe("Artist Component", () => {
                 name: "Test Artist",
                 album: [
                   {
-                    album: "Test Album",
+                    name: "Test Album",
                     id: "1",
                     genre: "Rock",
                     year: "2021",
@@ -56,7 +71,11 @@ describe("Artist Component", () => {
       })
     ) as jest.Mock;
 
-    render(<Artist />);
+    render(
+      <AuthProvider>
+        <Artist />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Test Artist")).toBeInTheDocument();
@@ -69,7 +88,11 @@ describe("Artist Component", () => {
       Promise.reject(new Error("Не удалось получить данные с сервера"))
     ) as jest.Mock;
 
-    render(<Artist />);
+    render(
+      <AuthProvider>
+        <Artist />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Загрузка...")).toBeInTheDocument();
@@ -96,7 +119,11 @@ describe("Artist Component", () => {
       })
     ) as jest.Mock;
 
-    render(<Artist />);
+    render(
+      <AuthProvider>
+        <Artist />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Test Artist")).toBeInTheDocument();

@@ -58,7 +58,7 @@ def fill_album(
         artist=join_artist_names(db_album.artists),
         artist_id=get_album_artist_id_by_album(db_album),
         cover_art_id=db_album.id,
-        play_count=None,
+        play_count=db_album.play_count,
         starred=None,
         year=extract_year(db_album.year),
         genre=join_genre_names(album_genres),
@@ -66,7 +66,7 @@ def fill_album(
         genres=fill_genre_items(album_genres),
     )
     if with_songs:
-        album.tracks = fill_tracks(db_album.tracks, None)
+        album.tracks = fill_tracks(db_album.tracks, db_user)
     return album
 
 
@@ -74,7 +74,10 @@ def fill_albums(
     db_albums: Sequence[db.Album], db_user: db.User | None, with_songs: bool
 ) -> List[dto.Album]:
     return list(
-        map(partial(fill_album, db_user=db_user, with_songs=with_songs), db_albums)
+        sorted(
+            map(partial(fill_album, db_user=db_user, with_songs=with_songs), db_albums),
+            key=lambda album: album.id,
+        )
     )
 
 
@@ -86,7 +89,7 @@ def fill_artist_item(artist: db.Artist) -> dto.ArtistItem:
 
 
 def fill_artist_items(artists: Sequence[db.Artist]) -> List[dto.ArtistItem]:
-    return list(map(fill_artist_item, artists))
+    return list(sorted(map(fill_artist_item, artists), key=lambda artist: artist.id))
 
 
 def fill_genre_item(genre: db.Genre) -> dto.GenreItem:
@@ -96,7 +99,16 @@ def fill_genre_item(genre: db.Genre) -> dto.GenreItem:
 
 
 def fill_genre_items(genres: Sequence[db.Genre]) -> List[dto.GenreItem]:
-    return list(map(fill_genre_item, genres))
+    return list(sorted(map(fill_genre_item, genres), key=lambda genre: genre.name))
+
+
+def set_track_starred(db_track: db.Track, db_user: db.User | None) -> datetime | None:
+    if db_user is None:
+        return None
+    for track in db_track.track_favourites:
+        if track.user_id == db_user.id:
+            return datetime.fromisoformat(track.added_at)
+    return None
 
 
 def fill_track(db_track: db.Track, db_user: db.User | None) -> dto.Track:
@@ -115,14 +127,14 @@ def fill_track(db_track: db.Track, db_user: db.User | None) -> dto.Track:
         file_size=db_track.file_size,
         content_type=db_track.type,
         duration=int(db_track.duration),
-        bit_rate=db_track.bit_rate,
+        bit_rate=int(round(db_track.bit_rate / 1024)),
         sampling_rate=db_track.sample_rate,
         bit_depth=db_track.bits_per_sample,
         channel_count=db_track.channels,
         path=db_track.file_path,
         play_count=db_track.plays_count,
         created=datetime.now(),
-        starred=None,  # TODO
+        starred=set_track_starred(db_track, db_user),
         bpm=None,
         comment=None,
         artists=fill_artist_items(db_track.artists),
@@ -133,7 +145,12 @@ def fill_track(db_track: db.Track, db_user: db.User | None) -> dto.Track:
 def fill_tracks(
     db_tracks: Sequence[db.Track], db_user: db.User | None
 ) -> List[dto.Track]:
-    return list(map(partial(fill_track, db_user=db_user), db_tracks))
+    return list(
+        sorted(
+            map(partial(fill_track, db_user=db_user), db_tracks),
+            key=lambda track: track.id,
+        )
+    )
 
 
 def fill_genre(db_genre: db.Genre) -> dto.Genre:
@@ -143,7 +160,7 @@ def fill_genre(db_genre: db.Genre) -> dto.Genre:
 
 
 def fill_genres(db_genres: Sequence[db.Genre]) -> List[dto.Genre]:
-    return list(map(fill_genre, db_genres))
+    return list(sorted(map(fill_genre, db_genres), key=lambda genre: genre.name))
 
 
 def fill_artists(
@@ -153,14 +170,17 @@ def fill_artists(
     with_songs: bool = False,
 ) -> List[dto.Artist]:
     return list(
-        map(
-            partial(
-                fill_artist,
-                db_user=db_user,
-                with_albums=with_albums,
-                with_songs=with_songs,
+        sorted(
+            map(
+                partial(
+                    fill_artist,
+                    db_user=db_user,
+                    with_albums=with_albums,
+                    with_songs=with_songs,
+                ),
+                db_artists,
             ),
-            db_artists,
+            key=lambda artist: artist.id,
         )
     )
 
@@ -194,8 +214,12 @@ def fill_playlists(
     with_songs: bool = False,
 ) -> List[dto.Playlist]:
     return list(
-        map(
-            partial(fill_playlist, db_user=db_user, with_songs=with_songs), db_playlists
+        sorted(
+            map(
+                partial(fill_playlist, db_user=db_user, with_songs=with_songs),
+                db_playlists,
+            ),
+            key=lambda playlist: playlist.id,
         )
     )
 
@@ -241,10 +265,14 @@ class AlbumService:
     def __init__(self, session: Session):
         self.album_db_helper = db_helpers.AlbumDBHelper(session)
 
-    def get_album_by_id(self, id: int) -> Optional[dto.Album]:
+    def get_album_by_id(
+        self,
+        id: int,
+        db_user: db.User | None = None,
+    ) -> Optional[dto.Album]:
         db_album = self.album_db_helper.get_album_by_id(id)
         if db_album:
-            return fill_album(db_album, None, with_songs=True)
+            return fill_album(db_album, db_user, with_songs=True)
         return None
 
     def get_album_list(
@@ -276,13 +304,13 @@ class AlbumService:
                 result = self.album_db_helper.get_sorted_by_year_albums(
                     min_year, max_year, size, offset, reversed_order
                 )
-            case (
-                RequestType.NEWEST
-                | RequestType.HIGHEST
-                | RequestType.FREQUENT
-                | RequestType.RECENT
-                | RequestType.BY_GENRE
-            ):
+            case RequestType.BY_GENRE if genre is not None:
+                result = self.album_db_helper.get_albums_by_genre(genre, size, offset)
+            case RequestType.FREQUENT:
+                result = self.album_db_helper.get_sorted_albums_by_frequency(
+                    size, offset
+                )
+            case RequestType.NEWEST | RequestType.HIGHEST | RequestType.RECENT:
                 raise NotImplementedError()
             case _:  # validation error
                 return None
@@ -303,13 +331,13 @@ class AlbumService:
 def join_artist_names(artists: Sequence[db.Artist]) -> Optional[str]:
     if len(artists) == 0:
         return None
-    return ", ".join(a.name for a in artists)
+    return ", ".join(sorted(a.name for a in artists))
 
 
 def join_genre_names(genres: Sequence[db.Genre]) -> Optional[str]:
     if len(genres) == 0:
         return None
-    return ", ".join(g.name for g in genres)
+    return ", ".join(sorted(g.name for g in genres))
 
 
 def get_album_artist(db_track: db.Track) -> Optional[db.Artist]:
@@ -336,10 +364,10 @@ class TrackService:
         self.track_db_helper = db_helpers.TrackDBHelper(session)
         self.genre_db_helper = db_helpers.GenresDBHelper(session)
 
-    def get_song_by_id(self, id: int) -> Optional[dto.Track]:
+    def get_song_by_id(self, id: int, db_user: db.User | None) -> Optional[dto.Track]:
         db_track = self.track_db_helper.get_track_by_id(id)
         if db_track:
-            return fill_track(db_track, None)
+            return fill_track(db_track, db_user)
         return None
 
     def get_songs_by_genre(
@@ -348,10 +376,11 @@ class TrackService:
         count: int = 10,
         offset: int = 0,
         music_folder: str | None = None,
+        db_user: db.User | None = None,
     ) -> List[dto.Track]:
         return fill_tracks(
             self.track_db_helper.get_tracks_by_genre_name(genre, count, offset),
-            None,
+            db_user,
         )
 
     def get_random_songs(
@@ -361,6 +390,7 @@ class TrackService:
         from_year: Optional[str] = None,
         to_year: Optional[str] = None,
         music_folder_id: Optional[str] = None,
+        db_user: db.User | None = None,
     ) -> List[dto.Track]:
         if size < 0:
             return []
@@ -376,7 +406,7 @@ class TrackService:
                 filter(lambda track: track.year and track.year <= to_year, tracks)
             )
         random_tracks = random.sample(tracks, min(size, len(tracks)))
-        return fill_tracks(random_tracks, None)
+        return fill_tracks(random_tracks, db_user)
 
     def extract_lyrics(self, id: int) -> Optional[List[Dict[str, Any]]]:
         track = self.track_db_helper.get_track_by_id(id)
@@ -440,6 +470,7 @@ class SearchService:
         album_offset: int,
         song_count: int,
         song_offset: int,
+        db_user: db.User | None = None,
     ) -> Tuple[Sequence[dto.Artist], Sequence[dto.Album], Sequence[dto.Track]]:
 
         db_artists = self.artist_db_helper.get_artists(
@@ -455,7 +486,7 @@ class SearchService:
         return (
             fill_artists(db_artists, None, with_albums=False, with_songs=False),
             fill_albums(db_albums, None, with_songs=False),
-            fill_tracks(db_tracks, None),
+            fill_tracks(db_tracks, db_user),
         )
 
     def search3(
@@ -467,6 +498,7 @@ class SearchService:
         album_offset: int,
         song_count: int,
         song_offset: int,
+        db_user: db.User | None = None,
     ) -> Tuple[Sequence[dto.Artist], Sequence[dto.Album], Sequence[dto.Track]]:
         if query != "":
             return self.search2(
@@ -477,6 +509,7 @@ class SearchService:
                 album_offset,
                 song_count,
                 song_offset,
+                db_user,
             )
         db_artists = self.artist_db_helper.get_all_artists()
         db_albums = self.album_db_helper.get_all_albums()
@@ -485,7 +518,7 @@ class SearchService:
         return (
             fill_artists(db_artists, None, with_albums=False, with_songs=False),
             fill_albums(db_albums, None, with_songs=False),
-            fill_tracks(db_tracks, None),
+            fill_tracks(db_tracks, db_user),
         )
 
 
@@ -577,15 +610,15 @@ class PlaylistService:
     def delete_playlist(self, id: int, user: db.User) -> bool:
         return self.playlist_db_helper.delete_playlist(id)
 
-    def get_playlist(self, id: int) -> dto.Playlist | None:
+    def get_playlist(self, id: int, db_user: db.User | None) -> dto.Playlist | None:
         db_playlist = self.playlist_db_helper.get_playlist(id)
         if db_playlist:
-            return fill_playlist(db_playlist, None, with_songs=True)
+            return fill_playlist(db_playlist, db_user, with_songs=True)
         return None
 
-    def get_playlists(self) -> List[dto.Playlist]:
-        db_playlists = self.playlist_db_helper.get_all_playlists()
-        return fill_playlists(db_playlists, None, with_songs=False)
+    def get_playlists(self, db_user: db.User | None) -> List[dto.Playlist]:
+        db_playlists = self.playlist_db_helper.get_all_playlists(db_user)
+        return fill_playlists(db_playlists, db_user, with_songs=False)
 
 
 class IndexService:

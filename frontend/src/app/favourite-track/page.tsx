@@ -14,7 +14,7 @@ interface Track {
   album: string;
   duration: number;
   coverArt: string;
-  starred: string;
+  starred?: string;
   playCount: number;
 }
 
@@ -45,18 +45,26 @@ export default function FavouriteTrack() {
         const data = await response.json();
 
         if (data["subsonic-response"]?.status === "ok") {
-          const { song } = data["subsonic-response"]["starred2"];
-          setStarredTracks(song?.filter((track: Track) => track.starred) || []);
+          const starred2 = data["subsonic-response"]["starred2"];
+
+          if (starred2?.song && Array.isArray(starred2.song)) {
+            setStarredTracks(starred2.song);
+          } else {
+            console.error("Поле 'song' отсутствует или не является массивом");
+            setStarredTracks([]);
+          }
         } else {
-          console.error("Ошибка получения данных");
+          console.error("Ошибка получения данных: статус не 'ok'");
+          setStarredTracks([]);
         }
       } catch (error) {
         console.error("Ошибка при запросе данных:", error);
+        setStarredTracks([]);
       }
     };
 
     fetchStarredTracks();
-  }, [isAuthReady]);
+  }, [isAuthReady, user, password]);
 
   const handleFavouriteToggle = async (
     trackId: string,
@@ -108,11 +116,11 @@ export default function FavouriteTrack() {
                 name_link={`/track/${track.id}`}
                 artist={track.artist}
                 artist_link={`/artist/${track.artistId}`}
-                favourite={track.starred}
+                favourite={track.starred || "true"}
                 time={track.duration}
                 showRemoveButton={false}
                 onFavouriteToggle={() =>
-                  handleFavouriteToggle(track.id, track.starred)
+                  handleFavouriteToggle(track.id, track.starred || "false")
                 }
               />
             ))
